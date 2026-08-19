@@ -1,0 +1,197 @@
+/* sovereign-eclipse/styles/hud.css
+   Extracted unchanged from gold master 0.27.5 lines 1089-1280.
+   Forge 0.20 unified combat HUD
+   Zero-feature-change. Cascade order: base → hud → screens → station → forge.
+*/
+/* =======================================================================
+   FORGE 0.20 — GAMEPLAY UI FOUNDATION
+   One coherent combat HUD. Legacy fragments remain as hidden data sinks
+   so old mechanics can keep updating without competing on screen.
+   ======================================================================= */
+#legacyHud20{display:none!important}
+
+#forgeHud20{
+  position:absolute;inset:0;z-index:28;pointer-events:none;
+  color:#d9edf1;font-family:Inter,system-ui,sans-serif;
+}
+#gameUI.shellHidden #forgeHud20{display:none}
+
+.h20panel{
+  position:absolute;
+  background:linear-gradient(180deg,rgba(6,14,20,.88),rgba(3,8,13,.78));
+  border:1px solid rgba(112,220,237,.16);
+  box-shadow:0 10px 40px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.025);
+  backdrop-filter:blur(8px);
+}
+.h20ey{
+  color:rgba(126,231,247,.50);font-size:7px;font-weight:900;
+  letter-spacing:.18em;text-transform:uppercase
+}
+.h20title{
+  color:#edf9fb;font-size:12px;font-weight:900;letter-spacing:.05em;
+  text-transform:uppercase
+}
+.h20muted{
+  color:rgba(190,219,226,.45);font-size:7px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase
+}
+.h20gold{color:#ffd47a}
+.h20cyan{color:#84efff}
+.h20danger{color:#ff8375}
+
+/* Ship block — top left */
+#h20Ship{
+  left:18px;top:18px;width:256px;padding:12px 13px 11px;
+}
+#h20ShipHead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:9px}
+#h20ShipName{font-size:13px}
+#h20ShipMeta{text-align:right;max-width:118px}
+.h20barRow{margin-top:6px}
+.h20barLabel{display:flex;justify-content:space-between;gap:10px;margin-bottom:3px;
+  font-size:7px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(205,229,235,.62)}
+.h20bar{height:4px;background:rgba(255,255,255,.05);overflow:hidden}
+.h20bar>i{display:block;height:100%;width:100%;background:rgba(103,235,255,.72)}
+.h20bar.arm>i{background:rgba(255,193,101,.68)}
+.h20bar.hull>i{background:rgba(255,112,95,.72)}
+.h20bar.cap>i{background:rgba(182,109,255,.72)}
+#h20ShipFoot{
+  display:flex;justify-content:space-between;align-items:center;margin-top:9px;padding-top:8px;
+  border-top:1px solid rgba(116,224,238,.08)
+}
+#h20Velocity{font-size:10px;font-weight:950;letter-spacing:.06em}
+#h20Salvage{font-size:8px;font-weight:900}
+
+/* Objective — top middle, intentionally narrow */
+#h20Nav{
+  top:18px;left:50%;transform:translateX(-50%);
+  width:min(440px,38vw);padding:10px 14px;text-align:center
+}
+#h20Sector{font-size:8px;font-weight:900;letter-spacing:.16em;color:rgba(118,230,246,.58)}
+#h20Objective{font-size:10px;font-weight:900;letter-spacing:.04em;margin-top:4px;color:#eef9fb}
+#h20ObjectiveDistance{font-size:7px;margin-top:3px;color:rgba(203,224,229,.42);letter-spacing:.12em}
+
+/* Target — centre top, drops below nav only when needed */
+#h20Target{
+  top:90px;left:50%;transform:translateX(-50%);
+  width:min(390px,34vw);padding:9px 12px;display:none
+}
+#h20Target.visible{display:block}
+#h20TargetHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+#h20TargetName{font-size:11px;font-weight:950;text-transform:uppercase}
+#h20TargetRange{font-size:9px;font-weight:950;color:#ffd47a;white-space:nowrap}
+#h20TargetMeta{margin-top:2px}
+#h20TargetBars{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:7px}
+.h20targetBar{height:3px;background:rgba(255,255,255,.05)}
+.h20targetBar i{display:block;height:100%;background:rgba(105,236,255,.72)}
+.h20targetBar.arm i{background:rgba(255,194,103,.68)}
+.h20targetBar.hull i{background:rgba(255,104,92,.74)}
+
+/* Systems — bottom left */
+#h20Systems{
+  left:18px;bottom:18px;width:236px;padding:10px 12px
+}
+#h20SystemRows{margin-top:7px}
+.h20sys{
+  display:grid;grid-template-columns:70px 1fr 36px;align-items:center;gap:7px;margin:5px 0;
+  font-size:7px;font-weight:850;letter-spacing:.07em;text-transform:uppercase
+}
+.h20sys span:first-child{color:rgba(201,225,231,.56)}
+.h20sys b{text-align:right;color:rgba(226,241,244,.73);font-size:7px}
+.h20sysBar{height:3px;background:rgba(255,255,255,.05)}
+.h20sysBar i{display:block;height:100%;background:rgba(100,231,246,.62)}
+.h20sys.critical b{color:#ff8174}
+.h20sys.critical .h20sysBar i{background:rgba(255,91,76,.80)}
+
+/* Weapons — bottom centre */
+#h20Weapons{
+  left:50%;bottom:18px;transform:translateX(-50%);
+  width:min(590px,48vw);padding:9px 11px
+}
+#h20WeaponTop{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#h20WeaponName{font-size:9px;font-weight:950;text-transform:uppercase;color:#f3fbfc}
+#h20WeaponState{font-size:7px;font-weight:950;letter-spacing:.10em}
+#h20Groups{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:7px}
+.h20group{
+  border:1px solid rgba(112,222,239,.11);background:rgba(255,255,255,.018);
+  min-height:32px;padding:5px 6px;text-align:center
+}
+.h20group.active{border-color:rgba(255,207,104,.34);background:rgba(255,196,72,.055)}
+.h20group .key{font-size:8px;font-weight:950;color:#ffd47a}
+.h20group .label{font-size:6px;margin-top:2px;color:rgba(206,229,234,.52);letter-spacing:.06em}
+#h20Abilities{display:flex;justify-content:center;gap:10px;margin-top:7px}
+.h20ability{font-size:7px;color:rgba(204,227,232,.48);letter-spacing:.05em;white-space:nowrap}
+.h20ability b{color:rgba(255,222,151,.78)}
+
+/* Context — upper right */
+#h20Context{
+  right:18px;top:18px;width:262px;padding:11px 12px
+}
+#h20ContextTitle{font-size:10px;font-weight:950;text-transform:uppercase;margin-top:3px}
+#h20ContextBody{margin-top:5px;line-height:1.45}
+#h20ContextPrompt{
+  margin-top:8px;padding-top:7px;border-top:1px solid rgba(116,224,238,.08);
+  color:#ffd47a;font-size:7px;font-weight:950;letter-spacing:.08em
+}
+
+/* Tactical radar is now the only dedicated right-side tactical panel */
+#tacticalPanel{
+  display:block;right:18px!important;top:142px!important;bottom:auto!important;
+  width:262px!important;padding:9px 10px 10px!important;
+  background:linear-gradient(180deg,rgba(6,14,20,.84),rgba(3,8,13,.74))!important;
+  border:1px solid rgba(112,220,237,.14)!important;
+  box-shadow:0 10px 40px rgba(0,0,0,.24)!important;
+  backdrop-filter:blur(8px);pointer-events:auto!important
+}
+#tacticalPanel .tacticalHead{font-size:7px!important;letter-spacing:.11em!important;margin-bottom:5px!important}
+#tacticalRadar{width:100%!important;height:118px!important;display:block!important}
+#contactList{max-height:116px!important;overflow:auto!important;margin-top:4px!important}
+.contactRow{min-height:24px!important;font-size:7px!important}
+
+/* Context interaction strip — one place for interaction prompts */
+#h20Prompt{
+  position:absolute;left:50%;bottom:118px;transform:translateX(-50%);
+  min-width:220px;max-width:520px;text-align:center;
+  color:#ffe0a0;font-size:8px;font-weight:950;letter-spacing:.09em;text-transform:uppercase;
+  text-shadow:0 2px 12px rgba(0,0,0,.9)
+}
+#h20Prompt:empty{display:none}
+
+/* Keep only useful transient legacy overlays visible */
+#mission{z-index:40!important}
+#targetBox{z-index:29!important;opacity:.64!important}
+#worldLabels{z-index:21!important}
+.worldLabel{opacity:.62!important;transform:scale(.90)}
+#damageCallout,#collisionWarning,#deploymentFault,#bossBanner,#hitFlash,#damageFlash,#gameOver{z-index:45!important}
+
+/* Clean pause command menu */
+#screen-pause .command20{
+  width:min(760px,88vw);padding:20px;
+}
+#screen-pause .command20 h2{margin:3px 0 5px;font-size:28px}
+.pauseGrid20{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;margin-top:17px}
+.pausePrimary20,.pauseNav20{
+  border:1px solid rgba(114,221,238,.11);background:rgba(255,255,255,.018);padding:12px
+}
+.pauseNav20{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.pauseNav20 .uiBtn{margin:0!important;min-height:42px}
+.pausePrimary20 .uiBtn{width:100%;margin:5px 0!important}
+.pauseHint20{
+  margin-top:10px;color:rgba(196,220,226,.38);font-size:8px;line-height:1.5;
+  letter-spacing:.05em
+}
+
+@media(max-width:960px){
+  #h20Ship{width:220px}
+  #h20Context,#tacticalPanel{width:225px!important}
+  #h20Weapons{width:46vw}
+  #h20Nav{width:34vw}
+}
+@media(max-width:760px){
+  #h20Context,#tacticalPanel{display:none!important}
+  #h20Nav{width:48vw}
+  #h20Weapons{width:58vw}
+  #h20Ship{width:205px}
+  #h20Systems{width:190px}
+}
+
+

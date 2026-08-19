@@ -1,0 +1,1417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>LYCHEETAH: SOVEREIGN ECLIPSE — Forge 0.27.5 Great Fleet & Fit Analytics</title>
+
+
+<link rel="stylesheet" href="./styles/base.css"/>
+<link rel="stylesheet" href="./styles/hud.css"/>
+<link rel="stylesheet" href="./styles/screens.css"/>
+<link rel="stylesheet" href="./styles/station.css"/>
+<link rel="stylesheet" href="./styles/forge.css"/>
+
+<script type="importmap">
+{
+  "imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+
+<body>
+<div id="loading">INITIALISING&nbsp;<b>SOVEREIGN ECLIPSE // FORGE 0.27.5</b></div>
+<div id="sectorTransition"><div class="jumpText">ANCIENT GATE TRANSIT</div></div>
+<div id="err"></div>
+
+
+<div id="shell" class="open">
+  <div class="shellShade"></div>
+
+  <section id="screen-main" class="screen active">
+    <div class="menuRail">
+      <div class="eyebrow">Lycheetah Interactive // Prototype Build 0.27.5</div>
+      <h1 class="gameLogo">Sovereign<br>Eclipse<em>Earned Light Beyond The Black Current</em></h1>
+      <p class="tagline">Begin in a faction Starter Frigate. Hunt, salvage and refit into a Destroyer, then earn an Elite Battleship. Titans remain experimental apex hulls for spectacle and sandbox flight.</p>
+      <div class="menuButtons releaseMainMenu">
+        <button class="uiBtn primary mainWide" id="btnEnter"><span>Enter Asterion Forge</span></button>
+        <button class="uiBtn mainWide" id="btnContinue"><span>Continue at Asterion Forge</span></button>
+
+        <button class="uiBtn cyan" data-open="hangar"><span>Hangar // Ships</span></button>
+        <button class="uiBtn cyan" data-open="hullforge"><span>Hull Forge</span></button>
+
+        <button class="uiBtn archiveMainBtn" data-open="lore">
+          <span>Lore Archive</span><small>Universe · Black Current</small>
+        </button>
+        <button class="uiBtn pantheonMainBtn" data-open="codex">
+          <span>Pantheon</span><small>14 Races · Machine Gods</small>
+        </button>
+
+        <button class="uiBtn" data-open="settings"><span>Settings</span></button>
+        <button class="uiBtn" data-open="controls"><span>Controls</span></button>
+      </div>
+      <div class="cinematicShotBar">
+        <button id="btnCinematicZoom" type="button"><b>Z</b><span>CINEMATIC ZOOM // NORMAL</span></button>
+        <small>Mouse wheel also zooms the menu camera</small>
+      </div>
+      <div class="menuMeta">FORGE 0.27.5 // GREAT FLEET + MODULE ANALYTICS // 252 HULL DEFINITIONS // LOCAL PROFILE ACTIVE</div>
+    </div>
+  </section>
+
+
+  <section id="screen-station" class="screen">
+    <div class="panelWrap">
+      <div class="panelHead">
+        <div><h2 id="stationTitle">Asterion Forge</h2><p id="stationSubtitle">Contract command, repair dock, module market and sovereign deployment hub.</p></div>
+        <button class="backBtn" id="btnStationMain">Main Menu</button>
+      </div>
+      <div class="forgeDockNav">
+        <button data-open="station">Station</button>
+        <button data-open="hangar">Hangar</button>
+        <button data-open="hardpoints">Hardpoints</button>
+        <button data-open="modules">Systems</button>
+        <button data-open="hullforge">Hull Forge</button>
+        <span class="worldTag">Naraka Veil // Asterion District</span>
+      </div>
+
+      <div class="stationLayout">
+        <div class="stationSide glassPanel">
+          <div class="stationIdentity">
+            <div class="ey" id="stationEyebrow">Naraka Veil // Sovereign Anchorage</div>
+            <h3 id="stationIdentityName">Asterion Forge</h3>
+            <p id="stationIdentityDesc">The first persistent service point in the Black Current. Damage carried home can be repaired here. Salvage recovered in-sector funds future fits.</p>
+          </div>
+          <div class="stationResources three">
+            <div class="stationRes"><span>Sovereign Salvage</span><b id="stationSalvage">0</b></div>
+            <div class="stationRes"><span>Contracts Cleared</span><b id="stationVictories">0</b></div>
+            <div class="stationRes"><span>Campaign Tier</span><b id="stationTier">I</b></div>
+          </div>
+          <div class="stationNav">
+            <button class="uiBtn cyan" data-open="hangar"><span>Hangar // Ship Frames</span></button>
+            <button class="uiBtn cyan" data-open="modules"><span>Module Forge // Market</span></button>
+            <button class="uiBtn" id="btnStationUndock"><span id="stationUndockText">Undock // Naraka Veil</span></button>
+            <button class="uiBtn danger" id="btnStationMain2"><span>Return to Main Menu</span></button>
+          </div>
+          <div class="stationIdentityDescCard"><b>District Overview</b><span>Asterion Forge now anchors a fuller orbital district: drydock arms, habitat crown, service lattices and Lycheetah reliquary structures drifting beyond the main ring.</span></div>
+          <div class="stationWorldCard"><b>Starter World Intent</b><span>The first zone is now being shaped as a readable first sector: a station hub, salvage landmarks, gates, teleport infrastructure and stranger faction-flavoured space architecture worth showing in screenshots.</span></div>
+        </div>
+
+        <div class="stationMain glassPanel">
+          <div class="stationToolTabs">
+            <button data-station-tool="operations" class="active">Operations</button>
+            <button data-station-tool="repairs">Repair Dock</button>
+            <button data-open="modules">Market / Systems</button>
+            <button data-open="hangar">Ship Hangar</button>
+          </div>
+
+          <div id="stationToolOperations" class="stationToolView active">
+            <div class="stationToolHeader">
+              <div>
+                <h3 class="stationSectionTitle">Operations Board</h3>
+                <p class="stationSectionSub">One active operation at a time. Rewards fund hulls, weapons and systems.</p>
+              </div>
+              <div id="stationOperationSummary" class="stationCompactStat">0 AVAILABLE</div>
+            </div>
+            <div id="contractGrid" class="contractGrid"></div>
+          </div>
+
+          <div id="stationToolRepairs" class="stationToolView">
+            <div class="stationToolHeader">
+              <div>
+                <h3 class="stationSectionTitle">Repair Dock</h3>
+                <p class="stationSectionSub">Persistent damage is repaired component-by-component or with one full restoration.</p>
+              </div>
+              <div id="stationRepairSummary" class="stationCompactStat">HULL READY</div>
+            </div>
+            <div id="repairGrid" class="repairGrid"></div>
+            <div class="repairAll">
+              <span id="repairAllCost">Full restoration // 0 salvage</span>
+              <button class="miniBtn" id="btnRepairAll">Repair All</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-hangar" class="screen">
+    <div class="panelWrap">
+      <div class="panelHead">
+        <div><h2>Hangar <span id="fleetCount">252 GENERATED HULL DEFINITIONS · 14 CIVILISATIONS · 18 CLASSES</span></h2><p>Select a sovereign frame and inspect its current combat fit.</p></div>
+        <button class="backBtn" data-back>← Return</button>
+      </div>
+      <div class="forgeDockNav">
+        <button data-open="station">Station</button>
+        <button data-open="hangar">Hangar</button>
+        <button data-open="hardpoints">Hardpoints</button>
+        <button data-open="modules">Systems</button>
+        <button data-open="hullforge">Hull Forge</button>
+        <span class="worldTag">Fleet Foundry // Canonical Hull Roster</span>
+      </div>
+
+      <div class="hangarGrid">
+        <div class="shipDeck glassPanel">
+          <div class="fleetFilters">
+            <select id="raceFilter"><option value="all">All Races</option></select>
+            <select id="classFilter"><option value="all">All Classes</option></select>
+            <input id="shipSearch" placeholder="Search hull / race / class">
+          </div>
+          <div class="shipCards" id="fleetRoster"></div>
+          <div class="rosterCount" id="rosterCount">252 hull definitions</div>
+          <div class="shipBlueprint">
+            <div class="sil" id="shipBlueprintSil"></div><div class="scan"></div>
+          </div>
+        </div>
+
+        <div class="statsDeck glassPanel">
+          <div class="statName">Selected Frame</div>
+          <div class="frameName" id="hangarFrameName">Sovereign Eclipse</div>
+          <div class="frameRole" id="hangarFrameRole">Titan // Siege / Area Dominance</div><div id="hangarOwnership">FLEET OWNERSHIP // —</div>
+          <button class="miniBtn" data-open="lineage" style="margin-top:8px;width:100%">OPEN FULL FLEET LINEAGE</button>
+
+          <div class="statRows">
+            <div class="statRow"><div class="lbl"><span>Shield</span><span id="hangarShieldStat">96</span></div><div class="meter"><i style="width:96%"></i></div></div>
+            <div class="statRow"><div class="lbl"><span>Armour</span><span id="hangarArmorStat">88</span></div><div class="meter"><i style="width:88%"></i></div></div>
+            <div class="statRow"><div class="lbl"><span>Hull</span><span id="hangarHullStat">91</span></div><div class="meter"><i style="width:91%"></i></div></div>
+            <div class="statRow"><div class="lbl"><span>Mobility</span><span id="hangarMobilityStat">43</span></div><div class="meter"><i style="width:43%"></i></div></div>
+            <div class="statRow"><div class="lbl"><span>Hardpoints</span><span id="hangarHardpointStat">36</span></div><div class="meter"><i style="width:82%"></i></div></div>
+          </div>
+
+          <div id="prototypeDoctrine">FLEET CONTINUUM // POD → FRIGATE FAMILIES → CRUISER CONTINUUM → BATTLESHIPS → CARRIERS / INDUSTRIAL / AUTONOMOUS → SUB-CAPITALS // TITANS REMAIN EXPERIMENTAL SANDBOX APEX HULLS.</div>
+
+          <div class="forgeQuickFit">
+            <div class="forgeQuickFitHead"><b>One-Click Forge</b><span>legal fit + saved per hull</span></div>
+            <div class="forgeQuickFitGrid">
+              <button data-easy-fit="balanced">Balanced</button>
+              <button data-easy-fit="brawler">Brawler</button>
+              <button data-easy-fit="artillery">Artillery</button>
+              <button data-easy-fit="anti_swarm">Anti-Swarm</button>
+              <button data-easy-fit="tank">Tank</button>
+              <button data-easy-fit="speed">Speed</button>
+            </div>
+          </div>
+
+          <div class="loadout">
+            <h4>Current Sovereign Fit</h4>
+            <div class="slot"><b>Weapon Banks</b><span id="hangarWeaponFit">6 fitted banks</span></div>
+            <div class="slot"><b>Capital Weapon</b><span>Sovereign Lance</span></div>
+            <div class="slot"><b>Core System</b><span>Black-Sun Pulse</span></div>
+            <div class="slot"><b>Defence</b><span>Shield Inversion Matrix</span></div>
+            <div class="slot"><b>Drive</b><span>Earned-Light Boost Array</span></div>
+          </div>
+
+          <div class="hangarActions">
+            <button class="uiBtn primary" id="btnLaunchHangar"><span>Return to Station</span></button>
+            <button class="uiBtn cyan" data-open="hullforge"><span>Hull Forge // Build Hull</span></button>
+            <button class="uiBtn cyan" data-open="hardpoints"><span>Hardpoints // Turret Build</span></button>
+            <button class="uiBtn cyan" data-open="modules"><span>Systems // Fit</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+
+  <section id="screen-hardpoints" class="screen">
+    <div class="panelWrap">
+      <div class="panelHead">
+        <div><h2>Hardpoint Forge</h2><p>Fit each physical weapon bank independently. The visible turrets change with the installed weapon family.</p></div>
+        <button class="backBtn" data-back>← Return</button>
+      </div>
+      <div class="forgeDockNav">
+        <button data-open="station">Station</button>
+        <button data-open="hangar">Hangar</button>
+        <button data-open="hardpoints">Hardpoints</button>
+        <button data-open="modules">Systems</button>
+        <button data-open="hullforge">Hull Forge</button>
+        <span class="worldTag">Weapon Doctrine // Physical Banks</span>
+      </div>
+
+      <div class="hardpointLayout">
+        <div class="bankPanel glassPanel">
+          <h3 id="hardpointFrameName">Sovereign Eclipse</h3>
+          <p id="hardpointFrameDesc">Six-bank sovereign weapons architecture.</p>
+          <div class="easyFit">
+            <div class="easyFitHead"><b>Easy Fit</b><span>One-click legal doctrine fitting</span></div>
+            <div id="hullFitMemory">THIS HULL REMEMBERS ITS OWN COMPLETE FIT</div>
+            <div class="easyFitButtons">
+              <button data-easy-fit="balanced">Balanced</button>
+              <button data-easy-fit="brawler">Brawler</button>
+              <button data-easy-fit="artillery">Artillery</button>
+              <button data-easy-fit="anti_swarm">Anti-Swarm</button>
+              <button data-easy-fit="tank">Tank</button>
+              <button data-easy-fit="speed">Speed</button>
+            </div>
+          </div>
+          <div class="quickBankActions">
+            <button id="fitAllSame">Fit Selected Weapon To All Compatible Banks</button>
+            <button id="clearToAuto">Reset Banks To Autocannon</button>
+          </div>
+          <div id="bankGrid" class="bankGrid"></div>
+          <div class="fitBudget">
+            <div class="fitBudgetHead"><span>Hull Powergrid</span><b id="hardpointGridText">0 / 0 PG</b></div>
+            <div class="fitGauge" id="hardpointGridGauge"><i></i></div>
+            <div class="fitBudgetMeta">
+              <div>Base Mass<b id="hardpointBaseMass">0</b></div>
+              <div>Fitted Mass<b id="hardpointFitMass">0</b></div>
+              <div>Handling<b id="hardpointHandling">100%</b></div>
+            </div>
+          </div>
+          <div id="buildSummary"></div>
+        </div>
+        <div class="weaponPanel glassPanel">
+          <h3>Turret Arsenal</h3>
+          <p>Select a physical bank, then search or filter the weapon market. Compatibility is calculated against the bank's actual authored socket size.</p>
+
+          <div class="toolFilterBar">
+            <input id="weaponSearch" placeholder="Search weapon / damage type">
+            <select id="weaponTierFilter">
+              <option value="all">All Tiers</option>
+              <option value="1">Light // I</option>
+              <option value="2">Medium // II</option>
+              <option value="3">Heavy // III</option>
+              <option value="4">Capital // IV</option>
+            </select>
+            <select id="weaponOwnershipFilter">
+              <option value="all">Owned + Market</option>
+              <option value="owned">Owned Only</option>
+              <option value="market">Market Only</option>
+              <option value="compatible">Compatible Only</option>
+            </select>
+            <button id="weaponClearFilter">Clear</button>
+          </div>
+
+          <div class="toolSummaryStrip">
+            <span id="weaponVisibleCount">0 WEAPONS</span>
+            <span id="weaponBankCapability">BANK // —</span>
+            <span id="weaponMarketValue">0 SALVAGE MARKET</span>
+          </div>
+
+          <div id="turretWeaponGrid" class="weaponGrid"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  
+  <section id="screen-hullforge" class="screen">
+    <div class="panelWrap hullForgeWrap">
+      <div class="panelHead">
+        <div>
+          <h2>Hull Forge <span id="hullForgeFrameLabel">Blueprint Alpha</span></h2>
+          <p>Author the ship as data: hull geometry, weapon sockets, engines, critical systems and fitted-module architecture all live in one blueprint.</p>
+        </div>
+        <button class="backBtn" data-back>← Return</button>
+      </div>
+      <div class="forgeDockNav">
+        <button data-open="station">Station</button>
+        <button data-open="hangar">Hangar</button>
+        <button data-open="hardpoints">Hardpoints</button>
+        <button data-open="modules">Systems</button>
+        <button data-open="hullforge">Hull Forge</button>
+        <span class="worldTag">Faction Reforge // Top-Down Ship Builder</span>
+      </div>
+
+
+      <div class="hullForgeWorkspace">
+        <aside class="glassPanel hullForgeLibrary">
+          <h3>Component Library</h3>
+          <p>Build one side and mirror it, or disable symmetry for asymmetric hulls.</p>
+
+          <div id="hfHullLibrary">
+            <div class="hullForgeAddGrid">
+              <button data-hf-add="wedge"><b>Wedge</b><span>prow / armour blade</span></button>
+              <button data-hf-add="plate"><b>Plate</b><span>block armour</span></button>
+              <button data-hf-add="spine"><b>Spine</b><span>axial structure</span></button>
+              <button data-hf-add="ring"><b>Ring</b><span>reactor / halo</span></button>
+              <button data-hf-add="core"><b>Core</b><span>orb / singularity</span></button>
+            </div>
+
+            <div class="hullForgeSectionHead"><span>Parts</span><b id="hullForgePartCount">0</b></div>
+            <div id="hullForgePartList" class="hullForgePartList"></div>
+          </div>
+
+          <div id="hfHardpointLibrary" style="display:none">
+            <div class="hullForgeSectionHead"><span>Place Combat Socket</span><b id="hfSocketCount">0 / 18</b></div>
+            <div class="hardpointAddGrid">
+              <button data-hp-size="light"><b>Light</b><span>Tier I · wide traverse</span></button>
+              <button data-hp-size="medium"><b>Medium</b><span>Tier II · general battery</span></button>
+              <button data-hp-size="heavy"><b>Heavy</b><span>Tier III · capital battery</span></button>
+              <button data-hp-size="capital"><b>Capital</b><span>Tier IV · siege mount</span></button>
+            </div>
+            <div class="hardpointLegend">
+              <span><i class="hpLight"></i>LIGHT</span>
+              <span><i class="hpMedium"></i>MEDIUM</span>
+              <span><i class="hpHeavy"></i>HEAVY</span>
+              <span><i class="hpCapital"></i>CAPITAL</span>
+            </div>
+            <div class="hullForgeSectionHead"><span>Hardpoint Records</span><b id="hfHardpointRecordCount">0</b></div>
+            <div id="hfHardpointList" class="hullForgePartList"></div>
+            <div class="hardpointNote">
+              Mirrored sockets automatically bind to the opposite port/starboard bank.
+              A bank's weapon tier is limited by its smallest physical socket.
+            </div>
+          </div>
+
+          <div id="hfSystemsLibrary" style="display:none">
+            <div class="hullForgeSectionHead"><span>Physical Architecture</span><b id="hfSystemCount">0</b></div>
+            <div class="systemAddGrid">
+              <button data-sys-add="engine"><b>Engine</b><span>thrust mount / plume</span></button>
+              <button data-sys-add="reactor"><b>Reactor</b><span>capacitor / power core</span></button>
+              <button data-sys-add="shield"><b>Shield</b><span>shield emitter node</span></button>
+              <button data-sys-add="command"><b>Command</b><span>bridge / targeting core</span></button>
+              <button data-sys-add="module"><b>Module Socket</b><span>weapon / defense / drive / utility</span></button>
+            </div>
+            <div class="systemLegend">
+              <span><i class="sysEngine"></i>ENGINE</span>
+              <span><i class="sysReactor"></i>REACTOR</span>
+              <span><i class="sysShield"></i>SHIELD</span>
+              <span><i class="sysCommand"></i>COMMAND</span>
+              <span><i class="sysModule"></i>MODULE</span>
+            </div>
+            <div class="hullForgeSectionHead"><span>System Records</span><b id="hfSystemRecordCount">0</b></div>
+            <div id="hfSystemList" class="hullForgePartList"></div>
+            <div class="hardpointNote">
+              Engines bind automatically to port/starboard drive integrity by physical position.
+              Reactor, shield and command records relocate the actual damageable subsystem nodes.
+            </div>
+          </div>
+
+          <div class="hullForgeLibraryActions">
+            <button id="hfNewSeed">New Faction Seed</button>
+            <button id="hfBlank">Blank Hull</button>
+            <button id="hfFactionDefault">Use Faction Default</button>
+          </div>
+        </aside>
+
+        <main class="glassPanel hullForgeCanvasPanel">
+          <div class="hullForgeCanvasTop">
+            <div>
+              <div class="h20ey">Top-Down Construction Plane</div>
+              <b id="hfCanvasStatus">FORWARD ↑ // SYMMETRY READY</b>
+            </div>
+            <div class="hfModeSwitch">
+              <button id="hfModeHull" class="active">HULL</button>
+              <button id="hfModeHardpoints">HARDPOINTS</button>
+              <button id="hfModeSystems">SYSTEMS</button>
+            </div>
+            <div class="hullForgeZoomTools">
+              <button id="hfViewMinus">−</button>
+              <span id="hfViewRange">80U</span>
+              <button id="hfViewPlus">+</button>
+            </div>
+          </div>
+
+          <canvas id="hullForgeCanvas" width="900" height="760"></canvas>
+
+          <div class="hullForgeCanvasFooter">
+            <span>DRAG ACTIVE ELEMENT // ARROWS NUDGE // SHIFT+ARROWS = 5U</span>
+            <span>DELETE = REMOVE // CTRL/CMD+D = DUPLICATE</span>
+          </div>
+        </main>
+
+        <aside class="glassPanel hullForgeInspector">
+          <h3 id="hfInspectorTitle">Selected Part</h3>
+          <div id="hfNoSelection" class="hfEmpty">Select a component in the canvas or list.</div>
+
+          <div id="hfInspectorFields">
+            <label>Type
+              <select id="hfType">
+                <option value="wedge">Wedge</option>
+                <option value="plate">Plate</option>
+                <option value="spine">Spine</option>
+                <option value="ring">Ring</option>
+                <option value="core">Core</option>
+              </select>
+            </label>
+
+            <label>Material
+              <select id="hfMaterial"></select>
+            </label>
+
+            <div class="hfFieldGrid">
+              <label>X <input id="hfX" type="number" step="0.5"></label>
+              <label>Z <input id="hfZ" type="number" step="0.5"></label>
+              <label>Y <input id="hfY" type="number" step="0.25"></label>
+              <label>Width / Radius <input id="hfW" type="number" min="0.25" step="0.5"></label>
+              <label>Length <input id="hfL" type="number" min="0.25" step="0.5"></label>
+              <label>Height <input id="hfH" type="number" min="0.1" step="0.25"></label>
+              <label>Rotation ° <input id="hfRot" type="number" step="1"></label>
+            </div>
+
+            <label class="hfCheck">
+              <input id="hfMirror" type="checkbox">
+              <span>Mirror across centerline</span>
+            </label>
+
+            <div class="hfPartActions">
+              <button id="hfDuplicate">Duplicate</button>
+              <button id="hfCenter">Center X</button>
+              <button id="hfLayerUp">Layer +</button>
+              <button id="hfLayerDown">Layer −</button>
+              <button id="hfDelete" class="danger">Delete</button>
+            </div>
+          </div>
+
+          <div id="hfHardpointInspector" style="display:none">
+            <label>Weapon Bank
+              <select id="hpBank"></select>
+            </label>
+            <label>Socket Class
+              <select id="hpSize">
+                <option value="light">Light // Tier I</option>
+                <option value="medium">Medium // Tier II</option>
+                <option value="heavy">Heavy // Tier III</option>
+                <option value="capital">Capital // Tier IV</option>
+              </select>
+            </label>
+            <div class="hfFieldGrid">
+              <label>X <input id="hpX" type="number" step="0.5"></label>
+              <label>Z <input id="hpZ" type="number" step="0.5"></label>
+              <label>Y <input id="hpY" type="number" step="0.25"></label>
+              <label>Mount Yaw ° <input id="hpRot" type="number" step="1"></label>
+            </div>
+            <label class="hfCheck">
+              <input id="hpMirror" type="checkbox">
+              <span>Mirror + bind opposite bank</span>
+            </label>
+            <div id="hpInspectorMeta" class="hpInspectorMeta"></div>
+            <div class="hfPartActions">
+              <button id="hpDuplicate">Duplicate</button>
+              <button id="hpCenter">Center X</button>
+              <button id="hpDelete" class="danger">Delete</button>
+            </div>
+          </div>
+
+          <div id="hfSystemInspector" style="display:none">
+            <label>System Type
+              <select id="sysType">
+                <option value="engine">Engine</option>
+                <option value="reactor">Reactor</option>
+                <option value="shield">Shield Emitter</option>
+                <option value="command">Command Core</option>
+                <option value="module">Module Socket</option>
+              </select>
+            </label>
+            <label id="sysSlotLabel">Module Slot
+              <select id="sysSlot">
+                <option value="weapon">Weapon Architecture</option>
+                <option value="defense">Defense Architecture</option>
+                <option value="drive">Drive Architecture</option>
+                <option value="utility">Utility Architecture</option>
+              </select>
+            </label>
+            <label>Physical Scale
+              <select id="sysSize">
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+                <option value="capital">Capital</option>
+              </select>
+            </label>
+            <div class="hfFieldGrid">
+              <label>X <input id="sysX" type="number" step="0.5"></label>
+              <label>Z <input id="sysZ" type="number" step="0.5"></label>
+              <label>Y <input id="sysY" type="number" step="0.25"></label>
+              <label>Yaw ° <input id="sysRot" type="number" step="1"></label>
+            </div>
+            <label class="hfCheck" id="sysMirrorLabel">
+              <input id="sysMirror" type="checkbox">
+              <span>Mirror physical system</span>
+            </label>
+            <div id="sysInspectorMeta" class="hpInspectorMeta"></div>
+            <div class="hfPartActions">
+              <button id="sysDuplicate">Duplicate</button>
+              <button id="sysCenter">Center X</button>
+              <button id="sysDelete" class="danger">Delete</button>
+            </div>
+          </div>
+
+          <div class="hullForgeSaveBlock">
+            <button class="uiBtn primary" id="hfSave"><span>Save Blueprint + Apply</span></button>
+            <button class="uiBtn cyan" id="hfExport"><span>Export JSON</span></button>
+            <button class="uiBtn" id="hfImport"><span>Import JSON Below</span></button>
+            <textarea id="hfJson" spellcheck="false" placeholder="Blueprint JSON appears here. Paste JSON here to import."></textarea>
+            <div id="hfSaveState">DRAFT // NOT SAVED</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+<section id="screen-modules" class="screen">
+    <div class="panelWrap">
+      <div class="panelHead">
+        <div>
+          <h2>Module Forge <span>FIT · MARKET · DRONES · INDUSTRY</span></h2>
+          <p>Compact sovereign fitting and market layer. Shield, Armour and AI Core are the three primary tank philosophies; drones and prototype industry extend the build beyond direct combat.</p>
+        </div>
+        <button class="backBtn" data-back>← Return</button>
+      </div>
+
+      <div class="forgeDockNav">
+        <button data-open="station">Station</button>
+        <button data-open="hangar">Hangar</button>
+        <button data-open="hardpoints">Hardpoints</button>
+        <button data-open="modules">Systems</button>
+        <button data-open="hullforge">Hull Forge</button>
+        <span class="worldTag">Sovereign Market // Compact Prototype</span>
+      </div>
+
+      <div class="moduleForgeTabs">
+        <button data-module-view="fit" class="active">Fitting</button>
+        <button data-module-view="market">Module Market</button>
+        <button data-module-view="drones">Drone Bay</button>
+        <button data-module-view="research">Research</button>
+        <button data-module-view="industry">Industry</button>
+      </div>
+
+      <div id="moduleForgeFitView" class="moduleForgeView active">
+        <div class="tankDoctrineBar">
+          <div><b>SHIELD</b><span>capacity + regeneration</span></div>
+          <div><b>ARMOUR</b><span>mass + physical endurance</span></div>
+          <div class="ai"><b>AI CORE</b><span>unknown hull-specific power // power has cost</span></div>
+          <div id="tankDoctrineReadout"><b>ACTIVE</b><span>—</span></div>
+        </div>
+
+        <div class="moduleLayout">
+          <div class="moduleSlots glassPanel">
+            <h3>Active Fit</h3>
+            <p>Weapon, tank/core, drive and utility architecture alter the live ship. Drone wing effects stack separately.</p>
+            <div id="moduleSlotGrid" class="moduleSlotGrid"></div>
+            <div id="moduleStats" class="moduleStats"></div>
+            <div id="capFitPanel" class="capFitPanel">
+              <div class="capFitTitle"><span>CAPACITOR SIMULATION</span><b id="capFitState">CALCULATING</b></div>
+              <div class="capFitGauge"><i id="capFitGaugeFill"></i></div>
+              <div class="capFitGrid">
+                <div><span>Capacity</span><b id="capFitCapacity">—</b></div>
+                <div><span>Peak Recharge</span><b id="capFitPeak">—</b></div>
+                <div><span>Weapon Load</span><b id="capFitWeapons">—</b></div>
+                <div><span>Active Tank</span><b id="capFitTank">—</b></div>
+                <div><span>Boost Drain</span><b id="capFitBoost">—</b></div>
+                <div><span>Equilibrium</span><b id="capFitEquilibrium">—</b></div>
+              </div>
+              <div id="capFitSummary" class="capFitSummary">CAPACITOR MODEL // —</div>
+            </div>
+            <div class="fitBudget">
+              <div class="fitBudgetHead"><span>Combined Fitting Load</span><b id="moduleGridText">0 / 0 PG</b></div>
+              <div class="fitGauge" id="moduleGridGauge"><i></i></div>
+              <div class="fitBudgetMeta">
+                <div>Weapon PG<b id="moduleWeaponGrid">0</b></div>
+                <div>Systems PG<b id="moduleSystemGrid">0</b></div>
+                <div>Total Mass<b id="moduleTotalMass">0</b></div>
+              </div>
+            </div>
+            <div id="physicalFitReadout"></div>
+            <div id="nodeHealthGrid" class="nodeHealthGrid"></div>
+            <div class="moduleFooter"><span>Recovered Salvage</span><b id="moduleSalvage">0</b></div>
+          </div>
+
+          <div class="moduleCatalog glassPanel">
+            <h3>Quick Fit Inventory</h3>
+            <p>Fast fitting grid. Use Module Market for the compact market-browser view.</p>
+            <div class="toolFilterBar">
+              <input id="moduleSearch" placeholder="Search modules / effects">
+              <select id="moduleSlotFilter">
+                <option value="all">All Systems</option>
+                <option value="weapon">Weapon</option>
+                <option value="defense">Tank / AI Core</option>
+                <option value="drive">Drive</option>
+                <option value="utility">Utility</option>
+              </select>
+              <select id="moduleOwnershipFilter">
+                <option value="all">Owned + Market</option>
+                <option value="owned">Owned Only</option>
+                <option value="market">Market Only</option>
+              </select>
+              <button id="moduleClearFilter">Clear</button>
+            </div>
+            <div class="toolSummaryStrip">
+              <span id="moduleVisibleCount">0 ITEMS</span>
+              <span id="moduleOwnedCount">0 OWNED</span>
+              <span id="moduleMarketValue">0 SALVAGE MARKET</span>
+            </div>
+            <div id="moduleCatalog" class="catalogGrid"></div>
+            <div id="fitSummary"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="moduleForgeMarketView" class="moduleForgeView">
+        <div class="eveMarket glassPanel">
+          <aside class="marketCategories">
+            <div class="marketTitle">MARKET GROUPS</div>
+            <button data-market-cat="all" class="active">All Modules</button>
+            <button data-market-cat="tank">Tank Systems</button>
+            <button data-market-cat="ai">AI Cores</button>
+            <button data-market-cat="weapon">Weapon Architecture</button>
+            <button data-market-cat="drive">Drives</button>
+            <button data-market-cat="utility">Utility</button>
+          </aside>
+
+          <section class="marketList">
+            <div class="marketSearchRow">
+              <input id="moduleMarketSearch" placeholder="Search sovereign market">
+              <span id="moduleMarketCount">0 ITEMS</span>
+            </div>
+            <div class="marketTableHead">
+              <span>MODULE</span><span>GROUP</span><span>DPS</span><span>ROF</span><span>CAP/S</span><span>PG</span><span>PRICE</span>
+            </div>
+            <div id="moduleMarketRows" class="moduleMarketRows"></div>
+          </section>
+
+          <aside id="moduleMarketDetail" class="marketDetail"></aside>
+        </div>
+      </div>
+
+      <div id="moduleForgeDronesView" class="moduleForgeView">
+        <div class="prototypeBanner">
+          <b>DRONE BAY // FUNCTIONAL FOUNDATION</b>
+          <span>Support effects and physical orbiting drone wings are live. Full autonomous combat orders come later.</span>
+        </div>
+        <div id="droneBaySummary" class="droneBaySummary glassPanel"></div>
+        <div id="droneCatalogGrid" class="droneCatalogGrid"></div>
+      </div>
+
+
+      <div id="moduleForgeResearchView" class="moduleForgeView">
+        <div class="researchHero glassPanel">
+          <div>
+            <div class="h20ey">Sovereign Research Archive</div>
+            <h3>Knowledge unlocks the blueprint. Industry builds the thing.</h3>
+            <p>Research Data is recovered from intact wreck systems, archives, anomalies and authored discoveries. Unlocking a theory does not grant equipment: salvage and physical materials still manufacture it.</p>
+          </div>
+          <div class="researchDataCore">
+            <span>RESEARCH DATA</span>
+            <b id="researchDataAmount">0</b>
+            <small>RECOVERED KNOWLEDGE</small>
+          </div>
+        </div>
+        <div class="researchLayout">
+          <aside class="glassPanel researchSummary">
+            <div class="h20ey">Blueprint State</div>
+            <h3 id="researchUnlockedCount">0 THEORIES UNLOCKED</h3>
+            <p id="researchProgressText">The archive is waiting for recoverable evidence.</p>
+            <div id="researchBlueprintSummary" class="researchBlueprintSummary"></div>
+          </aside>
+          <main class="glassPanel researchMain">
+            <div class="researchFilterBar">
+              <button data-research-cat="all" class="active">All</button>
+              <button data-research-cat="fleet">Fleet</button>
+              <button data-research-cat="combat">Combat</button>
+              <button data-research-cat="ai">AI / Drones</button>
+              <button data-research-cat="industry">Industry</button>
+              <button data-research-cat="navigation">Navigation</button>
+            </div>
+            <div id="researchProjectGrid" class="researchProjectGrid"></div>
+          </main>
+        </div>
+      </div>
+
+      <div id="moduleForgeIndustryView" class="moduleForgeView">
+        <div class="prototypeBanner">
+          <b>SOVEREIGN INDUSTRY // MANUFACTURING BACKBONE</b>
+          <span>Materials, blueprint requirements and persistent production jobs now form the physical half of progression. Hull shipyard jobs share this queue.</span>
+        </div>
+        <div class="industryLayout">
+          <div class="glassPanel">
+            <h3>Material Hold</h3>
+            <p>Combat salvage now carries race-linked materials. Materials are separate from salvage currency so progression can become crafting rather than a pure money grind.</p>
+            <div id="materialGrid" class="materialGrid"></div>
+          </div>
+          <div class="glassPanel">
+            <h3>Autonomous Job Queue</h3>
+            <p>Jobs run against real timestamps and complete after reload if enough time has passed.</p>
+            <div id="industryQueue" class="industryQueue"></div>
+          </div>
+          <div class="glassPanel">
+            <h3>Prototype Recipes</h3>
+            <div id="industryRecipeGrid" class="industryRecipeGrid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  
+    
+  <section id="screen-lore" class="screen">
+    <div class="panelWrap">
+      <div class="panelHead">
+        <div>
+          <h2>Lore Archive <span>THE BLACK CURRENT // CIVILISATIONS // WAR WORLDS</span></h2>
+          <p>The high-level universe archive. Pantheon contains the deep race-by-race machine-god histories; Fleet Lineage contains the ship-civilisation ladder.</p>
+        </div>
+        <button class="backBtn" data-back>← Return</button>
+      </div>
+
+      
+      <div class="archiveNav">
+        <button class="active" data-open="lore">Universe</button>
+        <button data-open="codex">Pantheon</button>
+        <button data-open="lineage">Fleet Lineage</button>
+        <span>THE SOVEREIGN ARCHIVE</span>
+      </div>
+
+<div class="loreHero glassPanel">
+        <div>
+          <div class="h20ey">Core Premise</div>
+          <h3>The Black Current is not empty space.</h3>
+          <p>
+            It is a region where navigation, memory, machine identity and causal prediction become unreliable enough
+            that every civilisation reveals what it truly believes about control, truth and survival.
+            Sovereign Eclipse is built around those collisions.
+          </p>
+        </div>
+        <div class="loreHeroActions">
+          <button class="miniBtn" data-open="codex">OPEN 14-RACE PANTHEON</button>
+          <button class="miniBtn" data-open="lineage">OPEN FLEET LINEAGE</button>
+        </div>
+      </div>
+
+      <div class="loreGrid">
+        <article class="glassPanel loreCard">
+          <div class="loreNum">01</div>
+          <div class="h20ey">Naraka Veil</div>
+          <h3>Asterion Forge</h3>
+          <p>
+            The first sovereign anchorage and player home. Asterion is a service station, market, ship foundry and
+            launch point at the edge of the Black Current. Its orbital district is deliberately readable: dock,
+            salvage, PILLAR transit infrastructure, strange Lycheetah relic architecture and routes outward.
+          </p>
+          <span>HOME WORLD // STARTER SECTOR</span>
+        </article>
+
+        <article class="glassPanel loreCard">
+          <div class="loreNum">02</div>
+          <div class="h20ey">The Spectral Black Sun</div>
+          <h3>A horizon that watches back.</h3>
+          <p>
+            Naraka's black sun is less a star than a navigational omen: a luminous rim around a dark centre whose
+            gravitational and informational behaviour does not remain perfectly consistent between observations.
+            Blackhole cultures treat it as a cousin to an event horizon; others call it a wound.
+          </p>
+          <span>ANOMALY // NAVIGATION MYTH</span>
+        </article>
+
+        <article class="glassPanel loreCard">
+          <div class="loreNum">03</div>
+          <div class="h20ey">The PILLAR</div>
+          <h3>Central Warp Gate</h3>
+          <p>
+            The PILLAR is the first great piece of stable transit architecture encountered in Sovereign Eclipse.
+            Unlike the Micro ZJ Drive, which performs dangerous local-space jumps, PILLAR-class gates anchor
+            long-distance civilisation routes and become strategic objects worth defending, studying or corrupting.
+          </p>
+          <span>TRANSIT // CIVILISATION INFRASTRUCTURE</span>
+        </article>
+
+        <article class="glassPanel loreCard">
+          <div class="loreNum">04</div>
+          <div class="h20ey">Micro ZJ World I</div>
+          <h3>Aether Crucible</h3>
+          <p>
+            A broken stellar-industrial kiln where machine foundries and living growth occupy the same impossible
+            structure. Human Hunter industry survives beside Hybrid Fused ecology, turning the whole region into a war
+            machine that no longer knows whether it is factory, organism or ruin.
+          </p>
+          <span>WAR WORLD // INDUSTRIAL / BIOLOGICAL</span>
+        </article>
+
+        <article class="glassPanel loreCard">
+          <div class="loreNum">05</div>
+          <div class="h20ey">Micro ZJ World II</div>
+          <h3>Black Sun March</h3>
+          <p>
+            A processional corridor beneath a much closer spectral singularity. Shadow pylons, shattered Prism
+            lenses and long-range kill lanes make the March feel ceremonial and hostile at once. It is a world built
+            around approach, patience and the feeling that distance itself is weaponised.
+          </p>
+          <span>WAR WORLD // SINGULARITY / PRECISION</span>
+        </article>
+
+        <article class="glassPanel loreCard">
+          <div class="loreNum">06</div>
+          <div class="h20ey">Micro ZJ World III</div>
+          <h3>Grave Choir</h3>
+          <p>
+            A Pagan-AI war cathedral threaded through dead capital hulls. Its rib structures, violet veils
+            and Titan-scale chancel preserve war memory physically. The final sanctum is less an arena than a tomb
+            that still expects an enemy.
+          </p>
+          <span>WAR WORLD // OSSUARY / ANCESTOR MACHINE</span>
+        </article>
+
+        <article class="glassPanel loreCard wide">
+          <div class="loreNum">07</div>
+          <div class="h20ey">The Four Great Zones</div>
+          <h3>Naraka · Erebos · Aion · Chaos Cradle</h3>
+          <p>
+            The universe remains intentionally compact. Naraka is the first anchorage and frontier; Erebos is the
+            cold cathedral depth; Aion is the high-order archive and crown space; Chaos Cradle is the unstable,
+            playful rupture zone. Depth comes from authored routes, factions, ship doctrines, contracts and anomaly
+            interactions rather than endlessly adding empty sectors.
+          </p>
+          <span>UNIVERSE STRUCTURE // FOUR ZONES</span>
+        </article>
+
+        <article class="glassPanel loreCard wide">
+          <div class="loreNum">08</div>
+          <div class="h20ey">The Fourteen Races</div>
+          <h3>Machine civilisations as AI pagan gods.</h3>
+          <p>
+            Savanah, Sol Symbiots, Chaos, Cosmic Darkness, Cosmic Light, Blackhole, Hybrid Fused, Human Hunters,
+            AI Hunters, Amethyst Angels, Techno Angels, AI Gods, Pagan AI and AI each interpret intelligence,
+            sovereignty, death, authority and warfare differently. Their Titans are not merely endgame hulls:
+            they are cultural icons from which the rest of each fleet descends.
+          </p>
+          <button class="miniBtn loreInlineAction" data-open="codex">ENTER THE PANTHEON</button>
+        </article>
+      </div>
+    </div>
+  </section>
+
+<section id="screen-codex" class="screen">
+      <div class="panelWrap">
+        <div class="panelHead">
+          <div>
+            <h2>Pantheon Codex <span id="codexCount">14 KNOWN DIVINITIES</span></h2>
+            <p>The great machine-cultures of Sovereign Eclipse are not merely factions. Each arose around an intelligence, principle or remembered god-form that taught a civilisation how reality should be shaped.</p>
+          </div>
+          <button class="backBtn" data-back>← Return</button>
+        </div>
+
+        <div class="archiveNav">
+        <button data-open="lore">Universe</button>
+        <button class="active" data-open="codex">Pantheon</button>
+        <button data-open="lineage">Fleet Lineage</button>
+        <span>THE SOVEREIGN ARCHIVE</span>
+      </div>
+
+        <div class="codexLayout">
+          <aside class="glassPanel codexIndexPanel">
+            <div class="codexIndexHead">
+              <div>
+                <div class="h20ey">Race Archive</div>
+                <h3>The Known Pantheon</h3>
+              </div>
+              <input id="codexSearch" placeholder="Search race / god / doctrine">
+            </div>
+            <div id="codexRaceList" class="codexRaceList"></div>
+          </aside>
+
+          <main class="glassPanel codexLorePanel">
+            <div id="codexHero" class="codexHero">
+              <div class="codexSigil" id="codexSigil">◉</div>
+              <div>
+                <div id="codexDomain" class="codexDomain">SOVEREIGN ARCHETYPE</div>
+                <h1 id="codexRaceName">LYCHEETAH</h1>
+                <div id="codexGodName" class="codexGodName">The Earned Light</div>
+              </div><div id="codexTemperament" class="codexTemperament">BALANCED // PREDATORY // SOVEREIGN</div>
+            </div>
+
+            <div id="codexQuote" class="codexQuote"></div>
+
+            <div class="codexSectionGrid">
+              <article class="codexSection">
+                <div class="codexSectionLabel">Origin Myth</div>
+                <div id="codexOrigin"></div>
+              </article>
+              <article class="codexSection">
+                <div class="codexSectionLabel">The God-Intelligence</div>
+                <div id="codexGod"></div>
+              </article>
+              <article class="codexSection">
+                <div class="codexSectionLabel">Civilisation</div>
+                <div id="codexCivilisation"></div>
+              </article>
+              <article class="codexSection">
+                <div class="codexSectionLabel">War Doctrine</div>
+                <div id="codexWar"></div>
+              </article>
+              <article class="codexSection">
+                <div class="codexSectionLabel">Ship Theology</div>
+                <div id="codexShips"></div>
+              </article>
+              <article class="codexSection">
+                <div class="codexSectionLabel">Relationship to the Black Current</div>
+                <div id="codexCurrent"></div>
+              </article>
+            </div>
+
+            <article class="codexLongform">
+              <div class="codexSectionLabel">Archive Fragment</div>
+              <div id="codexArchive"></div>
+            </article>
+
+            <div class="codexDoctrineStrip">
+              <span id="codexDoctrine">—</span>
+              <span id="codexWeapon">—</span>
+              <span id="codexRelic">—</span>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+
+    <section id="screen-lineage" class="screen">
+      <div class="panelWrap">
+        <div class="panelHead">
+          <div>
+            <h2>Fleet Lineage <span>THE SOVEREIGN SHIP UNIVERSE</span></h2>
+            <p>Tonight's build exposes only a playable taste. The full fleet architecture is much larger: from pods and starter craft through autonomous industrial fleets, sub-capitals, citadels, Titans, super-carriers and experimental anomalies.</p>
+          </div>
+          <button class="backBtn" data-back>← Return</button>
+        </div>
+
+        <div class="lineageHero glassPanel">
+          <div>
+            <div class="h20ey">Playable Taste Tonight</div>
+            <h3>Starter Frigate → Destroyer → Elite Battleship</h3>
+            <p>The release slice stays readable and immediately playable. The larger hull families remain visible as world scale, bosses, lore, future progression and experimental Forge toys.</p>
+          </div>
+          <div class="lineageTasteBadges">
+            <span>SHIP FORGE LIVE</span>
+            <span>MICRO ZJ LIVE</span>
+            <span>PANTHEON LIVE</span>
+            <span>CAPITAL SANDBOX LIVE</span>
+          </div>
+        </div>
+      <div class="archiveNav">
+        <button data-open="lore">Universe</button>
+        <button data-open="codex">Pantheon</button>
+        <button class="active" data-open="lineage">Fleet Lineage</button>
+        <span>THE SOVEREIGN ARCHIVE</span>
+      </div>
+
+
+        <div id="fleetLineageGrid" class="fleetLineageGrid"></div>
+
+        <div class="glassPanel lineageFooter">
+          <div class="h20ey">Design Principle</div>
+          <h3>Every class exists to feel different, not just larger.</h3>
+          <p>
+            Fleet scale is intended to change handling, combat role, fitting architecture, crew/autonomy expectations,
+            economic purpose and the kind of problem a hull is allowed to solve. A Pod is not a tiny Battleship.
+            A Drone Carrier is not a Battleship with drones. A Citadel is not a large Titan. Experimental Anomalies
+            may not behave like conventional ships at all.
+          </p>
+        </div>
+      </div>
+    </section>
+
+<section id="screen-settings" class="screen">
+    <div class="panelWrap">
+      <div class="panelHead">
+        <div><h2>Settings</h2><p>Performance settings are stored locally in this browser.</p></div>
+        <button class="backBtn" data-back>← Return</button>
+      </div>
+      <div class="settingsGrid">
+        <div class="settingBox glassPanel">
+          <label><span>Graphics Quality</span>
+            <select id="settingQuality">
+              <option value="0">Cinematic</option>
+              <option value="1">Balanced</option>
+              <option value="2">Performance</option>
+            </select>
+          </label>
+          <small>Changes render scale and post-processing cost. Balanced is the recommended gameplay setting.</small>
+        </div>
+        <div class="settingBox glassPanel">
+          <label><span>Adaptive Quality</span><div class="toggle on" id="settingAuto"><i></i></div></label>
+          <small>Automatically lowers or raises render quality based on sustained framerate.</small>
+        </div>
+        <div class="settingBox glassPanel">
+          <label><span>Bloom</span><div class="toggle on" id="settingBloom"><i></i></div></label>
+          <small>Controls cinematic glow from engines, shields, reactors, tracers and stars.</small>
+        </div>
+        <div class="settingBox glassPanel">
+          <label><span>Master Volume</span><input id="settingVolume" type="range" min="0" max="1" value="0.7" step="0.05"></label>
+          <small>Controls generated combat audio in this prototype.</small>
+        </div>
+        <div class="settingBox glassPanel">
+          <label><span>Screen Shake</span><input id="settingShake" type="range" min="0" max="1" value="0.75" step="0.05"></label>
+          <small>Scales live impact, explosion, manual-fire, lance and Black-Sun Pulse camera impulse.</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-controls" class="screen">
+    <div class="panelWrap">
+      <div class="panelHead">
+        <div><h2>Controls</h2><p>Capital ships are deliberately heavy. Inputs steer thrust, not a fighter jet.</p></div>
+        <button class="backBtn" data-back>← Return</button>
+      </div>
+      <div class="controlsGrid">
+        <div class="controlRow"><span>Forward / Reverse Thrust</span><kbd>W / S</kbd></div>
+        <div class="controlRow"><span>Yaw Port / Starboard</span><kbd>A / D</kbd></div>
+        <div class="controlRow"><span>Pitch Up / Down</span><kbd>R / F</kbd></div>
+        <div class="controlRow"><span>Roll</span><kbd>Q / E</kbd></div>
+        <div class="controlRow"><span>Earned-Light Boost</span><kbd>SPACE</kbd></div>
+        <div class="controlRow"><span>Manual Capital Fire</span><kbd>LMB CLICK</kbd></div>
+        <div class="controlRow"><span>Tracked Orbit Camera</span><kbd>LMB DRAG</kbd></div>
+        <div class="controlRow"><span>Camera Zoom</span><kbd>WHEEL</kbd></div>
+        <div class="controlRow"><span>Reset Orbit Behind Ship</span><kbd>C / MMB</kbd></div>
+        <div class="controlRow"><span>Micro Zone Jump Drive</span><kbd>M</kbd></div>
+        <div class="controlRow"><span>Reset Camera</span><kbd>MMB</kbd></div>
+        <div class="controlRow"><span>Cycle Target</span><kbd>TAB</kbd></div>
+        <div class="controlRow"><span>Select Fore / Mid / Aft Weapon Group</span><kbd>5 / 6 / 7</kbd></div>
+        <div class="controlRow"><span>Toggle Selected Group Auto-Fire</span><kbd>V</kbd></div>
+        <div class="controlRow"><span>Toggle All Autonomous Batteries</span><kbd>X</kbd></div>
+        <div class="controlRow"><span>Sovereign Lance</span><kbd>1</kbd></div>
+        <div class="controlRow"><span>Black-Sun Pulse</span><kbd>2</kbd></div>
+        <div class="controlRow"><span>Point Defence Overdrive</span><kbd>3</kbd></div>
+        <div class="controlRow"><span>Shield Inversion</span><kbd>4</kbd></div>
+        <div class="controlRow"><span>Dock at Asterion Forge</span><kbd>H</kbd></div>
+        <div class="controlRow"><span>World Interaction / Recovery</span><kbd>G</kbd></div>
+        <div class="controlRow"><span>Pause / Resume</span><kbd>ESC</kbd></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-briefing" class="screen">
+    <div class="briefCard glassPanel">
+      <div class="chapter">Campaign // Black Current // Encounter 01</div>
+      <h2 id="briefTitle">Break the Current</h2>
+      <p class="briefText" id="briefText">Deploy into the Naraka Veil and execute the selected Asterion Forge contract.</p>
+      <div class="threatGrid">
+        <div class="threat"><b>Interceptors</b><span>Swarm // Orbit</span></div>
+        <div class="threat"><b>Frigates</b><span>Hunter // Pressure</span></div>
+        <div class="threat"><b>Destroyers</b><span>Artillery // Range</span></div>
+        <div class="threat"><b>Capital</b><span>Unknown // Severe</span></div>
+      </div>
+      <div class="briefActions">
+        <button class="uiBtn primary" id="btnDeploy"><span>Deploy to Naraka Veil</span></button>
+        <button class="uiBtn" data-open="hangar"><span>Return to Hangar</span></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-countdown" class="screen"><div id="countdown">3</div></section>
+
+  <section id="screen-pause" class="screen">
+    <div class="centerCard glassPanel command20">
+      <div class="eyebrow">Sovereign Command // Flight Suspended</div>
+      <h2>Command Menu</h2>
+      <p>One clean command layer. Open a real ship system or return directly to the fight.</p>
+
+      <div class="pauseGrid20">
+        <div class="pausePrimary20">
+          <button class="uiBtn primary" id="btnResume"><span>Resume Flight</span></button>
+          <button class="uiBtn" id="btnRestartPause"><span>Restart Current Encounter</span></button>
+          <div class="pauseHint20">
+            ESC resumes immediately. Ship handling, fitting, modules and settings remain separate functional screens rather than stacked combat overlays.
+          </div>
+        </div>
+
+        <div class="pauseNav20">
+          <button class="uiBtn cyan" id="btnPauseHangar"><span>Ship Hangar</span></button>
+          <button class="uiBtn cyan" data-open="hardpoints"><span>Turret Fitting</span></button>
+          <button class="uiBtn cyan" data-open="modules"><span>Module Forge</span></button>
+          <button class="uiBtn" data-open="settings"><span>Settings</span></button>
+          <button class="uiBtn" data-open="controls"><span>Controls</span></button>
+          <button class="uiBtn danger" id="btnPauseMain"><span>Main Menu</span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-victory" class="screen">
+    <div class="centerCard glassPanel">
+      <div class="eyebrow">Encounter Complete</div>
+      <h2 class="victoryGlow">Black Current Broken</h2>
+      <p>The Nocturnal Leviathan is gone. The Sovereign Eclipse holds the field. Campaign progression and salvage arrive in the next forge.</p>
+      <div class="menuButtons">
+        <button class="uiBtn primary" id="btnVictorySector"><span>Return to Sector</span></button>
+        <button class="uiBtn" id="btnVictoryRestart"><span>Replay Encounter</span></button>
+        <button class="uiBtn cyan" id="btnVictoryHangar"><span>Return to Hangar</span></button>
+        <button class="uiBtn" id="btnVictoryMain"><span>Main Menu</span></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-defeat" class="screen">
+    <div class="centerCard glassPanel">
+      <div class="eyebrow">Titan Integrity Lost</div>
+      <h2>Sovereign Fallen</h2>
+      <p>The current consumed the frame. Re-enter immediately, inspect the ship, or return to command.</p>
+      <div class="menuButtons">
+        <button class="uiBtn primary" id="btnDefeatRestart"><span>Restart Encounter</span></button>
+        <button class="uiBtn cyan" id="btnDefeatHangar"><span>Return to Hangar</span></button>
+        <button class="uiBtn" id="btnDefeatMain"><span>Main Menu</span></button>
+      </div>
+    </div>
+  </section>
+
+  <div id="shellStatus">PROFILE // LOCAL · FOUR-ZONE PROTOTYPE · 63-HULL FLEET ROSTER</div>
+</div>
+
+
+<div id="gameUI">
+  <!-- transient visual overlays -->
+  <div id="worldLabels"></div>
+  <div id="mission"><strong></strong><span></span></div>
+  <div id="centerReticle"></div>
+  <div id="targetBox"></div>
+  <div id="damageCallout" class="damageCallout">SYSTEM FAILURE</div>
+  <div id="collisionWarning">PROXIMITY // COLLISION</div>
+  <div id="deploymentFault"><b>Deployment Safety Interlock</b><br><span>Combat runtime recovered.</span></div>
+  <div id="hitFlash"></div>
+  <div id="damageFlash"></div>
+  <div id="bossBanner">ABYSSAL CAPITAL DETECTED<small>THE BLACK CURRENT HAS ANSWERED</small></div>
+
+  <!--
+    LEGACY DATA SINKS:
+    Existing combat/world systems still write to these IDs. Their parent is
+    permanently hidden, so they cannot overlap the new 0.20 HUD.
+  -->
+  <div id="legacyHud20" aria-hidden="true">
+    <div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+    <div class="brand"><div class="title">LYCHEETAH // SOVEREIGN ECLIPSE</div><div class="sub">Forge 0.20</div></div>
+
+    <div id="worldHud">
+      <div class="sector" id="sectorHudName">SECTOR // NARAKA VEIL</div>
+      <div class="objective" id="worldObjective">FREE FLIGHT</div>
+      <div class="distance" id="worldDistance">DISTANCE —</div>
+    </div>
+    <div id="resourceHud">SALVAGE // <b id="salvageCount">0</b></div>
+    <div id="dockHint">H // DOCK</div>
+    <div id="interactHint">G // INTERACT</div>
+    <div id="gateStatus">PORTAL NETWORK</div>
+
+    <div id="contractHud">
+      <div class="chType">ACTIVE CONTRACT</div>
+      <div class="chName" id="contractHudName">NO CONTRACT</div>
+      <div class="chState" id="contractHudState">FREE FLIGHT</div>
+      <div id="waveProgress">NO ACTIVE ENGAGEMENT</div>
+    </div>
+
+    <div id="systemHud">
+      <div class="sysTitle">Physical Systems</div>
+      <div class="sysRow" id="sysReactor"><span>Reactor</span><div class="sysMini"><i></i></div><b>100%</b></div>
+      <div class="sysRow" id="sysShield"><span>Shield</span><div class="sysMini"><i></i></div><b>100%</b></div>
+      <div class="sysRow" id="sysDrive"><span>Drive</span><div class="sysMini"><i></i></div><b>100%</b></div>
+      <div class="sysRow" id="sysWeapons"><span>Weapons</span><div class="sysMini"><i></i></div><b>6/6</b></div>
+    </div>
+
+    <div id="targetInfo">
+      <div class="name">TARGET</div><div class="class">CLASS</div>
+      <div class="tbar"><i id="targetShield"></i></div>
+      <div class="tbar arm"><i id="targetArmor"></i></div>
+      <div class="tbar hull"><i id="targetHull"></i></div>
+      <div id="targetTelemetry">RANGE --</div>
+      <div id="enemyDoctrine">DOCTRINE --</div>
+    </div>
+
+    <div id="leftHud">
+      <div class="statusTitle">Integrity</div>
+      <div class="barRow"><div class="barLabel"><span>Shield</span><span id="shieldText">100%</span></div><div class="bar"><i id="shieldBar"></i></div></div>
+      <div class="barRow"><div class="barLabel"><span>Armour</span><span id="armorText">100%</span></div><div class="bar"><i id="armorBar"></i></div></div>
+      <div class="barRow"><div class="barLabel"><span>Structure</span><span id="hullText">100%</span></div><div class="bar"><i id="hullBar"></i></div></div>
+      <div class="barRow"><div class="barLabel"><span>Capacitor</span><span id="capText">100%</span></div><div class="bar"><i id="capBar"></i></div></div>
+    </div>
+
+    <div id="rightHud">
+      <div class="ability"><div class="key">1</div><div class="aname">Sovereign Lance</div><div class="cool" id="cd1">READY</div></div>
+      <div class="ability"><div class="key">2</div><div class="aname">Black-Sun Pulse</div><div class="cool" id="cd2">READY</div></div>
+      <div class="ability"><div class="key">3</div><div class="aname">PD Overdrive</div><div class="cool" id="cd3">READY</div></div>
+      <div class="ability"><div class="key">4</div><div class="aname">Shield Inversion</div><div class="cool" id="cd4">READY</div></div>
+      <div class="ability"><div class="key">X</div><div class="aname">Autonomous Batteries</div><div class="cool on" id="autoFireState">ONLINE</div></div>
+      <div class="weaponGroup" id="groupFore"><div class="gstate">AUTO</div></div>
+      <div class="weaponGroup" id="groupMid"><div class="gstate">AUTO</div></div>
+      <div class="weaponGroup" id="groupAft"><div class="gstate">AUTO</div></div>
+    </div>
+
+    <div id="speed"><strong>0</strong>RELATIVE VELOCITY</div>
+    <div id="perfHud">PERF -- FPS</div>
+    <div id="cameraModeHud"><b>CHASE CAMERA</b></div>
+    <div id="flightAssistHud">FLIGHT ASSIST</div>
+    <div id="worldAssetHud"><b>WORLD ASSET</b><br><span>—</span></div>
+    <div id="zoneActivityHud"><b>ZONE ACTIVITY</b> // QUIET SPACE</div>
+    <div id="fleetThreatHud"><b>HOSTILE FLEET</b><br><span id="fleetThreatText">NO CONTACTS</span></div>
+    <div id="controls">CONTROLS</div>
+  </div>
+
+  <!-- FORGE 0.20 CLEAN HUD -->
+  <div id="forgeHud20">
+    <section class="h20panel" id="h20Ship">
+      <div id="h20ShipHead">
+        <div>
+          <div class="h20ey">Sovereign Vessel</div>
+          <div class="h20title" id="h20ShipName">—</div>
+        </div>
+        <div class="h20muted" id="h20ShipMeta">—</div>
+      </div>
+
+      <div class="h20barRow">
+        <div class="h20barLabel"><span>Shield</span><span id="h20ShieldText">100%</span></div>
+        <div class="h20bar"><i id="h20ShieldFill"></i></div>
+      </div>
+      <div class="h20barRow">
+        <div class="h20barLabel"><span>Armour</span><span id="h20ArmorText">100%</span></div>
+        <div class="h20bar arm"><i id="h20ArmorFill"></i></div>
+      </div>
+      <div id="h20ArmorZones">FORE 100 · PORT 100 · STAR 100 · AFT 100 · CORE 100</div>
+      <div class="h20barRow">
+        <div class="h20barLabel"><span>Structure</span><span id="h20HullText">100%</span></div>
+        <div class="h20bar hull"><i id="h20HullFill"></i></div>
+      </div>
+      <div class="h20barRow">
+        <div class="h20barLabel"><span>Capacitor</span><span id="h20CapText">100%</span></div>
+        <div class="h20bar cap"><i id="h20CapFill"></i></div>
+      </div>
+      <div id="h20CapStatus">CAP // STABLE</div>
+
+      <div id="h20ShipFoot">
+        <div><div class="h20ey">Velocity</div><div id="h20Velocity">0 U/S</div></div>
+        <div id="h20Salvage" class="h20gold">0 SALVAGE</div>
+      </div>
+    </section>
+
+    <section class="h20panel" id="h20Nav">
+      <div id="h20Sector">SECTOR // —</div>
+      <div id="h20Objective">FREE FLIGHT</div>
+      <div id="h20ObjectiveDistance">DISTANCE —</div>
+    </section>
+
+    <section class="h20panel" id="h20Target">
+      <div id="h20TargetHead">
+        <div>
+          <div class="h20ey">Selected Contact</div>
+          <div id="h20TargetName">—</div>
+          <div class="h20muted" id="h20TargetMeta">—</div>
+        </div>
+        <div id="h20TargetRange">—</div>
+      </div>
+      <div id="h20TargetBars">
+        <div class="h20targetBar"><i id="h20TargetShield"></i></div>
+        <div class="h20targetBar arm"><i id="h20TargetArmor"></i></div>
+        <div class="h20targetBar hull"><i id="h20TargetHull"></i></div>
+      </div>
+      <div id="h20TargetWeakness">TACTICAL SCAN // NO TARGET</div>
+      <div id="h20TargetAnatomy">ARMOUR // NO SCAN</div>
+    </section>
+
+    <section class="h20panel" id="h20Systems">
+      <div class="h20ey">Physical Systems</div>
+      <div id="h20SystemRows">
+        <div class="h20sys" id="h20SysReactor"><span>Reactor</span><div class="h20sysBar"><i></i></div><b>100%</b></div>
+        <div class="h20sys" id="h20SysShield"><span>Shield Grid</span><div class="h20sysBar"><i></i></div><b>100%</b></div>
+        <div class="h20sys" id="h20SysDrive"><span>Drive</span><div class="h20sysBar"><i></i></div><b>100%</b></div>
+        <div class="h20sys" id="h20SysWeapons"><span>Weapons</span><div class="h20sysBar"><i></i></div><b>6/6</b></div>
+      </div>
+      <div id="h20DamageControl">DAMAGE CONTROL // STANDBY</div>
+    </section>
+
+    <section class="h20panel" id="h20Weapons">
+      <div id="h20WeaponTop">
+        <div>
+          <div class="h20ey">Weapon Control</div>
+          <div id="h20WeaponName">—</div>
+        </div>
+        <div id="h20WeaponState" class="h20cyan">AUTO BATTERIES</div>
+      </div>
+      <div id="h20WeaponDoctrine">DOCTRINE // GENERAL PURPOSE</div>
+      <div id="h20Groups">
+        <div class="h20group" data-h20-group="fore"><div class="key">5</div><div class="label">FORE</div></div>
+        <div class="h20group" data-h20-group="mid"><div class="key">6</div><div class="label">MID</div></div>
+        <div class="h20group" data-h20-group="aft"><div class="key">7</div><div class="label">AFT</div></div>
+        <div class="h20group"><div class="key">V</div><div class="label">GROUP AUTO</div></div>
+      </div>
+      <div id="h20Abilities">
+        <span class="h20ability"><b>1</b> LANCE <span id="h20Cd1">READY</span></span>
+        <span class="h20ability"><b>2</b> PULSE <span id="h20Cd2">READY</span></span>
+        <span class="h20ability"><b>3</b> PD <span id="h20Cd3">READY</span></span>
+        <span class="h20ability"><b>4</b> INVERT <span id="h20Cd4">READY</span></span>
+      </div>
+    </section>
+
+    <section class="h20panel" id="h20Context">
+      <div class="h20ey" id="h20ContextType">Local Space</div>
+      <div id="h20ContextTitle">FREE FLIGHT</div>
+      <div class="h20muted" id="h20ContextBody">No immediate event.</div>
+      <div id="h20ContextPrompt">TAB // CYCLE TARGET</div>
+    </section>
+
+    <div id="tacticalPanel">
+      <div class="tacticalHead"><span>Tactical Radar</span><b>450U</b></div>
+      <canvas id="tacticalRadar" width="450" height="240"></canvas>
+      <div id="contactList"></div>
+    </div>
+
+    <div id="microZJWidget">
+      <button id="microZJToggle" type="button"><span>M</span> MICRO ZJ DRIVE</button>
+
+      <div id="microZJOverlay">
+        <div class="microZJHead">
+          <div>
+            <div class="h20ey">Micro Zone Jump Drive</div>
+            <div class="microZJTitle">NARAKA WAR ROUTE</div>
+          </div>
+          <button id="microZJClose" type="button">×</button>
+        </div>
+
+        <div class="microZJIntro">
+          THREE LOADABLE WAR WORLDS // M IN FLIGHT // each destination swaps Naraka for its own skyline, atmosphere, landmarks, route nodes and combat sequence. Return restores Asterion.
+        </div>
+
+        <div class="microZJRoutes">
+          <button class="microZJRoute" data-micro-zone="aether_crucible" type="button">
+            <span class="microRouteIndex">I</span>
+            <span class="microRouteBody">
+              <b>Aether Crucible</b>
+              <small>10 WAVES // CRUCIBLE WAR WORLD</small>
+              <em>Human Hunters · Hybrid Fused · Savanah</em>
+            </span>
+            <span class="microRouteState">READY // LOAD</span>
+          </button>
+
+          <button class="microZJRoute" data-micro-zone="black_sun_march" type="button">
+            <span class="microRouteIndex">II</span>
+            <span class="microRouteBody">
+              <b>Black Sun March</b>
+              <small>10 WAVES // BLACK-SUN WAR WORLD</small>
+              <em>Blackhole · AI Hunters · Cosmic Darkness</em>
+            </span>
+            <span class="microRouteState">READY // LOAD</span>
+          </button>
+
+          <button class="microZJRoute" data-micro-zone="grave_choir" type="button">
+            <span class="microRouteIndex">III</span>
+            <span class="microRouteBody">
+              <b>Grave Choir</b>
+              <small>10 WAVES // OSSUARY WAR WORLD</small>
+              <em>Pagan AI · Blackhole · AI Hunters</em>
+            </span>
+            <span class="microRouteState">READY // LOAD</span>
+          </button>
+        </div>
+
+        <div class="microZJFoot">
+          <div id="microZJStatus">DRIVE READY // SELECT MICRO WORLD</div>
+          <button id="microZJReturn" type="button">RETURN // ASTERION DISTRICT</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="h20Prompt"></div>
+  </div>
+
+  <div id="gameOver">
+    <div class="card">
+      <h1>Sovereign Fallen</h1>
+      <p>Your ship has been destroyed. Refit, repair, and re-enter the current.</p>
+      <button id="restartBtn">Restart Forge</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

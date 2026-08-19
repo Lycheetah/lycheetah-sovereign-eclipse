@@ -1,0 +1,608 @@
+/* sovereign-eclipse/styles/screens.css
+   Extracted unchanged from gold master 0.27.5 lines 1281-1883.
+   Grid-first shell screens
+   Zero-feature-change. Cascade order: base → hud → screens → station → forge.
+*/
+/* ============================================================
+   FORGE 0.22 — GRID-FIRST INTERNAL UI
+   ============================================================ */
+#screen-hangar .panelWrap,
+#screen-hardpoints .panelWrap,
+#screen-modules .panelWrap{
+  width:min(1540px,96vw);
+  max-width:none;
+}
+#screen-hangar .hangarGrid{
+  display:grid;
+  grid-template-columns:minmax(0,1.75fr) minmax(330px,.75fr);
+  gap:14px;
+  align-items:start;
+}
+#screen-hardpoints .hardpointLayout,
+#screen-modules .moduleLayout{
+  display:grid;
+  grid-template-columns:minmax(360px,.82fr) minmax(0,1.35fr);
+  gap:14px;
+  align-items:start;
+}
+.shipCards{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fill,minmax(215px,1fr))!important;
+  gap:10px!important;
+  max-height:58vh;
+  overflow:auto;
+  padding-right:5px;
+}
+.shipCard{
+  min-height:180px!important;
+  padding:13px!important;
+  border-radius:10px!important;
+}
+.shipCard h3{font-size:17px!important;margin:6px 0!important}
+.shipCard p{font-size:11px!important;line-height:1.35!important}
+.shipCard .ownershipLine{margin-top:auto}
+.weaponGrid,.catalogGrid{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fill,minmax(205px,1fr))!important;
+  gap:9px!important;
+}
+.bankGrid,.moduleSlotGrid,.nodeHealthGrid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:9px!important;
+}
+.easyFitButtons,.forgeQuickFitGrid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:7px!important;
+}
+.forgeQuickFit{
+  margin:12px 0;
+  border:1px solid rgba(102,235,255,.20);
+  background:rgba(1,10,16,.58);
+  padding:10px;
+  border-radius:9px;
+}
+.forgeQuickFitHead{
+  display:flex;justify-content:space-between;gap:8px;align-items:center;
+  margin-bottom:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+}
+.forgeQuickFitGrid button{
+  border:1px solid rgba(116,239,255,.23);
+  background:rgba(6,22,29,.88);
+  color:#d9f9ff;
+  padding:9px 7px;
+  cursor:pointer;
+  font:600 10px/1.2 inherit;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.forgeQuickFitGrid button:hover{border-color:rgba(255,202,93,.68);color:#ffe5a3}
+
+.forgeWindow{
+  position:relative;
+  transition:max-height .18s ease,transform .18s ease,opacity .18s ease;
+}
+.forgeWindowBar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  min-height:34px;
+  margin:-4px -2px 10px;
+  padding:5px 7px;
+  border-bottom:1px solid rgba(118,235,255,.13);
+}
+.forgeWindowTitle{
+  font-size:10px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:rgba(201,245,255,.65);
+}
+.forgeWindowControls{display:flex;gap:5px}
+.forgeWindowControls button{
+  width:29px;height:27px;
+  border:1px solid rgba(115,231,255,.22);
+  background:rgba(3,13,20,.86);
+  color:#d8f7ff;
+  cursor:pointer;
+  border-radius:5px;
+}
+.forgeWindowControls button:hover{border-color:rgba(255,202,93,.62);color:#ffdc84}
+.forgeWindow.collapsed{
+  max-height:46px!important;
+  overflow:hidden!important;
+  min-height:46px!important;
+}
+.forgeWindow.maximized{
+  position:fixed!important;
+  z-index:12000!important;
+  inset:58px 24px 24px!important;
+  width:auto!important;
+  max-width:none!important;
+  max-height:none!important;
+  overflow:auto!important;
+  background:rgba(3,9,15,.985)!important;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.76),0 25px 100px rgba(0,0,0,.85)!important;
+}
+body.forgeWindowFocus{overflow:hidden}
+
+.factionBadge{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-size:9px;
+  letter-spacing:.12em;
+  padding:4px 6px;
+  border:1px solid rgba(116,237,255,.16);
+  border-radius:999px;
+  color:rgba(206,245,255,.74);
+}
+.shipCard.titanHull{border-color:rgba(255,196,80,.24)}
+.shipCard.titanHull::before{
+  content:'TITAN';
+  position:absolute;
+  top:8px;right:8px;
+  color:#ffd475;
+  font-size:8px;
+  letter-spacing:.18em;
+}
+.shipCard.starterHull::before{
+  content:'STARTER';
+  position:absolute;
+  top:8px;right:8px;
+  color:#78edff;
+  font-size:8px;
+  letter-spacing:.18em;
+}
+.shipCard{position:relative}
+.shipCard .previewHull{
+  margin-left:5px;
+  padding:5px 7px;
+  border:1px solid rgba(120,225,255,.22);
+  background:rgba(0,0,0,.28);
+  color:#bcefff;
+  cursor:pointer;
+}
+.shipCard .previewHull:hover{border-color:rgba(255,208,102,.65);color:#ffe09a}
+#hangarOwnership{margin-top:6px;color:rgba(165,235,250,.64);font-size:10px;letter-spacing:.08em}
+#prototypeDoctrine{
+  margin:10px 0;
+  padding:9px 10px;
+  border-left:2px solid rgba(255,201,85,.55);
+  background:rgba(255,188,66,.045);
+  color:rgba(225,240,244,.72);
+  font-size:11px;
+  line-height:1.45;
+}
+@media (max-width:980px){
+  #screen-hangar .hangarGrid,
+  #screen-hardpoints .hardpointLayout,
+  #screen-modules .moduleLayout{grid-template-columns:1fr}
+  .shipCards{max-height:45vh}
+}
+
+
+/* ============================================================
+   FORGE 0.23 — TRUE HULL FORGE ALPHA
+   ============================================================ */
+#screen-hullforge .panelWrap{
+  width:min(1780px,98vw);
+  max-width:none;
+  padding-bottom:24px;
+}
+.hullForgeWorkspace{
+  display:grid;
+  grid-template-columns:minmax(235px,.62fr) minmax(560px,1.75fr) minmax(280px,.72fr);
+  gap:12px;
+  align-items:start;
+}
+.hullForgeWorkspace .glassPanel{
+  min-height:0;
+  border-radius:11px;
+}
+.hullForgeLibrary,.hullForgeInspector{
+  max-height:76vh;
+  overflow:auto;
+}
+.hullForgeLibrary h3,.hullForgeInspector h3{margin-top:2px}
+.hullForgeAddGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+  margin:12px 0;
+}
+.hullForgeAddGrid button,
+.hullForgeLibraryActions button,
+.hfPartActions button,
+.hullForgeZoomTools button{
+  border:1px solid rgba(104,232,255,.22);
+  background:rgba(2,15,22,.84);
+  color:#d9f8ff;
+  cursor:pointer;
+  border-radius:6px;
+}
+.hullForgeAddGrid button{
+  min-height:58px;
+  padding:8px;
+  text-align:left;
+}
+.hullForgeAddGrid button b{
+  display:block;
+  color:#ffe0a0;
+  font-size:11px;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+}
+.hullForgeAddGrid button span{
+  display:block;
+  margin-top:4px;
+  color:rgba(197,237,246,.55);
+  font-size:9px;
+}
+.hullForgeAddGrid button:hover,
+.hullForgeLibraryActions button:hover,
+.hfPartActions button:hover,
+.hullForgeZoomTools button:hover{
+  border-color:rgba(255,205,92,.65);
+}
+.hullForgeSectionHead{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:15px 0 7px;
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:rgba(196,236,246,.62);
+}
+.hullForgePartList{
+  display:grid;
+  gap:5px;
+  max-height:37vh;
+  overflow:auto;
+}
+.hfPartRow{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:6px;
+  padding:8px;
+  border:1px solid rgba(101,223,247,.12);
+  background:rgba(1,8,13,.58);
+  cursor:pointer;
+  border-radius:6px;
+}
+.hfPartRow.selected{
+  border-color:rgba(255,203,85,.68);
+  background:rgba(255,193,67,.075);
+}
+.hfPartRow b{font-size:10px;color:#e7faff}
+.hfPartRow span{font-size:9px;color:rgba(178,226,238,.52)}
+.hullForgeLibraryActions{
+  display:grid;
+  gap:6px;
+  margin-top:10px;
+}
+.hullForgeLibraryActions button{padding:8px;font-size:9px;letter-spacing:.08em;text-transform:uppercase}
+
+.hullForgeCanvasPanel{padding:10px!important}
+.hullForgeCanvasTop,.hullForgeCanvasFooter{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.hullForgeCanvasTop{padding:2px 4px 9px}
+.hullForgeCanvasTop b{
+  font-size:10px;
+  letter-spacing:.10em;
+  color:#cdeff8;
+}
+.hullForgeZoomTools{display:flex;align-items:center;gap:6px}
+.hullForgeZoomTools button{width:30px;height:28px}
+.hullForgeZoomTools span{font-size:10px;min-width:44px;text-align:center;color:#ffe0a0}
+#hullForgeCanvas{
+  display:block;
+  width:100%;
+  height:auto;
+  max-height:68vh;
+  background:
+    radial-gradient(circle at 50% 46%,rgba(30,78,94,.14),transparent 38%),
+    rgba(0,4,8,.94);
+  border:1px solid rgba(102,229,255,.18);
+  border-radius:8px;
+  cursor:crosshair;
+  touch-action:none;
+}
+#hullForgeCanvas.dragging{cursor:grabbing}
+.hullForgeCanvasFooter{
+  padding:8px 4px 0;
+  font-size:8px;
+  letter-spacing:.08em;
+  color:rgba(169,215,226,.45);
+}
+
+#hfInspectorFields{display:grid;gap:9px}
+#hfInspectorFields>label,
+.hfFieldGrid label{
+  display:grid;
+  gap:4px;
+  color:rgba(194,231,240,.65);
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+#hfInspectorFields input,
+#hfInspectorFields select,
+#hfJson{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid rgba(103,225,248,.18);
+  background:rgba(0,7,12,.86);
+  color:#e4f9ff;
+  border-radius:5px;
+  padding:7px;
+  font:500 11px/1.2 inherit;
+}
+.hfFieldGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.hfCheck{
+  display:flex!important;
+  grid-template-columns:none!important;
+  align-items:center;
+  gap:7px!important;
+}
+.hfCheck input{width:auto!important}
+.hfPartActions{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;
+}
+.hfPartActions button{padding:8px 5px;font-size:9px}
+.hfPartActions .danger{border-color:rgba(255,86,67,.28);color:#ff9b8f}
+.hfEmpty{
+  padding:14px;
+  border:1px dashed rgba(118,226,247,.16);
+  color:rgba(186,228,238,.45);
+  font-size:10px;
+  margin-bottom:10px;
+}
+.hullForgeSaveBlock{
+  display:grid;
+  gap:6px;
+  margin-top:15px;
+  padding-top:12px;
+  border-top:1px solid rgba(106,225,248,.12);
+}
+#hfJson{
+  resize:vertical;
+  min-height:110px;
+  max-height:230px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:9px;
+}
+#hfSaveState{
+  font-size:9px;
+  letter-spacing:.10em;
+  text-align:center;
+  color:rgba(255,211,117,.62);
+  padding:5px;
+}
+@media(max-width:1250px){
+  .hullForgeWorkspace{grid-template-columns:240px minmax(500px,1fr)}
+  .hullForgeInspector{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .hullForgeSaveBlock{margin-top:0;padding-top:0;border-top:0}
+}
+@media(max-width:850px){
+  .hullForgeWorkspace{grid-template-columns:1fr}
+  .hullForgeInspector{grid-column:auto;display:block}
+}
+
+
+/* ============================================================
+   FORGE 0.24 — HARDPOINT FORGE
+   ============================================================ */
+.hfModeSwitch{
+  display:flex;
+  border:1px solid rgba(106,226,248,.18);
+  border-radius:7px;
+  overflow:hidden;
+}
+.hfModeSwitch button{
+  min-width:94px;
+  padding:8px 10px;
+  border:0;
+  border-right:1px solid rgba(106,226,248,.13);
+  background:rgba(2,12,18,.82);
+  color:rgba(204,241,249,.58);
+  cursor:pointer;
+  font:700 9px/1 inherit;
+  letter-spacing:.13em;
+}
+.hfModeSwitch button:last-child{border-right:0}
+.hfModeSwitch button.active{
+  color:#ffe09a;
+  background:rgba(255,194,62,.085);
+  box-shadow:inset 0 -2px rgba(255,205,91,.58);
+}
+.hardpointAddGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.hardpointAddGrid button{
+  min-height:58px;
+  text-align:left;
+  padding:8px;
+  border:1px solid rgba(106,230,255,.20);
+  background:rgba(1,12,18,.84);
+  color:#dff9ff;
+  border-radius:6px;
+  cursor:pointer;
+}
+.hardpointAddGrid button:hover{border-color:rgba(255,207,103,.65)}
+.hardpointAddGrid button b{
+  display:block;
+  color:#ffe2a1;
+  font-size:10px;
+  letter-spacing:.10em;
+}
+.hardpointAddGrid button span{
+  display:block;
+  margin-top:4px;
+  color:rgba(191,231,240,.50);
+  font-size:8px;
+}
+.hardpointLegend{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:5px;
+  margin:9px 0 13px;
+  font-size:8px;
+  color:rgba(195,231,239,.52);
+}
+.hardpointLegend span{display:flex;align-items:center;gap:5px}
+.hardpointLegend i{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  box-shadow:0 0 8px currentColor;
+}
+.hpLight{background:#74f6ff;color:#74f6ff}
+.hpMedium{background:#7d9fff;color:#7d9fff}
+.hpHeavy{background:#d979ff;color:#d979ff}
+.hpCapital{background:#ffc45d;color:#ffc45d}
+.hardpointNote{
+  margin-top:9px;
+  padding:8px;
+  border-left:2px solid rgba(255,200,84,.44);
+  background:rgba(255,188,62,.04);
+  color:rgba(203,231,237,.52);
+  font-size:9px;
+  line-height:1.45;
+}
+#hfHardpointInspector{
+  display:grid;
+  gap:9px;
+}
+#hfHardpointInspector>label,
+#hfHardpointInspector .hfFieldGrid label{
+  display:grid;
+  gap:4px;
+  color:rgba(194,231,240,.65);
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+#hfHardpointInspector input,
+#hfHardpointInspector select{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid rgba(103,225,248,.18);
+  background:rgba(0,7,12,.86);
+  color:#e4f9ff;
+  border-radius:5px;
+  padding:7px;
+  font:500 11px/1.2 inherit;
+}
+.hpInspectorMeta{
+  padding:8px;
+  border:1px solid rgba(105,226,248,.12);
+  background:rgba(0,8,13,.60);
+  color:rgba(197,231,239,.62);
+  font-size:9px;
+  line-height:1.45;
+}
+.hfPartRow .hpTier{
+  color:#ffd77e;
+  font-weight:700;
+}
+.bankSocketBadge{
+  display:inline-block;
+  margin-left:5px;
+  padding:2px 5px;
+  border:1px solid rgba(104,228,251,.18);
+  border-radius:999px;
+  color:#bceeff;
+  font-size:8px;
+  letter-spacing:.06em;
+}
+
+
+/* ============================================================
+   FORGE 0.25 — SYSTEMS FORGE
+   ============================================================ */
+.hfModeSwitch button{min-width:82px}
+.systemAddGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.systemAddGrid button{
+  min-height:58px;
+  text-align:left;
+  padding:8px;
+  border:1px solid rgba(106,230,255,.20);
+  background:rgba(1,12,18,.84);
+  color:#dff9ff;
+  border-radius:6px;
+  cursor:pointer;
+}
+.systemAddGrid button:hover{border-color:rgba(255,207,103,.65)}
+.systemAddGrid button b{
+  display:block;
+  color:#ffe2a1;
+  font-size:10px;
+  letter-spacing:.10em;
+}
+.systemAddGrid button span{
+  display:block;
+  margin-top:4px;
+  color:rgba(191,231,240,.50);
+  font-size:8px;
+}
+.systemLegend{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:5px;
+  margin:9px 0 13px;
+  font-size:8px;
+  color:rgba(195,231,239,.52);
+}
+.systemLegend span{display:flex;align-items:center;gap:5px}
+.systemLegend i{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  box-shadow:0 0 8px currentColor;
+}
+.sysEngine{background:#67f2ff;color:#67f2ff}
+.sysReactor{background:#ffc75e;color:#ffc75e}
+.sysShield{background:#64cfff;color:#64cfff}
+.sysCommand{background:#db74ff;color:#db74ff}
+.sysModule{background:#f1f1df;color:#f1f1df}
+#hfSystemInspector{
+  display:grid;
+  gap:9px;
+}
+#hfSystemInspector>label,
+#hfSystemInspector .hfFieldGrid label{
+  display:grid;
+  gap:4px;
+  color:rgba(194,231,240,.65);
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+#hfSystemInspector input,
+#hfSystemInspector select{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid rgba(103,225,248,.18);
+  background:rgba(0,7,12,.86);
+  color:#e4f9ff;
+  border-radius:5px;
+  padding:7px;
+  font:500 11px/1.2 inherit;
+}
+
+

@@ -1,0 +1,14341 @@
+/* sovereign-eclipse/src/main.js
+   Extracted unchanged from gold master 0.27.5 module script (lines 5262-20854).
+   Zero-feature-change mechanical split. Do not improve while cutting further.
+*/
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+import { BANK_IDS, BANK_LABELS, BANKS_BY_COUNT, CLASS_CATALOG } from './ships/classes.js';
+import {
+  RACE_CATALOG, LEGACY_RACE_ALIASES, PANTHEON_CODEX,
+  CLASS_ORDER, RACE_ORDER, PLAYER_CLASS_ORDER,
+  LEGACY_CLASS_NAME_INDEX, RACE_HULL_ROOT, CLASS_NAME_SUFFIX, RACE_FLEET_SIGNATURES
+} from './ships/races.js';
+import {
+  generatedHullName, createFleetCatalog, FRAME_CATALOG,
+  HULL_CLASS_PRICE, HULL_CLASS_TIER,
+  POD_FLEET, STARTER_FLEET, DESTROYER_FLEET, BATTLESHIP_FLEET, TITAN_FLEET,
+  PLAYER_SANDBOX_CLASSES
+} from './ships/catalog.js';
+import { TURRET_CATALOG } from './ships/weapons.js';
+import { MODULE_CATALOG, MODULE_RUNTIME } from './ships/modules.js';
+import { RESEARCH_PROJECTS } from './progression/research.js';
+import { MATERIAL_CATALOG, DRONE_CATALOG, INDUSTRY_RECIPES } from './progression/materials.js';
+import { CAPACITOR_CLASS_PROFILES, capacitorProfileFor } from './combat/capacitor.js';
+import { DAMAGE_PROFILES, WEAPON_GROUPS, WEAPON_ANATOMY } from './combat/damage.js';
+import { ENEMY_CLASS_CATALOG, ENEMY_RACE_DOCTRINES, CONTRACT_ENEMY_RACES } from './combat/enemies.js';
+import { GAME_SAVE_KEY, defaultSettings, persistSettings, loadSettings } from './core/save.js';
+import {
+  WORLD, EREBOS, CHAOS, AION, SECTOR_META, ZONE_WORLD,
+  PORTAL_LINKS, CONTRACTS, MICRO_ZJ_BATTLE_ZONES, bindPortalSettings
+} from './world/destinations.js';
+import { loadZone } from './world/zone-registry.js';
+
+
+const loading = document.getElementById('loading');
+const err = document.getElementById('err');
+const missionEl = document.getElementById('mission');
+const targetBox = document.getElementById('targetBox');
+const targetInfo = document.getElementById('targetInfo');
+const bossBanner = document.getElementById('bossBanner');
+const hitFlash = document.getElementById('hitFlash');
+const damageFlash = document.getElementById('damageFlash');
+
+const ui = {
+  shieldBar:document.getElementById('shieldBar'),
+  armorBar:document.getElementById('armorBar'),
+  hullBar:document.getElementById('hullBar'),
+  capBar:document.getElementById('capBar'),
+  shieldText:document.getElementById('shieldText'),
+  armorText:document.getElementById('armorText'),
+  hullText:document.getElementById('hullText'),
+  capText:document.getElementById('capText'),
+  autoFireState:document.getElementById('autoFireState'),
+  targetTelemetry:document.getElementById('targetTelemetry'),
+  enemyDoctrine:document.getElementById('enemyDoctrine'),
+  fleetThreatText:document.getElementById('fleetThreatText'),
+  worldAssetHud:document.getElementById('worldAssetHud'),
+  collisionWarning:document.getElementById('collisionWarning'),
+  tacticalPanel:document.getElementById('tacticalPanel'),
+  tacticalRadar:document.getElementById('tacticalRadar'),
+  contactList:document.getElementById('contactList'),
+  waveProgress:document.getElementById('waveProgress'),
+  deploymentFault:document.getElementById('deploymentFault'),
+  zoneActivityHud:document.getElementById('zoneActivityHud'),
+  groupFore:document.getElementById('groupFore'),
+  groupMid:document.getElementById('groupMid'),
+  groupAft:document.getElementById('groupAft'),
+  targetShield:document.getElementById('targetShield'),
+  targetArmor:document.getElementById('targetArmor'),
+  targetHull:document.getElementById('targetHull'),
+  speed:document.querySelector('#speed strong'),
+  cd:[
+    null,
+    document.getElementById('cd1'),
+    document.getElementById('cd2'),
+    document.getElementById('cd3'),
+    document.getElementById('cd4')
+  ]
+};
+
+const ui20={
+  root:document.getElementById('forgeHud20'),
+  shipName:document.getElementById('h20ShipName'),
+  shipMeta:document.getElementById('h20ShipMeta'),
+  shieldFill:document.getElementById('h20ShieldFill'),
+  armorFill:document.getElementById('h20ArmorFill'),
+  hullFill:document.getElementById('h20HullFill'),
+  capFill:document.getElementById('h20CapFill'),
+  shieldText:document.getElementById('h20ShieldText'),
+  armorText:document.getElementById('h20ArmorText'),
+  armorZones:document.getElementById('h20ArmorZones'),
+  hullText:document.getElementById('h20HullText'),
+  capText:document.getElementById('h20CapText'),
+  capStatus:document.getElementById('h20CapStatus'),
+  velocity:document.getElementById('h20Velocity'),
+  salvage:document.getElementById('h20Salvage'),
+  sector:document.getElementById('h20Sector'),
+  objective:document.getElementById('h20Objective'),
+  objectiveDistance:document.getElementById('h20ObjectiveDistance'),
+  target:document.getElementById('h20Target'),
+  targetName:document.getElementById('h20TargetName'),
+  targetMeta:document.getElementById('h20TargetMeta'),
+  targetRange:document.getElementById('h20TargetRange'),
+  targetShield:document.getElementById('h20TargetShield'),
+  targetArmor:document.getElementById('h20TargetArmor'),
+  targetHull:document.getElementById('h20TargetHull'),
+  targetAnatomy:document.getElementById('h20TargetAnatomy'),
+  targetWeakness:document.getElementById('h20TargetWeakness'),
+  weaponName:document.getElementById('h20WeaponName'),
+  weaponState:document.getElementById('h20WeaponState'),
+  weaponDoctrine:document.getElementById('h20WeaponDoctrine'),
+  contextType:document.getElementById('h20ContextType'),
+  contextTitle:document.getElementById('h20ContextTitle'),
+  contextBody:document.getElementById('h20ContextBody'),
+  contextPrompt:document.getElementById('h20ContextPrompt'),
+  prompt:document.getElementById('h20Prompt'),
+  microZJToggle:document.getElementById('microZJToggle'),
+  microZJOverlay:document.getElementById('microZJOverlay'),
+  microZJStatus:document.getElementById('microZJStatus'),
+  sys:{
+    reactor:document.getElementById('h20SysReactor'),
+    shield:document.getElementById('h20SysShield'),
+    drive:document.getElementById('h20SysDrive'),
+    weapons:document.getElementById('h20SysWeapons'),
+    damageControl:document.getElementById('h20DamageControl')
+  },
+  cd:[
+    null,
+    document.getElementById('h20Cd1'),
+    document.getElementById('h20Cd2'),
+    document.getElementById('h20Cd3'),
+    document.getElementById('h20Cd4')
+  ],
+  groups:Array.from(document.querySelectorAll('[data-h20-group]'))
+};
+
+
+try{
+  let settings=loadSettings();
+  bindPortalSettings(settings);
+  function saveSettings(){ persistSettings(settings); bindPortalSettings(settings); }
+  function capacitorProfile(frameId=settings.selectedShip){
+    const f=FRAME_CATALOG[frameId]||FRAME_CATALOG.savanah_starter;
+    return capacitorProfileFor(f);
+  }
+  function zoneBuildCtx(){
+    return {
+      THREE, WORLD, microWorldGroups, worldAssetGroups,
+      addMesh, addBillboardGlow, box, wedge, cyl,
+      createNavBeacon, createIndustrialPlatform, createLycheetahReliquary,
+      createServiceLane, createVeilChoir, createWorldRockField,
+      createSpectralBlackSun, createBlackSunCrown, createCelestialVeil, createWreckCluster,
+      glowAmber, glowCyan, glowGreen, glowPurple, glowRed, glowGold,
+      matArmorDark, matFerric, matGold, matOrganic, matVanta, matBone, matPrism, matWhite, matIvory
+    };
+  }
+  function buildAetherCrucibleWorld(){ return loadZone('aether_crucible', zoneBuildCtx()); }
+  function buildBlackSunMarchWorld(){ return loadZone('black_sun_march', zoneBuildCtx()); }
+  function buildGraveChoirWorld(){ return loadZone('grave_choir', zoneBuildCtx()); }
+  // ============================================================
+  // RENDERER
+  // ============================================================
+  const renderer = new THREE.WebGLRenderer({
+    antialias:true,
+    powerPreference:'high-performance'
+  });
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.12));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.36;
+  renderer.setClearColor(0x04070b,1);
+  document.body.prepend(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x04070b,.00175);
+
+  const camera = new THREE.PerspectiveCamera(46,innerWidth/innerHeight,.05,3000);
+  camera.position.set(0,34,88);
+
+  // Dedicated camera scratch objects; allocated once.
+  const _cameraQuatScratch=new THREE.Quaternion();
+  const _cameraDesired=new THREE.Vector3();
+  const _cameraLook=new THREE.Vector3();
+
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene,camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth*.60,innerHeight*.60),1.0,.62,.72);
+  bloom.threshold = .47;
+  bloom.strength = .92;
+  bloom.radius = .64;
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+
+  // ============================================================
+  // SHARED MATERIALS
+  // ============================================================
+  const matHull = new THREE.MeshStandardMaterial({color:0x111a21,metalness:1,roughness:.25});
+  const matHullDark = new THREE.MeshStandardMaterial({color:0x061016,metalness:1,roughness:.34});
+  const matArmor = new THREE.MeshStandardMaterial({color:0x2b3940,metalness:1,roughness:.17});
+  const matArmorDark = new THREE.MeshStandardMaterial({color:0x121b21,metalness:1,roughness:.24});
+  const matGold = new THREE.MeshStandardMaterial({
+    color:0xc38820,metalness:1,roughness:.11,emissive:0x321400,emissiveIntensity:.56
+  });
+  const matGoldHot = new THREE.MeshStandardMaterial({
+    color:0xffc454,metalness:1,roughness:.08,emissive:0x703000,emissiveIntensity:1.24
+  });
+  const matGlass = new THREE.MeshPhysicalMaterial({
+    color:0x5ce8f7,metalness:.18,roughness:.05,transparent:true,opacity:.74,
+    transmission:.08,emissive:0x0c8ea7,emissiveIntensity:2.25
+  });
+  const glowCyan = new THREE.MeshBasicMaterial({color:0x70f6ff,transparent:true,opacity:.96,toneMapped:false});
+  const glowGold = new THREE.MeshBasicMaterial({color:0xffcc66,transparent:true,opacity:.96,toneMapped:false});
+  const glowRed = new THREE.MeshBasicMaterial({color:0xff5a45,transparent:true,opacity:.95,toneMapped:false});
+  const glowPurple = new THREE.MeshBasicMaterial({color:0xb760ff,transparent:true,opacity:.94,toneMapped:false});
+  const matWhite = new THREE.MeshStandardMaterial({color:0xe8eef2,metalness:.82,roughness:.13});
+  const matIvory = new THREE.MeshStandardMaterial({color:0xd9cda8,metalness:.72,roughness:.20});
+  const matBone = new THREE.MeshStandardMaterial({color:0x86745f,metalness:.34,roughness:.42});
+  const matFerric = new THREE.MeshStandardMaterial({color:0x4a4b39,metalness:.91,roughness:.31});
+  const matVanta = new THREE.MeshStandardMaterial({color:0x08090d,metalness:1,roughness:.12,emissive:0x160000,emissiveIntensity:.45});
+  const matPrism = new THREE.MeshPhysicalMaterial({color:0xbfefff,metalness:.38,roughness:.05,transmission:.12,transparent:true,opacity:.90,emissive:0x0a5d78,emissiveIntensity:.85});
+  const matOrganic = new THREE.MeshStandardMaterial({color:0x102118,metalness:.42,roughness:.35,emissive:0x002f16,emissiveIntensity:.48});
+  const glowGreen = new THREE.MeshBasicMaterial({color:0x39ff69,transparent:true,opacity:.96,toneMapped:false});
+  const glowAmber = new THREE.MeshBasicMaterial({color:0xff9d38,transparent:true,opacity:.96,toneMapped:false});
+  const glowBlue = new THREE.MeshBasicMaterial({color:0x55bfff,transparent:true,opacity:.96,toneMapped:false});
+  const glowWhite = new THREE.MeshBasicMaterial({color:0xf8f7e8,transparent:true,opacity:.98,toneMapped:false});
+
+
+  // Generated hulls are rebuilt frequently while browsing the 63-ship roster.
+  // Their geometry MUST be disposed or WebGL/VRAM usage grows every selection.
+  const SHARED_VISUAL_MATERIALS=new Set([
+    matHull,matHullDark,matArmor,matArmorDark,matGold,matGoldHot,matGlass,
+    matWhite,matIvory,matBone,matFerric,matVanta,matPrism,matOrganic,
+    glowCyan,glowGold,glowRed,glowPurple,glowGreen,glowAmber,glowBlue,glowWhite
+  ]);
+
+  function isKnownSharedMaterial(mat){
+    if(!mat)return false;
+    if(SHARED_VISUAL_MATERIALS.has(mat))return true;
+    // enemyMats is declared later; this function is only called after setup.
+    try{
+      if(typeof enemyMats!=='undefined' && Object.values(enemyMats).includes(mat))return true;
+    }catch(_){}
+    return false;
+  }
+
+  function disposeGeneratedTree(root){
+    if(!root)return;
+    const materials=new Set();
+    root.traverse(obj=>{
+      if(obj.geometry?.dispose)obj.geometry.dispose();
+      const mats=Array.isArray(obj.material)?obj.material:[obj.material];
+      for(const mat of mats){
+        if(mat && !isKnownSharedMaterial(mat))materials.add(mat);
+      }
+    });
+    for(const mat of materials){
+      try{mat.dispose?.();}catch(_){}
+    }
+    while(root.children.length)root.remove(root.children[root.children.length-1]);
+  }
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+  function addMesh(g,m,p=[0,0,0],r=[0,0,0],s=[1,1,1],parent=scene){
+    const x = new THREE.Mesh(g,m);
+    x.position.set(...p);
+    x.rotation.set(...r);
+    x.scale.set(...s);
+    parent.add(x);
+    return x;
+  }
+
+  function box(w,h,d,m,p=[0,0,0],r=[0,0,0],parent=scene){
+    return addMesh(new THREE.BoxGeometry(w,h,d),m,p,r,[1,1,1],parent);
+  }
+
+  function cyl(rt,rb,h,seg,m,p=[0,0,0],r=[0,0,0],parent=scene){
+    return addMesh(new THREE.CylinderGeometry(rt,rb,h,seg,1,false),m,p,r,[1,1,1],parent);
+  }
+
+  function wedge(length,width,height,m,p=[0,0,0],parent=scene,frontScale=.16,rearScale=1,topBias=0){
+    const z=length/2,w=width/2,h=height/2,fs=frontScale,rs=rearScale;
+    const verts=new Float32Array([
+      -w*fs,-h,-z,  w*fs,-h,-z,  w*fs,h+topBias,-z,  -w*fs,h+topBias,-z,
+      -w*rs,-h,z,    w*rs,-h,z,    w*rs,h,z,            -w*rs,h,z
+    ]);
+    const idx=[
+      0,1,2,0,2,3,4,6,5,4,7,6,
+      0,4,5,0,5,1,3,2,6,3,6,7,
+      0,3,7,0,7,4,1,5,6,1,6,2
+    ];
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(verts,3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return addMesh(g,m,p,[0,0,0],[1,1,1],parent);
+  }
+
+  function tube(points,color=0x69f4ff,r=.07,parent=scene,opacity=.9){
+    const curve = new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+    const geo = new THREE.TubeGeometry(curve,80,r,7,false);
+    const mat = new THREE.MeshBasicMaterial({color,transparent:true,opacity,toneMapped:false});
+    return addMesh(geo,mat,[0,0,0],[0,0,0],[1,1,1],parent);
+  }
+
+  function addBillboardGlow(color=0x5ff4ff,scale=6,opacity=.12,parent=scene){
+    const canvas=document.createElement('canvas');
+    canvas.width=canvas.height=128;
+    const c=canvas.getContext('2d');
+    const g=c.createRadialGradient(64,64,0,64,64,64);
+    const cc=new THREE.Color(color);
+    g.addColorStop(0,`rgba(${Math.round(cc.r*255)},${Math.round(cc.g*255)},${Math.round(cc.b*255)},.9)`);
+    g.addColorStop(.25,`rgba(${Math.round(cc.r*255)},${Math.round(cc.g*255)},${Math.round(cc.b*255)},.22)`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=g;c.fillRect(0,0,128,128);
+    const tex=new THREE.CanvasTexture(canvas);
+    const mat=new THREE.SpriteMaterial({map:tex,transparent:true,opacity,blending:THREE.AdditiveBlending,depthWrite:false});
+    const s=new THREE.Sprite(mat);
+    s.scale.set(scale,scale,1);
+    parent.add(s);
+    return s;
+  }
+
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function lerp(a,b,t){return a+(b-a)*t}
+  function rand(a,b){return a+Math.random()*(b-a)}
+
+  // ============================================================
+  // LIGHTING
+  // ============================================================
+  scene.add(new THREE.HemisphereLight(0xb6ebff,0x06080b,.62));
+
+  const key = new THREE.DirectionalLight(0xffdf9d,8.2);
+  key.position.set(-70,82,70);
+  scene.add(key);
+
+  const rim = new THREE.DirectionalLight(0x74f1ff,8.4);
+  rim.position.set(70,18,-80);
+  scene.add(rim);
+
+  const blueFill = new THREE.PointLight(0x5e90ff,155,460,2);
+  blueFill.position.set(0,-25,80);
+  scene.add(blueFill);
+
+  const warmFill = new THREE.PointLight(0xffaa42,125,390,2);
+  warmFill.position.set(-80,48,-80);
+  scene.add(warmFill);
+
+  // ============================================================
+  // STARFIELD + ECLIPSE
+  // ============================================================
+  {
+    const count=9800;
+    const pos=new Float32Array(count*3);
+    const col=new Float32Array(count*3);
+    for(let i=0;i<count;i++){
+      const R=rand(260,1450);
+      const a=Math.random()*Math.PI*2;
+      const z=rand(-1,1);
+      const h=Math.sqrt(Math.max(0,1-z*z));
+      pos[i*3]=Math.cos(a)*h*R;
+      pos[i*3+1]=z*R*.55;
+      pos[i*3+2]=Math.sin(a)*h*R;
+      const q=Math.random();
+      if(q<.055) col.set([.30,.85,1],i*3);
+      else if(q<.10) col.set([1,.69,.24],i*3);
+      else{
+        const b=rand(.35,1);
+        col.set([b*.80,b*.91,b],i*3);
+      }
+    }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    g.setAttribute('color',new THREE.BufferAttribute(col,3));
+    scene.add(new THREE.Points(g,new THREE.PointsMaterial({
+      size:.62,sizeAttenuation:true,vertexColors:true,transparent:true,opacity:.92
+    })));
+  }
+
+  const eclipse = new THREE.Group();
+  eclipse.position.set(0,90,-820);
+  scene.add(eclipse);
+
+  addMesh(new THREE.SphereGeometry(72,64,32),new THREE.MeshBasicMaterial({color:0x000000}),[0,0,0],[0,0,0],[1,1,1],eclipse);
+
+  const eclipseRings=[];
+  for(let i=0;i<8;i++){
+    const rr=78+i*9;
+    const mat=new THREE.MeshBasicMaterial({
+      color:i<4?0xff9f31:0x58dfff,
+      transparent:true,opacity:.21-i*.017,side:THREE.DoubleSide,toneMapped:false
+    });
+    const r=addMesh(new THREE.RingGeometry(rr,rr+2.6,220),mat,[0,0,0],[Math.PI/2.23,.16+i*.025,.03*i],[1,1,1],eclipse);
+    r.userData.spin=(i%2?1:-1)*(.002+.001*i);
+    eclipseRings.push(r);
+  }
+
+  // distant nebula sprites
+  const bgGlowTex = (() => {
+    const c=document.createElement('canvas');c.width=c.height=256;
+    const x=c.getContext('2d');
+    const g=x.createRadialGradient(128,128,0,128,128,128);
+    g.addColorStop(0,'rgba(104,235,255,.22)');
+    g.addColorStop(.3,'rgba(35,92,144,.10)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=g;x.fillRect(0,0,256,256);
+    return new THREE.CanvasTexture(c);
+  })();
+
+  for(let i=0;i<30;i++){
+    const mat=new THREE.SpriteMaterial({
+      map:bgGlowTex,color:i%5===0?0xff8535:0x4bcaff,
+      transparent:true,opacity:rand(.025,.09),blending:THREE.AdditiveBlending,depthWrite:false
+    });
+    const s=new THREE.Sprite(mat);
+    s.position.set(rand(-600,600),rand(-260,260),rand(-1000,-320));
+    const sc=rand(80,240);s.scale.set(sc,sc,1);
+    scene.add(s);
+  }
+
+  // ============================================================
+  // AUDIO SYNTH
+  // ============================================================
+  let audioCtx=null;
+  function ensureAudio(){
+    if(!audioCtx){
+      audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    }
+    if(audioCtx.state==='suspended') audioCtx.resume();
+  }
+
+  function synthShot(freq=180,dur=.08,vol=.06,type='sawtooth'){
+    if(!audioCtx) return;
+    const o=audioCtx.createOscillator();
+    const g=audioCtx.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(Math.max(40,freq*.45),audioCtx.currentTime+dur);
+    g.gain.setValueAtTime(vol*settings.volume,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur);
+    o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+dur);
+  }
+
+  function synthBoom(vol=.10){
+    if(!audioCtx) return;
+    const dur=.45;
+    const buffer=audioCtx.createBuffer(1,audioCtx.sampleRate*dur,audioCtx.sampleRate);
+    const data=buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++){
+      const env=1-i/data.length;
+      data[i]=(Math.random()*2-1)*env*env;
+    }
+    const src=audioCtx.createBufferSource();
+    const filter=audioCtx.createBiquadFilter();
+    const gain=audioCtx.createGain();
+    filter.type='lowpass';filter.frequency.value=480;
+    gain.gain.setValueAtTime(vol,audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur);
+    src.buffer=buffer;src.connect(filter);filter.connect(gain);gain.connect(audioCtx.destination);
+    src.start();
+  }
+
+  // ============================================================
+  // FX SYSTEM
+  // ============================================================
+  const fx=[];
+  const projectiles=[];
+  const MAX_PROJECTILES=110;
+  const MAX_MINOR_FX=44;
+  const projectileGeo=new THREE.SphereGeometry(1,6,4);
+  const projectileMaterials=new Map();
+  function projectileMaterial(color){
+    if(!projectileMaterials.has(color)){
+      projectileMaterials.set(color,new THREE.MeshBasicMaterial({
+        color,transparent:true,opacity:.98,toneMapped:false
+      }));
+    }
+    return projectileMaterials.get(color);
+  }
+
+  function spawnExplosion(pos,color=0xff8b38,scale=5,major=false){
+    cameraShake=Math.max(Number.isFinite(cameraShake)?cameraShake:0,major?.72:.10);
+    if(!major && fx.length>=MAX_MINOR_FX)return;
+    const g=new THREE.Group();g.position.copy(pos);scene.add(g);
+
+    const core=addMesh(new THREE.SphereGeometry(1,major?14:8,major?10:6),new THREE.MeshBasicMaterial({
+      color,transparent:true,opacity:.92,toneMapped:false
+    }),[0,0,0],[0,0,0],[scale*.5,scale*.5,scale*.5],g);
+
+    const ring=addMesh(new THREE.RingGeometry(.7,1,major?32:18),new THREE.MeshBasicMaterial({
+      color,transparent:true,opacity:.72,side:THREE.DoubleSide,toneMapped:false
+    }),[0,0,0],[0,0,0],[scale,scale,scale],g);
+    ring.lookAt(camera.position);
+
+    let light=null;
+    if(major){
+      light=new THREE.PointLight(color,95,130,2);
+      g.add(light);
+    }
+
+    fx.push({
+      type:'explosion',group:g,core,ring,light,
+      age:0,life:major?1.15:.48,scale
+    });
+    if(major)synthBoom(.14);
+  }
+
+  function spawnBeam(from,to,color=0x64f5ff,width=.16,life=.14){
+    const dir=new THREE.Vector3().subVectors(to,from);
+    const len=dir.length();
+    const mid=new THREE.Vector3().addVectors(from,to).multiplyScalar(.5);
+    const geo=new THREE.CylinderGeometry(width,width*.55,len,8,1,false);
+    const mat=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.95,toneMapped:false});
+    const m=new THREE.Mesh(geo,mat);
+    m.position.copy(mid);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
+    scene.add(m);
+    fx.push({type:'beam',mesh:m,age:0,life});
+  }
+
+  function spawnShieldFlash(entity,pos,color=0x5eefff){
+    if(!entity.shieldMesh) return;
+    // Localized arc only: no giant full-hull "bubble" on normal damage.
+    const now=performance.now();
+    if(entity._lastShieldRing && now-entity._lastShieldRing<85)return;
+    entity._lastShieldRing=now;
+    if(fx.length>=MAX_MINOR_FX)return;
+    const spark=addMesh(new THREE.RingGeometry(.72,1.0,20),new THREE.MeshBasicMaterial({
+      color,transparent:true,opacity:.78,side:THREE.DoubleSide,toneMapped:false,
+      blending:THREE.AdditiveBlending,depthWrite:false
+    }),[pos.x,pos.y,pos.z],[0,0,0],[3.2,3.2,3.2],scene);
+    spark.lookAt(camera.position);
+    fx.push({type:'shieldRing',mesh:spark,age:0,life:.20});
+  }
+
+  function createProjectile(from,to,speed,damage,owner,color=0x68f5ff,radius=.22,targetNode=null,homingTarget=null,damageType='balanced',weaponId=null,intendedTarget=null){
+    // Runtime safety: malformed weapon/NPC data may not poison the combat loop.
+    if(
+      !from || !to ||
+      !Number.isFinite(from.x) || !Number.isFinite(from.y) || !Number.isFinite(from.z) ||
+      !Number.isFinite(to.x) || !Number.isFinite(to.y) || !Number.isFinite(to.z)
+    ){
+      console.warn('Projectile rejected // invalid endpoints',{from,to,weaponId});
+      return null;
+    }
+
+    speed=Number(speed);
+    damage=Number(damage);
+    radius=Number(radius);
+
+    if(!Number.isFinite(speed) || speed<=0)speed=220;
+    if(!Number.isFinite(damage) || damage<0)damage=0;
+    if(!Number.isFinite(radius) || radius<=0)radius=.22;
+
+    if(projectiles.length>=MAX_PROJECTILES){
+      const old=projectiles.shift();
+      if(old?.mesh?.parent)old.mesh.parent.remove(old.mesh);
+    }
+
+    const dir=to.clone().sub(from);
+    if(dir.lengthSq()<.000001)dir.set(0,0,-1);
+    dir.normalize();
+
+    const mesh=new THREE.Mesh(projectileGeo,projectileMaterial(color));
+    mesh.position.copy(from);
+    mesh.scale.set(radius,radius,radius*4.2);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),dir);
+    scene.add(mesh);
+
+    const record={
+      mesh,
+      vel:dir.multiplyScalar(speed),
+      damage,
+      owner,
+      life:2.35,
+      radius,
+      prev:from.clone(),
+      color,
+      targetNode,
+      homingTarget,
+      speed,
+      damageType,
+      weaponId,
+      intendedTarget
+    };
+
+    projectiles.push(record);
+    return record;
+  }
+
+  function updateProjectiles(dt){
+    for(let i=projectiles.length-1;i>=0;i--){
+      const p=projectiles[i];
+
+      try{
+        if(
+          !p || !p.mesh || !p.vel ||
+          !Number.isFinite(p.life) ||
+          !Number.isFinite(p.radius)
+        ){
+          throw new Error('malformed projectile record');
+        }
+
+        p.life-=dt;
+        p.prev.copy(p.mesh.position);
+
+        if(p.homingTarget && !p.homingTarget.dead && !p.homingTarget.destroyed && p.homingTarget.group){
+          const desired=p.homingTarget.group.position.clone().sub(p.mesh.position);
+          if(desired.lengthSq()>.000001){
+            desired.normalize().multiplyScalar(p.speed);
+            p.vel.lerp(desired,clamp(dt*1.7,0,.12));
+            if(p.vel.lengthSq()>.0001){
+              p.mesh.quaternion.setFromUnitVectors(
+                new THREE.Vector3(0,0,1),
+                p.vel.clone().normalize()
+              );
+            }
+          }
+        }
+
+        p.mesh.position.addScaledVector(p.vel,dt);
+        p.mesh.rotation.x+=dt*5;
+        p.mesh.rotation.y+=dt*7;
+
+        let hit=false;
+
+        if(p.owner===player){
+          for(const e of enemies){
+            if(!e || e.dead || !e.group)continue;
+            if(p.mesh.position.distanceTo(e.group.position) < (e.radius||6) + p.radius){
+              if(e.worldActor && e.alignment!=='hostile')provokeLivingActor(e,'WEAPON IMPACT');
+              applyDamage(
+                e,p.damage,p.mesh.position.clone(),
+                p.weaponId||'projectile',
+                p.damageType||'balanced'
+              );
+              hit=true;
+              break;
+            }
+          }
+        }else{
+          const npcTarget=p.intendedTarget && p.intendedTarget!==player
+            ?p.intendedTarget:null;
+
+          if(npcTarget && !npcTarget.dead && npcTarget.group){
+            if(p.mesh.position.distanceTo(npcTarget.group.position) < (npcTarget.radius||6)+p.radius+.8){
+              applyDamage(
+                npcTarget,p.damage,p.mesh.position.clone(),
+                p.weaponId||'npc_projectile',
+                p.damageType||'balanced'
+              );
+              hit=true;
+            }
+          }else if(!player.destroyed){
+            const frameRadius=Number(currentFrame().radius)||8;
+
+            if(p.targetNode && !p.targetNode.disabled && !p.targetNode.frameDisabled){
+              const nodePos=systemWorldPosition(p.targetNode);
+              if(nodePos && p.mesh.position.distanceTo(nodePos) < p.radius+2.4){
+                applyDamage(
+                  player,p.damage,p.mesh.position.clone(),
+                  p.weaponId||'hostile_projectile',
+                  p.damageType||'balanced'
+                );
+                // 0.26.8: exact impact position now drives the unified
+                // internal-system damage path. No hidden second hit.
+                hit=true;
+              }
+            }
+
+            if(!hit && p.mesh.position.distanceTo(player.group.position) < frameRadius+p.radius+1.2){
+              applyDamage(
+                player,p.damage,p.mesh.position.clone(),
+                p.weaponId||'hostile_projectile',
+                p.damageType||'balanced'
+              );
+              hit=true;
+            }
+          }
+        }
+
+        if(hit || p.life<=0){
+          const pos=p.mesh.position.clone();
+
+          if(p.mesh.parent)p.mesh.parent.remove(p.mesh);
+
+          if(hit){
+            spawnExplosion(
+              pos,
+              p.color||0x67efff,
+              Math.max(.6,p.radius*7.5),
+              false
+            );
+          }
+
+          projectiles.splice(i,1);
+        }
+      }catch(error){
+        console.warn('Projectile record recovered:',error,p);
+
+        try{
+          if(p?.mesh?.parent)p.mesh.parent.remove(p.mesh);
+        }catch(_){}
+
+        projectiles.splice(i,1);
+      }
+    }
+  }
+
+
+  // ============================================================
+  // PLAYER TITAN
+  // ============================================================
+  function createPlayerTitan(){
+    const group=new THREE.Group();
+    scene.add(group);
+
+    const model=new THREE.Group();
+    group.add(model);
+
+    // 0.22 CLEAN PLAYER RIG:
+    // no old Sovereign Eclipse hull geometry lives here anymore.
+    // The active faction hull is generated entirely in frameDecor.
+    const reactor=new THREE.Group();
+    reactor.position.set(0,6,4);
+    model.add(reactor);
+    const reactorCore=addMesh(
+      new THREE.SphereGeometry(2.1,22,14),
+      new THREE.MeshBasicMaterial({color:0x000000}),
+      [0,0,0],[0,0,0],[1,1,1],reactor
+    );
+    const rA=addMesh(new THREE.TorusGeometry(3.3,.18,10,48),glowGold,[0,0,0],[Math.PI/2,0,0],[1,1,1],reactor);
+    const rB=addMesh(new THREE.TorusGeometry(4.1,.10,9,48),glowCyan,[0,0,0],[Math.PI/2,0,0],[1,1,1],reactor);
+
+    const turrets=[];
+    function turret(p,side=1,gold=false){
+      const g=new THREE.Group();
+      g.position.set(...p);
+      model.add(g);
+      const base=cyl(.82,1.0,.56,14,matHullDark,[0,0,0],[Math.PI/2,0,0],g);
+      const crown=cyl(.58,.58,.24,14,gold?matGoldHot:matGlass,[0,.36,0],[Math.PI/2,0,0],g);
+      const barrels=[];
+      for(const off of [-.21,.21]){
+        barrels.push(cyl(.085,.11,2.55,7,gold?matGold:matArmor,[off,.48,-1.06],[Math.PI/2,0,0],g));
+      }
+      const muzzle=new THREE.Object3D();
+      muzzle.position.set(0,.48,-2.35);
+      g.add(muzzle);
+      const emitter=addMesh(new THREE.SphereGeometry(.11,7,5),glowCyan,[0,.48,-2.38],[0,0,0],[1,1,1],g);
+      turrets.push({
+        group:g,muzzle,emitter,barrels,base,crown,side,gold,
+        cool:rand(0,.2),basePos:new THREE.Vector3(...p),weaponId:'autocannon'
+      });
+    }
+
+    // 0.24: turret meshes are reusable hardware objects only.
+    // Their actual coordinates/banks are authored by the ship blueprint.
+    for(let i=0;i<18;i++)turret([0,0,0],i%2?1:-1,i%6===0);
+
+    const engines=[];
+    // 0.25: reusable engine objects only. Systems Forge owns placement.
+    const engineLayout=Array.from({length:9},()=>[0,0,0]);
+    engineLayout.forEach((p,i)=>{
+      const eg=new THREE.Group();
+      eg.position.set(...p);
+      model.add(eg);
+      cyl(1.45,1.85,2.8,18,matHullDark,[0,0,0],[Math.PI/2,0,0],eg);
+      cyl(1.05,1.05,.26,18,i===6?glowGold:glowCyan,[0,0,1.58],[Math.PI/2,0,0],eg);
+      const plumeMat=new THREE.MeshBasicMaterial({
+        color:i===6?0xffc55f:0x60f5ff,transparent:true,opacity:.10,
+        side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false
+      });
+      const plume=addMesh(new THREE.ConeGeometry(1.65,12,18,1,true),plumeMat,[0,0,7.0],[Math.PI/2,0,0],[1,1,1],eg);
+      engines.push({plume,phase:Math.random()*6.28,group:eg});
+    });
+
+    const systemNodes=[];
+    function addSystemNode(id,name,type,p,maxHp,links={}){
+      const anchor=new THREE.Group();
+      anchor.position.set(...p);
+      model.add(anchor);
+
+      const ringMat=new THREE.MeshBasicMaterial({
+        color:type==='critical'?0xffc85d:0x67f2ff,
+        transparent:true,opacity:.82,toneMapped:false,depthWrite:false
+      });
+      const coreMat=new THREE.MeshBasicMaterial({
+        color:type==='critical'?0xffd171:0xa5fbff,
+        transparent:true,opacity:.92,toneMapped:false
+      });
+      const ring=addMesh(new THREE.TorusGeometry(.72,.10,9,26),ringMat,[0,0,0],[Math.PI/2,0,0],[1,1,1],anchor);
+      const core=addMesh(new THREE.SphereGeometry(.17,9,6),coreMat,[0,.08,0],[0,0,0],[1,1,1],anchor);
+
+      const n={
+        id,name,type,anchor,ring,core,
+        hp:maxHp,maxHp,disabled:false,frameDisabled:false,
+        turretIndices:links.turretIndices||[],
+        engineIndices:links.engineIndices||[]
+      };
+      systemNodes.push(n);
+      return n;
+    }
+
+    const nodeDefs=[
+      ['WPN_FL','Fore Battery // Port','weapon',[0,4,0],195,{turretIndices:[]}],
+      ['WPN_FR','Fore Battery // Starboard','weapon',[0,4,0],195,{turretIndices:[]}],
+      ['WPN_ML','Mid Battery // Port','weapon',[0,4,0],195,{turretIndices:[]}],
+      ['WPN_MR','Mid Battery // Starboard','weapon',[0,4,0],195,{turretIndices:[]}],
+      ['WPN_AL','Aft Battery // Port','weapon',[0,4,0],195,{turretIndices:[]}],
+      ['WPN_AR','Aft Battery // Starboard','weapon',[0,4,0],195,{turretIndices:[]}],
+      ['ENG_L','Drive // Port','drive',[0,3,0],260,{engineIndices:[]}],
+      ['ENG_R','Drive // Starboard','drive',[0,3,0],260,{engineIndices:[]}],
+      ['SHIELD','Shield Array','critical',[0,6,0],310,{}],
+      ['REACTOR','Reactor Core','critical',[0,6,0],360,{engineIndices:[]}],
+      ['COMMAND','Command Core','critical',[0,7,0],280,{}]
+    ];
+    for(const d of nodeDefs)addSystemNode(...d);
+
+    for(const n of systemNodes){
+      for(const i of n.turretIndices)if(turrets[i])turrets[i].systemNode=n;
+      for(const i of n.engineIndices)if(engines[i])engines[i].systemNode=n;
+    }
+
+    const shieldMat=new THREE.MeshBasicMaterial({
+      color:0x58dfff,transparent:true,opacity:0,
+      side:THREE.BackSide,depthWrite:false,toneMapped:false
+    });
+    const shieldMesh=addMesh(new THREE.SphereGeometry(1,28,18),shieldMat,[0,1,0],[0,0,0],[36,22,75],group);
+
+    const light=new THREE.PointLight(0xffc45b,50,120,2);
+    light.position.set(0,10,4);
+    group.add(light);
+
+    return {
+      group,model,turrets,engines,systemNodes,shieldMesh,reactor,rA,rB,reactorCore,
+      frameDecor:null,visualModules:null,hardpointVisuals:null,systemVisuals:null,
+      velocity:new THREE.Vector3(),
+      yawVel:0,pitchVel:0,rollVel:0,
+      shield:1000,maxShield:1000,
+      armor:850,maxArmor:850,
+      hull:700,maxHull:700,
+      capacitor:850,maxCapacitor:850,
+      baseCapRegen:64,
+      autoFire:true,
+      selectedWeaponGroup:'fore',
+      groupAuto:{fore:true,mid:true,aft:true},
+      lastCapSpend:-99,capWarnAt:-99,lastHit:-99,
+      shieldFlash:0,overdrive:0,inversion:0,destroyed:false,manualCooldown:0
+    };
+  }
+
+  const player=createPlayerTitan();
+  player.group.position.set(0,0,100);
+
+  const flightCommand={
+    mode:'manual',       // manual | approach | orbit
+    target:null,
+    orbitRange:85
+  };
+
+  function cancelFlightCommand(silent=false){
+    if(flightCommand.mode==='manual')return;
+    flightCommand.mode='manual';
+    flightCommand.target=null;
+    if(!silent)flashMission('FLIGHT COMMAND','MANUAL CONTROL',.35);
+  }
+
+  function commandApproach(){
+    if(!selected || selected.dead || !selected.group){
+      flashMission('FLIGHT COMMAND','NO TARGET SELECTED',.45);
+      return;
+    }
+    flightCommand.mode='approach';
+    flightCommand.target=selected;
+    flashMission(
+      'FLIGHT COMMAND',
+      'APPROACH '+(selected.cfg?.name||'TARGET'),
+      .55
+    );
+  }
+
+  function commandOrbit(){
+    if(!selected || selected.dead || !selected.group){
+      flashMission('FLIGHT COMMAND','NO TARGET SELECTED',.45);
+      return;
+    }
+    flightCommand.mode='orbit';
+    flightCommand.target=selected;
+    const frame=currentFrame();
+    flightCommand.orbitRange=Math.max(
+      65,
+      Math.min(190,(frame.cameraDist||70)*1.15)
+    );
+    flashMission(
+      'FLIGHT COMMAND',
+      'ORBIT '+(selected.cfg?.name||'TARGET')+
+        ' // '+Math.round(flightCommand.orbitRange)+'U',
+      .55
+    );
+  }
+
+  function systemNode(id){
+    return player.systemNodes.find(n=>n.id===id);
+  }
+
+  function systemWorldPosition(node,out=new THREE.Vector3()){
+    if(!node)return out.copy(player.group.position);
+    return node.anchor.getWorldPosition(out);
+  }
+
+  function nodeRatio(node){
+    return node ? clamp(node.hp/node.maxHp,0,1) : 0;
+  }
+
+  function nodeOnline(id){
+    const n=systemNode(id);
+    return !!n && !n.disabled && !n.frameDisabled;
+  }
+
+  function weaponBanksOnline(){
+    return player.systemNodes.filter(n=>n.type==='weapon'&&!n.disabled&&!n.frameDisabled).length;
+  }
+
+  function driveIntegrity(){
+    const l=systemNode('ENG_L'),r=systemNode('ENG_R'),core=systemNode('REACTOR');
+    return clamp((nodeRatio(l)+nodeRatio(r))*.5*((core&&core.disabled)?.72:1),.12,1);
+  }
+
+  function reactorIntegrity(){
+    const r=systemNode('REACTOR');
+    return r?nodeRatio(r):1;
+  }
+
+  function effectiveCapMax(){
+    return Math.max(40,player.maxCapacitor*(.30+.70*reactorIntegrity()));
+  }
+
+  function capacitorPercent(){
+    return clamp(player.capacitor/Math.max(1,effectiveCapMax()),0,1);
+  }
+
+  function consumeCap(amount,reason='',warn=true){
+    const cost=Math.max(0,Number(amount)||0);
+
+    if(player.capacitor+1e-6<cost){
+      if(warn&&gameTime-player.capWarnAt>.65){
+        player.capWarnAt=gameTime;
+        flashMission('CAPACITOR LOW',reason||'REACTOR OUTPUT INSUFFICIENT',.55);
+      }
+      return false;
+    }
+
+    player.capacitor=Math.max(0,player.capacitor-cost);
+    player.lastCapSpend=gameTime;
+    player.capSpendAccumulator=(player.capSpendAccumulator||0)+cost;
+    return true;
+  }
+
+
+  function capacitorRechargeCurve(pct){
+    const p=clamp(Number(pct)||0,0,1);
+    const peak=Math.exp(-Math.pow((p-.28)/.24,2));
+    return .42+1.18*peak;
+  }
+
+  function capacitorRegenRateAt(pct,stats=moduleStats,reactor=reactorIntegrity()){
+    const base=capacitorProfile().regen*(stats.capRegen||1);
+    return base*(.12+.88*clamp(reactor,0,1))*capacitorRechargeCurve(pct);
+  }
+
+  function theoreticalWeaponCapDrain(stats=moduleStats){
+    const frame=currentFrame();
+    let drain=0;
+
+    for(const bankId of frame.activeBanks){
+      const weapon=bankWeapon(bankId);
+      const node=systemNode(bankId);
+      const sockets=Math.max(1,node?.turretIndices?.length||1);
+      const cycle=.62/Math.max(.05,(stats.turretRate||1)*(weapon.rate||1));
+      drain+=sockets*((weapon.cap||0)*(stats.weaponCapUse||1))/Math.max(.05,cycle);
+    }
+
+    return drain;
+  }
+
+  function theoreticalTankCapDrain(loadout=settings.loadout){
+    const runtime=moduleRuntime(loadout?.defense);
+    if(!runtime||!moduleAutomationEnabled('defense'))return 0;
+    return runtime.cap/Math.max(.1,runtime.cycle);
+  }
+
+  function capacitorStabilityProfile(stats=moduleStats,loadout=settings.loadout){
+    const cp=capacitorProfile();
+    const capacity=cp.max*(stats.capacitor||1);
+    const weaponDrain=theoreticalWeaponCapDrain(stats);
+    const tankDrain=theoreticalTankCapDrain(loadout);
+    const sustained=weaponDrain+tankDrain;
+    const boostDrain=24*(stats.boostCapUse||1);
+
+    let stablePct=null;
+    let peakRegen=0;
+
+    for(let i=5;i<=95;i++){
+      const pct=i/100;
+      const r=capacitorRegenRateAt(pct,stats,1);
+      peakRegen=Math.max(peakRegen,r);
+      if(r>=sustained)stablePct=pct;
+    }
+
+    const stable=sustained<=peakRegen+.001;
+    const baseRegen=cp.regen*(stats.capRegen||1);
+    const drySeconds=stable
+      ?Infinity
+      :capacity/Math.max(1,sustained-baseRegen*.92);
+
+    return {
+      capacity,peakRegen,weaponDrain,tankDrain,sustained,
+      boostDrain,stable,stablePct,drySeconds,
+      pressure:sustained/Math.max(1,peakRegen)
+    };
+  }
+
+  function capacitorFitStateText(p){
+    if(p.stable)return p.sustained<p.peakRegen*.48?'CAP STABLE // STRONG':'CAP STABLE';
+    if(p.drySeconds>45)return 'UNSTABLE // LONG ENDURANCE';
+    if(p.drySeconds>20)return 'UNSTABLE // PRESSURED';
+    return 'CAP CRITICAL';
+  }
+
+  function renderCapacitorFitting(stats=moduleStats){
+    const p=capacitorStabilityProfile(stats);
+    const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
+
+    set('capFitCapacity',Math.round(p.capacity));
+    set('capFitPeak',p.peakRegen.toFixed(1)+'/s');
+    set('capFitWeapons',p.weaponDrain.toFixed(1)+'/s');
+    set('capFitTank',p.tankDrain.toFixed(1)+'/s');
+    set('capFitBoost',p.boostDrain.toFixed(1)+'/s');
+    set('capFitEquilibrium',p.stable
+      ?(p.stablePct?Math.round(p.stablePct*100)+'%':'FULL')
+      :Math.round(p.drySeconds)+'s TO DRY');
+
+    const state=document.getElementById('capFitState');
+    if(state){
+      state.textContent=capacitorFitStateText(p);
+      state.classList.toggle('warn',!p.stable&&p.drySeconds>20);
+      state.classList.toggle('bad',!p.stable&&p.drySeconds<=20);
+    }
+
+    const gauge=document.getElementById('capFitGaugeFill');
+    if(gauge)gauge.style.width=(clamp(p.pressure,0,1.4)/1.4*100)+'%';
+
+    const summary=document.getElementById('capFitSummary');
+    if(summary){
+      summary.textContent=
+        'FULL BATTERY PRESSURE '+p.sustained.toFixed(1)+'/s // PEAK REACTOR '+p.peakRegen.toFixed(1)+'/s // '+
+        (p.stable
+          ?'SUSTAINABLE UNDER AUTOMATED BATTERIES + ACTIVE TANK.'
+          :'THIS BUILD WILL CAP OUT UNDER CONTINUOUS FIRE. PULSE BATTERIES, HOLD ACTIVE TANK OR FIT REACTOR SUPPORT.');
+    }
+    return p;
+  }
+
+  function capacitorCombatReadout(){
+    const pct=capacitorPercent();
+    const regen=Number(player.capRegenNow)||0;
+    const drain=Number(player.capDrainObserved)||0;
+    const active=activeDefenseModule();
+    const tank=active&&moduleAutomationEnabled('defense')?' // '+active.runtime.label:'';
+
+    if(pct<.12)return 'CAP CRITICAL // '+Math.round(pct*100)+'% // +'+regen.toFixed(1)+' / -'+drain.toFixed(1)+tank;
+    if(pct<.30)return 'CAP PRESSURE // '+Math.round(pct*100)+'% // +'+regen.toFixed(1)+' / -'+drain.toFixed(1)+tank;
+    return 'CAP // +'+regen.toFixed(1)+' / -'+drain.toFixed(1)+' PER S'+tank;
+  }
+
+  function updateCapacitor(dt){
+    const maxCap=effectiveCapMax();
+    player.capacitor=Math.min(player.capacitor,maxCap);
+
+    player.capSampleClock=(player.capSampleClock||0)+dt;
+    if(player.capSampleClock>=.75){
+      player.capDrainObserved=(player.capSpendAccumulator||0)/Math.max(.05,player.capSampleClock);
+      player.capSpendAccumulator=0;
+      player.capSampleClock=0;
+    }
+
+    const pct=capacitorPercent();
+    let regen=capacitorRegenRateAt(pct,moduleStats,reactorIntegrity());
+
+    if(player.overdrive>0)regen*=.76;
+    if(keys['Space'])regen*=.62;
+
+    player.capRegenNow=regen;
+    player.capacitor=Math.min(maxCap,player.capacitor+regen*dt);
+
+    const visualPct=capacitorPercent();
+    if(player.rA?.material)player.rA.material.opacity=.20+visualPct*.42;
+    if(player.rB?.material)player.rB.material.opacity=.15+visualPct*.36;
+  }
+
+  function resetSystemNodes(){
+    for(const n of player.systemNodes){
+      n.hp=n.maxHp;n.disabled=false;
+      n.ring.material.color.setHex(n.type==='critical'?0xffc85d:0x67f2ff);
+      n.core.material.color.setHex(n.type==='critical'?0xffd171:0xa5fbff);
+      n.ring.material.opacity=.82;n.core.material.opacity=.92;
+    }
+    for(const t of player.turrets)t.group.visible=!t.systemNode?.frameDisabled;
+    for(const e of player.engines)e.group.visible=true;
+    applyHardpointBlueprint();
+    applySystemBlueprint();
+    applyTurretBuildVisuals();
+    renderSystemIntegrity();
+  }
+
+  function flashSystemFailure(node){
+    const el=document.getElementById('damageCallout');
+    if(!el)return;
+    el.textContent=node.name+' // OFFLINE';
+    el.style.opacity='1';
+    setTimeout(()=>el.style.opacity='0',900);
+  }
+
+  function disableSystemNode(node){
+    if(!node || node.disabled)return;
+    node.disabled=true;node.hp=0;
+    node.ring.material.color.setHex(0xff4f43);
+    node.core.material.color.setHex(0x51100c);
+    node.ring.material.opacity=.78;
+    node.core.material.opacity=.42;
+
+    for(const idx of node.turretIndices){
+      const t=player.turrets[idx];
+      if(t)t.group.visible=false;
+    }
+
+    flashSystemFailure(node);
+    const wp=systemWorldPosition(node);
+    spawnExplosion(wp,0xff5948,node.type==='critical'?3.7:2.2,false);
+    synthBoom(node.type==='critical'?.10:.05);
+  }
+
+  function damageSystemNode(node,amount,hitPos){
+    if(!node || node.disabled || node.frameDisabled || amount<=0)return;
+    node.hp=Math.max(0,node.hp-amount);
+    if(node.id==='REACTOR')player.capacitor=Math.min(player.capacitor,effectiveCapMax());
+
+    const r=nodeRatio(node);
+    node.ring.material.color.setHex(r<.30?0xff5b47:r<.60?0xffb44c:(node.type==='critical'?0xffc85d:0x67f2ff));
+    node.ring.material.opacity=.65+Math.sin(gameTime*8)*.12;
+
+    if(Math.random()<.50)spawnExplosion(hitPos.clone(),r<.35?0xff5d46:0xffa549,1.1,false);
+    if(node.hp<=0)disableSystemNode(node);
+    renderSystemIntegrity();
+  }
+
+  function pickEnemySubsystem(enemy){
+    const online=player.systemNodes.filter(n=>!n.disabled&&!n.frameDisabled);if(!online.length)return null;
+    let pool=online,cls=enemy.classId||enemy.type;
+    if(cls==='titan'||cls==='dreadnought'){
+      const critical=online.filter(n=>['REACTOR','SHIELD','ENG_L','ENG_R','COMMAND'].includes(n.id));if(critical.length&&Math.random()<.78)pool=critical;
+    }else if(cls==='battleship'||cls==='cruiser'){
+      const important=online.filter(n=>n.type==='weapon'||n.type==='drive'||n.id==='SHIELD');if(important.length&&Math.random()<.66)pool=important;
+    }else if(cls==='destroyer'){
+      const important=online.filter(n=>n.type==='weapon'||n.type==='drive');if(important.length&&Math.random()<.62)pool=important;
+    }
+    if(['abyssal','blackhole'].includes(enemy.raceId)&&Math.random()<.34){const reactor=online.find(n=>n.id==='REACTOR');if(reactor)return reactor;}
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
+  function renderSystemIntegrity(forceGrid=false){
+    const reactor=systemNode('REACTOR');
+    const shield=systemNode('SHIELD');
+    const dl=systemNode('ENG_L'),dr=systemNode('ENG_R');
+    const weapons=player.systemNodes.filter(n=>n.type==='weapon'&&!n.frameDisabled);
+
+    const setRow=(id,ratio,label)=>{
+      const row=document.getElementById(id);if(!row)return;
+      const rr=clamp(ratio,0,1);
+      row.querySelector('i').style.width=(rr*100)+'%';
+      row.querySelector('b').textContent=label??Math.round(rr*100)+'%';
+      row.classList.toggle('critical',rr<.34);
+    };
+    setRow('sysReactor',nodeRatio(reactor));
+    setRow('sysShield',nodeRatio(shield));
+    setRow('sysDrive',(nodeRatio(dl)+nodeRatio(dr))*.5);
+    const wOn=weapons.filter(n=>!n.disabled).length;
+    setRow('sysWeapons',wOn/weapons.length,wOn+'/'+weapons.length);
+
+    const grid=document.getElementById('nodeHealthGrid');
+    if(grid && (forceGrid || appMode==='modules')){
+      grid.innerHTML=player.systemNodes.map(n=>{
+        const pct=Math.round(nodeRatio(n)*100);
+        return '<div class="nodeHealth '+((n.disabled||n.frameDisabled)?'disabled':'')+'">'+
+          '<div class="nhTop"><b>'+n.name+'</b><span>'+n.type+'</span></div>'+
+          '<div class="nhBar"><i style="width:'+(n.frameDisabled?0:pct)+'%"></i></div>'+
+          '<div class="nhState">'+(n.frameDisabled?'NOT FITTED TO THIS HULL':n.disabled?'OFFLINE':pct+'% INTEGRITY')+'</div>'+
+        '</div>';
+      }).join('');
+    }
+  }
+
+  let systemHudClock=0;
+  function updateSystemNodes(dt){
+    systemHudClock+=dt;
+    for(const n of player.systemNodes){
+      if(n.disabled)continue;
+      const r=nodeRatio(n);
+      n.ring.rotation.z+=dt*(n.type==='critical'?.6:.35);
+      n.core.scale.setScalar(1+Math.sin(gameTime*2.2+n.maxHp)*(.05+(1-r)*.06));
+      n.ring.material.opacity=.52+r*.30+Math.sin(gameTime*3+n.maxHp)*.04;
+    }
+    const sh=document.getElementById('systemHud');
+    if(sh)sh.style.display=(appMode==='combat'||appMode==='pause')?'block':'none';
+    if(systemHudClock>=.12){
+      systemHudClock=0;
+      renderSystemIntegrity(false);
+    }
+  }
+
+
+  const FLEET_LINEAGE=[
+    {
+      index:'00',
+      title:'Embryonic Flight',
+      subtitle:'Identity before fleet power',
+      classes:[
+        ['Pod','Emergency survival / personal transit','future'],
+        ['Starter Ship','First sovereign vessel','future'],
+        ['Frigate','Core light-combat platform','playable']
+      ],
+      note:'The opening end of the fleet is intentionally personal. These ships should feel vulnerable, readable and worth learning rather than disposable tutorial objects.'
+    },
+    {
+      index:'01',
+      title:'Frigate Families',
+      subtitle:'Specialisation begins',
+      classes:[
+        ['Assault Frigate','Armoured pressure frigate','future'],
+        ['Speciality Frigates','EWAR / scout / salvage / interdiction','future'],
+        ['Destroyer','Light fleet hunter / gun platform','playable']
+      ],
+      note:'Frigate families establish the first meaningful doctrine splits: survivability, speed, support, interdiction, salvage and hunter-killer roles.'
+    },
+    {
+      index:'02',
+      title:'Cruiser Continuum',
+      subtitle:'The first true fleet backbone',
+      classes:[
+        ['Cruiser','General fleet backbone','future'],
+        ['Heavy Cruiser','Armoured / high-output cruiser','future'],
+        ['Advanced Cruiser','Doctrine-specialised cruiser','future'],
+        ['Battlecruiser','Heavy weapons on cruiser mobility','future'],
+        ['Specialist Ships','Command / interdiction / electronic / unusual roles','future']
+      ],
+      note:'Cruiser space is where faction identity should become unmistakable. Two cultures may both field a cruiser, but the problem each expects that cruiser to solve should be different.'
+    },
+    {
+      index:'03',
+      title:'Battleship Domain',
+      subtitle:'Elite sub-capital warfare',
+      classes:[
+        ['Battleship','Elite heavy combat hull','playable'],
+        ['Drone Carrier','Autonomous wing control','future'],
+        ['Industrial Fleet Ship','Mobile production / extraction / logistics','future'],
+        ['Autonomous Fleet Ship','AI-directed operational hull','future']
+      ],
+      note:'Battleships are the top of ordinary player scale in the starter-world slice. Beyond them, ships increasingly become fleet infrastructure rather than simply bigger gun platforms.'
+    },
+    {
+      index:'04',
+      title:'Sub-Capital Warforms',
+      subtitle:'Borderline capital-scale specialist hulls',
+      classStyle:'tierCapital',
+      classes:[
+        ['Dreads','Siege / anti-capital artillery','future'],
+        ['Bailisks','Heavy specialist warform','future'],
+        ['Maraurads','Aggressive autonomous raider class','future'],
+        ['Vamyreses','Predatory specialist class','future'],
+        ['Sentinels','Fortress / guardian warships','future'],
+        ['Carriers','Manned strike-wing fleet carriers','future']
+      ],
+      note:'These are not normal progression ships. They should begin changing the rules of battle: siege, drone warfare, fleet anchoring, autonomous raiding and area control.'
+    },
+    {
+      index:'05',
+      title:'Capital & Civilisation Ships',
+      subtitle:'Anything above conventional sub-capital scale',
+      classStyle:'tierCapital',
+      classes:[
+        ['Capital Warships','Faction-specific capital families','future'],
+        ['Drone Fleet Carriers','Autonomous fleet projection','future'],
+        ['Industrial Capitals','Mobile sovereign infrastructure','future'],
+        ['Autonomous Fleet Cores','Machine-directed fleet command','future']
+      ],
+      note:'At this scale a hull is often an economy, settlement, command network or mobile ecosystem as much as it is a weapon.'
+    },
+    {
+      index:'06',
+      title:'Apex Structures',
+      subtitle:'Ships become world events',
+      classStyle:'tierApex',
+      classes:[
+        ['Citadels','Mobile fortress / civilisation anchor','experimental'],
+        ['Titans','Mythic faction apex hulls','experimental'],
+        ['Super Carriers','Strategic fleet projection','experimental'],
+        ['Experimental Anomalies','Non-standard / impossible shipforms','experimental']
+      ],
+      note:'Apex hulls are meant to be seen from kilometres away and alter the emotional scale of a zone. Tonight they remain spectacle, bosses and Forge toys rather than ordinary progression.'
+    },
+    {
+      index:'∞',
+      title:'Faction Divergence',
+      subtitle:'Every race mutates the lineage differently',
+      classes:[
+        ['Doctrine Variants','Each race reshapes the shared classes','future'],
+        ['Ancient Hulls','Lost pre-current ship families','future'],
+        ['Living Ships','Organic / hybrid civilisation craft','future'],
+        ['Unknown Classes','Recovered through exploration','future']
+      ],
+      note:'The lineage is a framework, not a promise that every civilisation fields the same ladder. Some factions may skip classes entirely, invent new ones, or treat a class name as something culturally unrecognisable.'
+    }
+  ];
+
+  function renderFleetLineage(){
+    const grid=document.getElementById('fleetLineageGrid');
+    if(!grid)return;
+
+    grid.innerHTML='';
+
+    for(const tier of FLEET_LINEAGE){
+      const section=document.createElement('article');
+      section.className='lineageTier '+(tier.classStyle||'');
+
+      const classes=tier.classes.map(([name,role,status])=>{
+        const statusLabel=
+          status==='playable'
+            ?'TONIGHT'
+            :status==='experimental'
+              ?'APEX / SANDBOX'
+              :'LINEAGE';
+
+        return (
+          '<div class="lineageClass '+status+'">'+
+            '<b>'+name+'</b>'+
+            '<span>'+role+' // '+statusLabel+'</span>'+
+          '</div>'
+        );
+      }).join('');
+
+      section.innerHTML=
+        '<div class="lineageTierHead">'+
+          '<div>'+
+            '<h3>'+tier.title+'</h3>'+
+            '<div class="tierSubtitle">'+tier.subtitle+'</div>'+
+          '</div>'+
+          '<div class="lineageTierIndex">'+tier.index+'</div>'+
+        '</div>'+
+        '<div class="lineageClassList">'+classes+'</div>'+
+        '<div class="lineageTierNote">'+tier.note+'</div>';
+
+      grid.appendChild(section);
+    }
+
+    refreshForgeNav();
+  }
+
+
+
+  let appMode='main';
+  let returnScreen='main';
+  let countdownTimer=0;
+  let countdownLast=4;
+  let victoryQueued=false;
+  let menuOrbit=0;
+
+  // ============================================================
+  // FORGE 0.21.4 — CLEAN CAMERA REBUILD
+  // Combat and menu cameras are completely separate systems.
+  // There is no legacy combat-camera state, orbit handshake, or reacquire state,
+  // mouse freelook state, or previous camera-position integration.
+  // ============================================================
+
+  const combatCamera={
+    // 0.25.1: combat now uses the same orbit model as the menu camera.
+    // There is ONE combat camera, with the ship as its tracked center.
+    yaw:Math.PI,
+    pitch:.46,
+    zoom:1,
+    dragging:false,
+    dragButton:-1,
+    dragMoved:false,
+    downX:0,
+    downY:0,
+    lastX:0,
+    lastY:0,
+    manual:false,
+    resetRequested:true,
+    offset:new THREE.Vector3(),
+    offsetReady:false
+  };
+
+  const menuCamera={
+    yaw:0,
+    pitch:.46,
+    zoom:1,
+    dragging:false,
+    dragButton:-1,
+    lastX:0,
+    lastY:0,
+    manual:false,
+    cinematicLevel:0
+  };
+
+  const MENU_CINEMATIC_LEVELS=[
+    {name:'NORMAL',zoom:1.00,pitch:.46},
+    {name:'WIDE',zoom:2.05,pitch:.40},
+    {name:'ULTRA',zoom:3.10,pitch:.34}
+  ];
+
+  function applyMenuCinematicLevel(level=menuCamera.cinematicLevel){
+    menuCamera.cinematicLevel=((Number(level)||0)%MENU_CINEMATIC_LEVELS.length+MENU_CINEMATIC_LEVELS.length)%MENU_CINEMATIC_LEVELS.length;
+    const preset=MENU_CINEMATIC_LEVELS[menuCamera.cinematicLevel];
+    menuCamera.zoom=preset.zoom;
+    menuCamera.pitch=preset.pitch;
+    menuCamera.manual=false;
+
+    const btn=document.getElementById('btnCinematicZoom');
+    if(btn){
+      const label=btn.querySelector('span');
+      if(label)label.textContent='CINEMATIC ZOOM // '+preset.name;
+      btn.classList.toggle('wide',menuCamera.cinematicLevel===1);
+      btn.classList.toggle('ultra',menuCamera.cinematicLevel===2);
+    }
+  }
+
+  function cycleMenuCinematicZoom(){
+    if(appMode!=='main')return;
+    applyMenuCinematicLevel(menuCamera.cinematicLevel+1);
+  }
+
+  function renderCameraStatus(){
+    const el=document.getElementById('cameraModeHud');
+    if(!el)return;
+    el.classList.remove('orbit');
+    el.innerHTML='<b>TRACKED ORBIT</b> · LMB DRAG · CLICK FIRE · WHEEL ZOOM · MMB RESET';
+  }
+
+  function resetCombatCamera(resetZoom=true){
+    if(resetZoom)combatCamera.zoom=1;
+    combatCamera.pitch=.46;
+    combatCamera.dragging=false;
+    combatCamera.dragButton=-1;
+    combatCamera.dragMoved=false;
+    combatCamera.manual=false;
+    combatCamera.resetRequested=true;
+    combatCamera.offsetReady=false;
+    combatCamera.offset.set(0,0,0);
+    renderCameraStatus();
+    refreshForgeNav();
+  }
+
+
+  function updateCombatCamera(dt=0){
+    const frame=currentFrame();
+
+    const center=new THREE.Vector3();
+    player.group.getWorldPosition(center);
+
+    if(
+      !Number.isFinite(center.x) ||
+      !Number.isFinite(center.y) ||
+      !Number.isFinite(center.z)
+    ) return;
+
+    // On reset / first combat frame, seed orbit BEHIND current ship heading.
+    if(combatCamera.resetRequested){
+      const forward=new THREE.Vector3(0,0,-1);
+      player.group.getWorldQuaternion(_cameraQuatScratch);
+      forward.applyQuaternion(_cameraQuatScratch);
+      forward.y=0;
+      if(forward.lengthSq()>.000001){
+        forward.normalize();
+        const forwardYaw=Math.atan2(forward.x,forward.z);
+        combatCamera.yaw=Math.atan2(
+          Math.sin(forwardYaw+Math.PI),
+          Math.cos(forwardYaw+Math.PI)
+        );
+      }else{
+        combatCamera.yaw=Math.PI;
+      }
+      combatCamera.pitch=.46;
+      combatCamera.resetRequested=false;
+    }
+
+    const radius=clamp(
+      Math.max(frame.cameraDist,frame.radius*3.0)*combatCamera.zoom,
+      Math.max(28,frame.radius*2.5),
+      Math.max(520,frame.cameraDist*6.0)
+    );
+
+    const pitch=clamp(combatCamera.pitch,.04,1.20);
+    const horizontal=Math.cos(pitch)*radius;
+    const vertical=Math.sin(pitch)*radius;
+
+    // Exact same spherical orbit construction as menu camera.
+    _cameraDesired.set(
+      Math.sin(combatCamera.yaw)*horizontal,
+      vertical,
+      Math.cos(combatCamera.yaw)*horizontal
+    );
+
+    // Menu camera "feel": smooth the RELATIVE orbit vector only.
+    // The live ship world position is added AFTER smoothing, so there is
+    // mathematically no positional tracking lag.
+    if(!combatCamera.offsetReady){
+      combatCamera.offset.copy(_cameraDesired);
+      combatCamera.offsetReady=true;
+    }else{
+      const alpha=1-Math.pow(.025,Math.max(.001,dt));
+      combatCamera.offset.lerp(_cameraDesired,alpha);
+    }
+
+    camera.position.copy(center).add(combatCamera.offset);
+
+    _cameraLook.copy(center);
+    _cameraLook.y+=Math.max(1.2,frame.radius*.055);
+
+    // Rebuilt from live ship position each frame; shake cannot accumulate.
+    if(Number.isFinite(cameraShake) && cameraShake>0){
+      cameraShake=Math.max(0,cameraShake-dt);
+      const s=cameraShake*.36*settings.shake;
+      camera.position.x+=rand(-s,s);
+      camera.position.y+=rand(-s,s);
+      camera.position.z+=rand(-s,s);
+    }
+
+    camera.up.set(0,1,0);
+    camera.lookAt(_cameraLook);
+  }
+
+  function cameraTargetIsInteractive(target){
+    if(!target?.closest)return false;
+
+    // RELEASE INPUT OWNERSHIP:
+    // Any pointer/wheel event that originates inside the visible shell belongs
+    // to the UI. The 3D menu camera only receives input on exposed world/canvas.
+    if(target.closest('#shell.open .screen.active'))return true;
+    if(target.closest('#microZJOverlay'))return true;
+
+    return !!target.closest(
+      'button,input,select,option,.shipCard,.weaponCard,.moduleCard,.bankCard,'+
+      '.stationMain,.stationSide,.statsDeck,.shipDeck,.moduleSlots,.moduleCatalog,'+
+      '.bankPanel,.weaponPanel,.controlsGrid,.hullForgeWorkspace,#hullForgeCanvas,'+
+      '.hullForgeLibrary,.hullForgeInspector,.hullForgeCanvasPanel'
+    );
+  }
+
+  const shell=document.getElementById('shell');
+  const gameUI=document.getElementById('gameUI');
+  const oldGameOver=document.getElementById('gameOver');
+
+
+  function setScreen(name){
+    for(const el of document.querySelectorAll('.screen')){
+      el.classList.remove('active');
+      el.setAttribute('aria-hidden','true');
+    }
+
+    if(!name)return null;
+
+    const target=document.getElementById('screen-'+name);
+    if(target){
+      target.classList.add('active');
+      target.setAttribute('aria-hidden','false');
+      return target;
+    }
+
+    return null;
+  }
+
+  function closeShellScreens(){
+    setScreen(null);
+  }
+
+  const MENU_MODES=new Set([
+    'main','station','hangar','hardpoints','modules','hullforge',
+    'lore','codex','lineage','settings','controls','briefing',
+    'victory','defeat','pause','countdown'
+  ]);
+  let menuHistory=[];
+
+  function pushMenuHistory(next){
+    if(!MENU_MODES.has(appMode))return;
+    if(appMode===next)return;
+    if(['combat','pause','countdown','victory','defeat'].includes(appMode))return;
+
+    const last=menuHistory[menuHistory.length-1];
+    if(last!==appMode)menuHistory.push(appMode);
+    if(menuHistory.length>16)menuHistory=menuHistory.slice(-16);
+  }
+
+  function navigateMenu(name,{remember=true}={}){
+    if(!MENU_MODES.has(name)){
+      console.warn('Rejected unknown menu route:',name);
+      return false;
+    }
+
+    if(remember)pushMenuHistory(name);
+    setAppMode(name);
+
+    if(name==='hardpoints')renderHardpoints();
+    if(name==='modules'){
+      renderModules();
+      setModuleForgeView(moduleForgeView);
+    }
+    if(name==='hullforge')openHullForge();
+    if(name==='station')renderStation();
+    if(name==='hangar')renderHangar();
+    if(name==='lore')renderLoreArchive();
+    if(name==='codex')renderPantheonCodex();
+    if(name==='lineage')renderFleetLineage();
+
+    return true;
+  }
+
+  function navigateBack(){
+    while(menuHistory.length){
+      const candidate=menuHistory.pop();
+      if(MENU_MODES.has(candidate) && candidate!==appMode){
+        navigateMenu(candidate,{remember:false});
+        return;
+      }
+    }
+
+    navigateMenu(
+      settings.hasRun?'station':'main',
+      {remember:false}
+    );
+  }
+
+  function refreshForgeNav(){
+    for(const btn of document.querySelectorAll('.forgeDockNav button[data-open]')){
+      btn.classList.toggle('active', btn.getAttribute('data-open')===appMode);
+    }
+  }
+
+  function applyUIAuthority(mode=appMode){
+    const combat=mode==='combat';
+    const pause=mode==='pause';
+    const hudVisible=combat||pause;
+
+    try{
+      document.body.classList.toggle('menuMode',!combat&&!pause);
+      document.body.classList.toggle('combatMode',combat);
+    }catch(_){}
+
+    try{
+      gameUI.classList.toggle('shellHidden',!hudVisible);
+      gameUI.classList.toggle('pausedDim',pause);
+      gameUI.style.opacity=hudVisible?'1':'0';
+      gameUI.style.visibility=hudVisible?'visible':'hidden';
+    }catch(_){}
+
+    try{
+      if(ui20?.root){
+        ui20.root.style.setProperty('display',hudVisible?'block':'none','important');
+        ui20.root.style.setProperty('visibility',hudVisible?'visible':'hidden','important');
+        ui20.root.style.setProperty('opacity',hudVisible?'1':'0','important');
+      }
+    }catch(_){}
+
+    return hudVisible;
+  }
+
+  function setAppMode(mode){
+    if(appMode==='hullforge' && mode!=='hullforge'){
+      closeHullForgePreview();
+    }
+
+    appMode=mode;
+
+    const combat=mode==='combat';
+    const pause=mode==='pause';
+    const shellOpen=!combat;
+
+    applyUIAuthority(mode);
+
+    shell.classList.toggle('open',shellOpen);
+    shell.setAttribute('aria-hidden',combat?'true':'false');
+
+    // CRITICAL 0.26.5:
+    // combat owns the viewport. No menu screen remains active behind/over it.
+    if(combat){
+      closeShellScreens();
+      oldGameOver.style.display='none';
+    }else{
+      const target=setScreen(mode);
+      if(!target){
+        console.warn('Shell route has no screen:',mode);
+        setScreen(settings.hasRun?'station':'main');
+      }
+    }
+
+    if(mode==='main'){
+      const preset=MENU_CINEMATIC_LEVELS[menuCamera.cinematicLevel];
+      const btn=document.getElementById('btnCinematicZoom');
+      if(btn){
+        const label=btn.querySelector('span');
+        if(label){
+          label.textContent=menuCamera.cinematicLevel>=0 && preset
+            ?'CINEMATIC ZOOM // '+preset.name
+            :'CINEMATIC ZOOM // CUSTOM ×'+menuCamera.zoom.toFixed(1);
+        }
+      }
+    }
+    if(mode==='lore')renderLoreArchive();
+    if(mode==='codex')renderPantheonCodex();
+    if(mode==='lineage')renderFleetLineage();
+
+    if(mode==='modules'){
+      renderModules();
+      setModuleForgeView(moduleForgeView);
+    }
+
+    renderCameraStatus();
+    refreshForgeNav();
+    markReleaseControls();
+  }
+
+  function openMenuScreen(name){
+    navigateMenu(name,{remember:true});
+  }
+
+  function clearEncounterObjects(){
+    clearAmbientEvent(false);
+    selected=null;
+    cancelFlightCommand(true);
+    fireHeld=false;
+    for(const e of enemies){
+      if(e.group){
+        scene.remove(e.group);
+        disposeGeneratedTree(e.group);
+      }
+    }
+    enemies.length=0;
+    livingTrafficSector=null;
+    livingTrafficCooldown=0;
+    livingTrafficPulse=0;
+
+    for(const p of projectiles){
+      if(p.mesh)scene.remove(p.mesh);
+    }
+    projectiles.length=0;
+
+    for(const f of fx){
+      if(f.mesh && f.mesh.parent)f.mesh.parent.remove(f.mesh);
+      if(f.group && f.group.parent)f.group.parent.remove(f.group);
+      if(f.light && f.type==='tempLight')scene.remove(f.light);
+    }
+    fx.length=0;
+    clearSalvage();
+  }
+
+  function resetEncounter(){
+    clearEncounterObjects();
+    player.destroyed=false;
+    player.group.visible=true;
+    player.group.position.set(0,0,100);
+    player.group.quaternion.identity();
+    player.velocity.set(0,0,0);
+    player.yawVel=player.pitchVel=player.rollVel=0;
+    player.shield=player.maxShield;
+    player.armor=player.maxArmor;
+    player.hull=player.maxHull;
+    player.structure=player.hull;
+    player.maxStructure=player.maxHull;
+    clearDamageMarks(player);
+    resetCombatAnatomy(player);
+    player.lastAnatomyHit=null;
+    player.lastAnatomyHitAt=-99;
+    player.damageControlClock=0;
+    player.damageControlActive=false;
+    player.activeModuleClocks={};
+    player.activeModuleCapWarnAt=-99;
+    player.capSpendAccumulator=0;
+    player.capSampleClock=0;
+    player.capDrainObserved=0;
+    player.capRegenNow=0;
+    player.lastHit=-99;
+    player.shieldFlash=0;
+    player.overdrive=0;
+    player.inversion=0;
+    player.manualCooldown=0;
+    player.autoFire=true;
+    player.selectedWeaponGroup='fore';
+    player.groupAuto={fore:true,mid:true,aft:true};
+    player.shieldMesh.material.opacity=0;
+    applyModuleStats(true);
+    resetSystemNodes();
+    encounterActive=false;
+    encounterComplete=false;
+    currentContract=activeContract();
+    contractWaveIndex=0;
+    contractWaveSpawned=false;
+    worldObjectiveTarget=contractTargetPosition(currentContract).clone();
+    for(let i=1;i<=4;i++)cds[i]=0;
+
+    directorStage=0;
+    stageTimer=0;
+    bossSpawned=false;
+    gameOver=false;
+    introShown=false;
+    gameTime=0;
+    victoryQueued=false;
+    tabIndex=0;
+    targetInfo.style.display='none';
+    targetBox.style.display='none';
+    oldGameOver.style.display='none';
+  }
+
+  function prepareBriefing(){
+    returnScreen='station';
+    updateBriefing();
+    setAppMode('briefing');
+  }
+
+  function prepareDeploymentPreserveDamage(){
+    clearEncounterObjects();
+    player.destroyed=false;
+    player.group.visible=true;
+    player.group.position.copy(currentStationPosition()).add(new THREE.Vector3(-85,4,-20));
+    player.group.quaternion.identity();
+    player.velocity.set(0,0,0);
+    player.yawVel=player.pitchVel=player.rollVel=0;
+    player.lastHit=-99;
+    player.shieldFlash=0;
+    player.overdrive=0;
+    player.inversion=0;
+    player.manualCooldown=0;
+    player.activeModuleClocks={};
+    player.capSpendAccumulator=0;
+    player.capSampleClock=0;
+    player.capDrainObserved=0;
+    player.capRegenNow=0;
+    player.autoFire=true;
+    player.selectedWeaponGroup='fore';
+    player.groupAuto={fore:true,mid:true,aft:true};
+    player.capacitor=effectiveCapMax();
+    player.shieldMesh.material.opacity=0;
+    currentContract=activeContract();
+    encounterActive=false;
+    encounterComplete=false;
+    contractWaveIndex=0;
+    contractWaveSpawned=false;
+    worldObjectiveTarget=contractTargetPosition(currentContract).clone();
+    for(let i=1;i<=4;i++)cds[i]=0;
+    directorStage=0;stageTimer=0;bossSpawned=false;gameOver=false;introShown=false;
+    gameTime=0;victoryQueued=false;tabIndex=0;
+    targetInfo.style.display='none';targetBox.style.display='none';oldGameOver.style.display='none';
+  }
+
+  function beginCountdown(preserveDamage=true){
+    ensureAudio();
+    if(preserveDamage)prepareDeploymentPreserveDamage();
+    else resetEncounter();
+    settings.hasRun=true;
+    saveSettings();
+    countdownTimer=3.15;
+    countdownLast=4;
+    setAppMode('countdown');
+  }
+
+  function beginCombat(){
+    setAppMode('combat');
+    livingTrafficSector=null;
+    currentContract=activeContract();
+    const c=currentContract;
+    setWorldObjective(c?'CONTRACT // '+c.name:'RETURN TO '+sectorMeta().stationName,c?contractTargetPosition(c):currentStationPosition());
+    flashMission('FREE FLIGHT',c?c.name:'RETURN TO '+sectorMeta().stationName+' FOR CONTRACTS',1.8);
+  }
+
+  function restartEncounter(){
+    beginCountdown(false);
+  }
+
+  function toMainMenu(){
+    clearEncounterObjects();
+    fireHeld=false;
+    encounterActive=false;
+    selected=null;
+    player.velocity.set(0,0,0);
+    menuHistory=[];
+    setAppMode('main');
+  }
+
+  function toHangar(){
+    fireHeld=false;
+    navigateMenu('hangar',{remember:false});
+    renderSystemIntegrity(true);
+  }
+
+  function pauseGame(){
+    if(appMode==='combat'){
+      fireHeld=false;
+      setAppMode('pause');
+    }
+  }
+
+  function resumeGame(){
+    if(appMode==='pause')setAppMode('combat');
+  }
+
+  function showVictory(){
+    if(appMode!=='combat')return;
+    saveSettings();
+    setAppMode('victory');
+    const c=activeContract();
+    const h=document.querySelector('#screen-victory h2');
+    const p=document.querySelector('#screen-victory p');
+    if(c&&h)h.textContent=c.name+' Complete';
+    if(c&&p)p.textContent=sectorMeta().stationName+' confirms the operation. '+c.reward+' salvage has been credited. Recover remaining field salvage or return to station for repairs and refit.';
+  }
+
+  function showDefeat(){
+    setAppMode('defeat');
+  }
+
+  function updateMenuCamera(dt){
+    if(!menuCamera.manual)menuOrbit+=dt*(appMode==='main'?.055:.095);
+
+    const station=currentStationPosition?.();
+    const center=player.group.position.clone();
+
+    if(station && (appMode==='main' || appMode==='station')){
+      center.lerp(station.clone(), appMode==='main' ? .56 : .34);
+
+      if(settings.currentSector==='naraka'){
+        const heroMid=station.clone().lerp(WORLD.pillarGate.clone(), .42);
+        center.lerp(heroMid, appMode==='main' ? .28 : .14);
+
+        const blackSunMid=heroMid.clone().lerp(WORLD.blackSun.clone(), appMode==='main' ? .14 : .06);
+        center.lerp(blackSunMid, appMode==='main' ? .16 : .05);
+      }
+    }
+
+    const baseRadius=appMode==='main' ? 214 : appMode==='station' ? 154 : 105;
+    const radius=baseRadius*menuCamera.zoom;
+    const yaw=(menuCamera.manual?menuCamera.yaw:menuOrbit)+(appMode==='main' ? .26 : .08);
+    const pitch=clamp(menuCamera.pitch,.14,.98);
+    const horizontal=Math.cos(pitch)*radius;
+    const vertical=Math.sin(pitch)*radius;
+
+    const desired=new THREE.Vector3(
+      center.x+Math.sin(yaw)*horizontal,
+      center.y+vertical,
+      center.z+Math.cos(yaw)*horizontal
+    );
+
+    camera.position.lerp(desired,1-Math.pow(.025,dt));
+    camera.up.set(0,1,0);
+    camera.lookAt(center.clone().add(new THREE.Vector3(0,12,-10)));
+
+    player.rA.rotation.z+=dt*.20;
+    player.rB.rotation.z-=dt*.14;
+    for(const e of player.engines){
+      e.plume.material.opacity=.10+Math.sin(gameTime*3+e.phase)*.012;
+      e.plume.scale.z=1.06+Math.sin(gameTime*4+e.phase)*.04;
+    }
+  }
+
+  function syncSettingsUI(){
+    document.getElementById('settingQuality').value=String(settings.quality);
+    document.getElementById('settingAuto').classList.toggle('on',!!settings.autoQuality);
+    document.getElementById('settingBloom').classList.toggle('on',!!settings.bloom);
+    document.getElementById('settingVolume').value=String(settings.volume);
+    document.getElementById('settingShake').value=String(settings.shake);
+    document.getElementById('btnContinue').disabled=!settings.hasRun;
+  }
+
+  function applySettings(){
+    if(typeof setPerfTier==='function')setPerfTier(Number(settings.quality));
+    bloom.enabled=!!settings.bloom;
+    saveSettings();
+    document.querySelectorAll('[data-easy-fit]').forEach(btn=>{btn.onclick=()=>applyEasyFit(btn.dataset.easyFit);});
+    const fitAll=document.getElementById('fitAllSame');if(fitAll)fitAll.onclick=fitSelectedWeaponToAllBanks;
+    const resetBanks=document.getElementById('clearToAuto');if(resetBanks)resetBanks.onclick=resetBanksToAutocannon;
+    syncSettingsUI();
+    renderHangar();
+    renderHardpoints();
+    enhanceForgeWindows();
+    wireHullForge();
+  }
+
+  function startNewSovereignGame(){
+    // Preserve presentation preferences while resetting gameplay progression.
+    const quality=settings.quality;
+    const autoQuality=settings.autoQuality;
+    const bloomSetting=settings.bloom;
+    const volume=settings.volume;
+    const shake=settings.shake;
+    const hullBlueprints={...(settings.hullBlueprints||{})};
+
+    settings={
+      ...defaultSettings,
+      quality,autoQuality,bloom:bloomSetting,volume,shake,
+      ownedHulls:[...POD_FLEET,...STARTER_FLEET],
+      selectedShip:'savanah_starter',
+      ownedTurretWeapons:[...defaultSettings.ownedTurretWeapons],
+      ownedModules:[...defaultSettings.ownedModules],
+      frameBuilds:{},
+      frameLoadouts:{},
+      hullBlueprints,
+      contractCompletions:{},
+      worldRecoveries:{},
+      worldDiscoveries:{},
+      zoneEventStats:{patrols:0,salvage:0,distress:0,elite:0},
+      microZJCompletions:{},
+      activeDroneWing:'shield_guardians',
+      ownedDrones:[...defaultSettings.ownedDrones],
+      materials:{...defaultSettings.materials},
+      industryJobs:[],
+      moduleAutomation:{defense:true},
+      researchData:80,
+      researchUnlocked:['core_fitting','starter_fabrication'],
+      researchDiscoveries:{}
+    };
+
+    currentContract=null;
+    resetMicroZJBattleState(true);
+    setMicroZJOverlay(false);
+    currentFrameLoadout();
+    applySelectedFrame(true);
+    resetSystemNodes();
+    rebuildVisualModules();
+    rebuildPlayerDrones();
+    player.velocity.set(0,0,0);
+    player.group.quaternion.identity();
+    player.destroyed=false;
+    saveSettings();
+    applySectorPresentation();
+    setAppMode('station');
+    renderStation();
+    renderHangar();
+    renderHardpoints();
+    renderModules();
+    flashMission('NEW SOVEREIGN','FIRST LIGHT // STARTER FRIGATE ONLINE',.9);
+  }
+
+
+  let moduleForgeView='fit';
+  let moduleMarketCategory='all';
+  let moduleMarketQuery='';
+  let moduleMarketSelected='aegis_projector';
+
+  function moduleMarketGroup(mod){
+    if(mod?.aiCore)return 'ai';
+    if(mod?.slot==='defense')return 'tank';
+    return mod?.slot||'utility';
+  }
+
+  function tankDoctrineName(){
+    const mod=MODULE_CATALOG[settings.loadout?.defense];
+    if(!mod)return 'EMPTY';
+    if(mod.aiCore)return 'AI CORE // '+(resolveAICoreMutation(mod)?.strain||'UNKNOWN');
+    return mod.visual==='armor'?'ARMOUR TANK':'SHIELD TANK';
+  }
+
+  function setModuleForgeView(view){
+    moduleForgeView=['fit','market','drones','research','industry'].includes(view)?view:'fit';
+    const map={
+      fit:'moduleForgeFitView',market:'moduleForgeMarketView',
+      drones:'moduleForgeDronesView',research:'moduleForgeResearchView',industry:'moduleForgeIndustryView'
+    };
+
+    for(const el of document.querySelectorAll('.moduleForgeView')){
+      const active=el.id===map[moduleForgeView];
+      el.classList.toggle('active',active);
+      el.setAttribute('aria-hidden',active?'false':'true');
+    }
+
+    for(const btn of document.querySelectorAll('[data-module-view]')){
+      const active=btn.dataset.moduleView===moduleForgeView;
+      btn.classList.toggle('active',active);
+      btn.setAttribute('aria-selected',active?'true':'false');
+      btn.dataset.controlReady='1';
+    }
+
+    renderModuleMarket();
+    renderDroneBay();
+    renderResearch();
+    renderIndustry();
+    markReleaseControls();
+  }
+
+  function renderModuleMarket(){
+    const rows=document.getElementById('moduleMarketRows');
+    const detail=document.getElementById('moduleMarketDetail');
+    if(!rows||!detail)return;
+
+    const mods=Object.values(MODULE_CATALOG).filter(mod=>{
+      const group=moduleMarketGroup(mod);
+      const catOk=
+        moduleMarketCategory==='all'||
+        group===moduleMarketCategory||
+        (moduleMarketCategory==='tank'&&mod.slot==='defense'&&!mod.aiCore);
+
+      const q=moduleMarketQuery.trim().toLowerCase();
+      const qOk=!q||(
+        mod.name+' '+mod.desc+' '+mod.effect+' '+group
+      ).toLowerCase().includes(q);
+
+      return catOk&&qOk;
+    });
+
+    rows.innerHTML='';
+
+    for(const mod of mods){
+      const owned=moduleOwned(mod.id);
+      const fitted=settings.loadout?.[mod.slot]===mod.id;
+      const row=document.createElement('button');
+      row.type='button';
+      row.className=
+        'moduleMarketRow'+
+        (moduleMarketSelected===mod.id?' selected':'')+
+        (fitted?' fitted':'');
+
+      const researchReq=moduleResearchRequirement(mod.id);
+      const researchLocked=!owned&&researchReq&&!researchUnlocked(researchReq);
+      const analytics=moduleMarketAnalytics(mod);
+      const m=analytics.candidate;
+
+      row.innerHTML=
+        '<span><b>'+mod.name+'</b><small>'+
+          (owned?'OWNED':researchLocked?'RESEARCH LOCKED':'MARKET')+
+          (fitted?' · FITTED':'')+
+        '</small></span>'+
+        '<span>'+moduleMarketGroup(mod).toUpperCase()+'</span>'+
+        '<span>'+Math.round(m.dps)+'</span>'+
+        '<span>'+m.shotsPerSecond.toFixed(1)+'</span>'+
+        '<span>'+m.weaponCapPerSecond.toFixed(1)+'</span>'+
+        '<span>'+Math.round((mod.pg||0)*(currentFrame().architecturePGScale||1))+'</span>'+
+        '<span>'+(owned?'—':researchLocked?'LOCK':(mod.cost||0))+'</span>';
+
+      row.onclick=()=>{
+        moduleMarketSelected=mod.id;
+        renderModuleMarket();
+      };
+
+      rows.appendChild(row);
+    }
+
+    const count=document.getElementById('moduleMarketCount');
+    if(count)count.textContent=mods.length+' ITEMS';
+
+    const selected=
+      MODULE_CATALOG[moduleMarketSelected]||
+      mods[0]||
+      MODULE_CATALOG.aegis_projector;
+
+    if(!selected)return;
+    moduleMarketSelected=selected.id;
+
+    const owned=moduleOwned(selected.id);
+    const fitted=settings.loadout?.[selected.slot]===selected.id;
+    const selectedResearchReq=moduleResearchRequirement(selected.id);
+    const selectedResearchLocked=
+      !owned&&selectedResearchReq&&!researchUnlocked(selectedResearchReq);
+
+    const mutation=selected.aiCore
+      ?resolveAICoreMutation(selected,currentFrame())
+      :null;
+
+    const observed=mutation
+      ?'<div class="aiObserved"><b>HULL RESOLUTION</b><span>'+
+        mutation.benefitText+
+        '</span><span class="cost">'+
+        mutation.costText+
+        '</span><em>'+
+        mutation.strain+
+        ' AI STRAIN</em></div>'
+      :'';
+
+    const analytics=moduleMarketAnalytics(selected);
+    const cur=analytics.current;
+    const cand=analytics.candidate;
+
+    const capState=
+      cand.capStable
+        ?'STABLE'
+        :cand.capDrySeconds>45
+          ?'UNSTABLE // '+Math.round(cand.capDrySeconds)+'S'
+          :'CRITICAL // '+Math.round(cand.capDrySeconds)+'S';
+
+    detail.innerHTML=
+      '<div class="marketDetailGroup">'+moduleMarketGroup(selected).toUpperCase()+'</div>'+
+      '<h3>'+selected.name+'</h3>'+
+      '<p>'+selected.desc+'</p>'+
+      '<div class="marketEffect">'+(selected.effect||'—')+'</div>'+
+      observed+
+
+      '<div class="marketDerivedPanel">'+
+        '<div class="marketDerivedTitle"><span>DERIVED SHIP OUTPUT</span><b>'+capState+'</b></div>'+
+        '<div class="marketDerivedGrid">'+
+
+          '<div><span>Total DPS</span>'+
+            metricDelta(cand.dps,cur.dps,0)+
+          '</div>'+
+
+          '<div><span>Fire Rate</span>'+
+            metricDelta(cand.shotsPerSecond,cur.shotsPerSecond,1,'/s')+
+          '</div>'+
+
+          '<div><span>Volley</span>'+
+            metricDelta(cand.volley,cur.volley,0)+
+          '</div>'+
+
+          '<div><span>Weapon Cap</span>'+
+            metricDelta(cand.weaponCapPerSecond,cur.weaponCapPerSecond,1,'/s')+
+          '</div>'+
+
+          '<div><span>Shield</span>'+
+            metricDelta(cand.shield,cur.shield,0)+
+          '</div>'+
+
+          '<div><span>Armour</span>'+
+            metricDelta(cand.armor,cur.armor,0)+
+          '</div>'+
+
+          '<div><span>Structure</span>'+
+            metricDelta(cand.structure,cur.structure,0)+
+          '</div>'+
+
+          '<div><span>Active Tank</span>'+
+            metricDelta(cand.activeTankHps,cur.activeTankHps,1,' HP/s')+
+          '</div>'+
+
+          '<div><span>Peak Cap Recharge</span>'+
+            metricDelta(cand.capPeak,cur.capPeak,1,'/s')+
+          '</div>'+
+
+          '<div><span>Cap Pressure</span><b>'+capAnalyticsLabel(cand)+'</b><small>'+
+            cand.capSustained.toFixed(1)+'/s LOAD</small></div>'+
+
+          '<div><span>Velocity</span>'+
+            metricDelta(cand.speed,cur.speed,1,' U/s')+
+          '</div>'+
+
+          '<div><span>Handling</span>'+
+            metricDelta(cand.handling*100,cur.handling*100,0,'%')+
+          '</div>'+
+
+        '</div>'+
+        '<div class="marketDerivedSummary">'+
+          'CALCULATED FROM THE CURRENT HULL, PHYSICAL HARDPOINT COUNT, FITTED WEAPONS, '+
+          'TURRET DAMAGE/RATE, CAPACITOR COSTS, ACTIVE TANK CYCLES, MODULE MASS AND POWERGRID. '+
+          'DPS ASSUMES IDEAL RANGE/TRACKING AND FULL SYSTEM INTEGRITY.'+
+        '</div>'+
+      '</div>'+
+
+      '<div class="marketDetailStats">'+
+        '<span>POWERGRID <b>'+
+          Math.round((selected.pg||0)*(currentFrame().architecturePGScale||1))+
+        '</b></span>'+
+        '<span>MASS <b>'+
+          Math.round((selected.mass||0)*(currentFrame().architectureMassScale||1))+
+        '</b></span>'+
+        '<span>FIT PG <b>'+
+          Math.round(cand.fit.totalPG)+' / '+Math.round(cand.fit.capacity)+
+        '</b></span>'+
+        '<span>FIT MASS <b>'+
+          Math.round(cand.fit.totalMass)+
+        '</b></span>'+
+        '<span>PRICE <b>'+
+          (owned?'OWNED':(selected.cost||0)+' SALVAGE')+
+        '</b></span>'+
+      '</div>'+
+
+      (
+        selectedResearchLocked
+          ?'<div class="marketEffect">BLUEPRINT LOCK // '+
+            (RESEARCH_PROJECTS[selectedResearchReq]?.name||selectedResearchReq)+
+           '</div>'
+          :''
+      )+
+
+      '<button id="moduleMarketFitBtn" '+(selectedResearchLocked?'disabled':'')+'>'+
+        (
+          fitted?'FITTED // REAPPLY':
+          owned?'FIT MODULE':
+          selectedResearchLocked?'RESEARCH REQUIRED':
+          'BUY + FIT'
+        )+
+      '</button>';
+
+    const fitBtn=document.getElementById('moduleMarketFitBtn');
+    if(fitBtn)fitBtn.onclick=()=>installModule(selected.id);
+  }
+
+  function renderDroneBay(){
+    const grid=document.getElementById('droneCatalogGrid'),summary=document.getElementById('droneBaySummary');
+    if(!grid||!summary)return;
+    const active=DRONE_CATALOG[settings.activeDroneWing]||DRONE_CATALOG.shield_guardians;
+    summary.innerHTML='<div><div class="h20ey">Active Drone Wing</div><h3>'+active.name+'</h3><p>'+active.desc+'</p></div>'+
+      '<div class="droneRole">'+active.role+'<span>'+active.count+' DRONES</span></div>';
+    grid.innerHTML='';
+    for(const drone of Object.values(DRONE_CATALOG)){
+      const owned=droneOwned(drone.id),isActive=settings.activeDroneWing===drone.id;
+      const card=document.createElement('div');card.className='droneCard'+(isActive?' active':'');
+      const effect=Object.keys(drone.stats||{}).length
+        ?Object.entries(drone.stats).map(([k])=>AI_CORE_EFFECT_LABELS[k]||k).join(' · ')
+        :drone.id==='salvage_swarm'?'48U SALVAGE TRACTOR RANGE':
+         drone.id==='mining_wing'?'25% INDUSTRY YIELD BONUS':'SPECIALIST SUPPORT';
+      card.innerHTML='<div class="droneCardTop"><span>'+drone.role+'</span><b>'+drone.count+'×</b></div>'+
+        '<h4>'+drone.name+'</h4><p>'+drone.desc+'</p><div class="droneEffect">'+effect+'</div>'+
+        '<button>'+(isActive?'ACTIVE':owned?'ACTIVATE':'BUY '+drone.cost)+'</button>';
+      card.querySelector('button').onclick=()=>activateDroneWing(drone.id);
+      grid.appendChild(card);
+    }
+  }
+
+  function industryCostText(cost={}){
+    const bits=[];for(const [id,qty] of Object.entries(cost))bits.push(qty+' '+(id==='salvage'?'SALVAGE':MATERIAL_CATALOG[id]?.name||id));
+    return bits.length?bits.join(' · '):'NO INPUT COST';
+  }
+
+  function industryOutputText(recipe){
+    const bits=[];for(const [id,qty] of Object.entries(recipe.output||{}))bits.push(qty+' '+(MATERIAL_CATALOG[id]?.name||id));
+    if(recipe.salvage)bits.push(recipe.salvage+' SALVAGE');return bits.join(' · ');
+  }
+
+  function renderIndustry(){
+    const matGrid=document.getElementById('materialGrid'),queue=document.getElementById('industryQueue'),recipes=document.getElementById('industryRecipeGrid');
+    if(!matGrid||!queue||!recipes)return;
+
+    matGrid.innerHTML=Object.values(MATERIAL_CATALOG).map(mat=>
+      '<div class="materialRow"><span><b>'+mat.name+'</b><small>'+mat.desc+'</small></span><strong>'+Math.floor(settings.materials?.[mat.id]||0)+'</strong></div>'
+    ).join('');
+
+    const jobs=(settings.industryJobs||[]).filter(j=>!j.completed),now=Date.now();
+    queue.innerHTML=jobs.length?jobs.map(job=>{
+      const isHull=job.kind==='hull',recipe=isHull?null:INDUSTRY_RECIPES[job.recipeId],frame=isHull?FRAME_CATALOG[job.frameId]:null;
+      const remaining=Math.max(0,Math.ceil((job.endAt-now)/1000)),duration=Math.max(1,(job.endAt-job.startedAt)/1000),pct=clamp(1-remaining/duration,0,1);
+      const name=isHull?(frame?.name||job.frameId):(recipe?.name||job.recipeId);
+      return '<div class="industryJob"><div><b>'+name+'</b><span>'+(isHull?'SHIPYARD HULL':'AUTONOMOUS INDUSTRY')+' // '+remaining+'S REMAINING</span></div><div class="industryJobBar"><i style="width:'+Math.round(pct*100)+'%"></i></div></div>';
+    }).join(''):'<div class="industryEmpty">NO ACTIVE JOBS // QUEUE UP TO THREE</div>';
+
+    recipes.innerHTML='';
+    for(const recipe of Object.values(INDUSTRY_RECIPES)){
+      const researchLocked=recipe.researchReq&&!researchUnlocked(recipe.researchReq);
+      const can=!researchLocked&&canPayIndustryCost(recipe.cost),card=document.createElement('div');
+      card.className='industryRecipe'+(can?'':' blocked');
+      card.innerHTML='<div class="industryRecipeTop"><b>'+recipe.name+'</b><span>'+recipe.duration+'S</span></div>'+
+        '<p>'+recipe.desc+'</p><div class="industryIO"><span>IN // '+industryCostText(recipe.cost)+'</span>'+
+        '<span>OUT // '+industryOutputText(recipe)+'</span>'+
+        (researchLocked?'<span>BLUEPRINT // '+(RESEARCH_PROJECTS[recipe.researchReq]?.name||recipe.researchReq).toUpperCase()+'</span>':'')+
+        '</div><button '+(can?'':'disabled')+'>'+(researchLocked?'RESEARCH REQUIRED':can?'START AUTONOMOUS JOB':'MATERIALS REQUIRED')+'</button>';
+      card.querySelector('button').onclick=()=>startIndustryJob(recipe.id);recipes.appendChild(card);
+    }
+  }
+
+  function wireModuleForgeSuite(){
+    for(const btn of document.querySelectorAll('[data-module-view]')){
+      if(btn.dataset.suiteWired)continue;btn.dataset.suiteWired='1';
+      btn.onclick=()=>setModuleForgeView(btn.dataset.moduleView);
+    }
+    for(const btn of document.querySelectorAll('[data-market-cat]')){
+      if(btn.dataset.suiteWired)continue;btn.dataset.suiteWired='1';
+      btn.onclick=()=>{
+        moduleMarketCategory=btn.dataset.marketCat;
+        for(const b of document.querySelectorAll('[data-market-cat]'))b.classList.toggle('active',b===btn);
+        renderModuleMarket();
+      };
+    }
+    for(const btn of document.querySelectorAll('[data-research-cat]')){
+      if(btn.dataset.suiteWired)continue;
+      btn.dataset.suiteWired='1';
+      btn.onclick=()=>{researchCategory=btn.dataset.researchCat||'all';renderResearch();};
+    }
+    const search=document.getElementById('moduleMarketSearch');
+    if(search&&!search.dataset.suiteWired){
+      search.dataset.suiteWired='1';
+      search.oninput=()=>{moduleMarketQuery=search.value||'';renderModuleMarket();};
+    }
+    setModuleForgeView(moduleForgeView);
+  }
+
+
+  function wireWorkbenchTools(){
+    const moduleSearchEl=document.getElementById('moduleSearch');
+    const moduleSlotEl=document.getElementById('moduleSlotFilter');
+    const moduleOwnershipEl=document.getElementById('moduleOwnershipFilter');
+
+    if(moduleSearchEl && !moduleSearchEl.dataset.wired){
+      moduleSearchEl.dataset.wired='1';
+      moduleSearchEl.oninput=()=>{
+        moduleSearch=moduleSearchEl.value||'';
+        renderModules();
+      };
+    }
+
+    if(moduleSlotEl && !moduleSlotEl.dataset.wired){
+      moduleSlotEl.dataset.wired='1';
+      moduleSlotEl.onchange=()=>{
+        moduleSlotFilter=moduleSlotEl.value;
+        renderModules();
+      };
+    }
+
+    if(moduleOwnershipEl && !moduleOwnershipEl.dataset.wired){
+      moduleOwnershipEl.dataset.wired='1';
+      moduleOwnershipEl.onchange=()=>{
+        moduleOwnershipFilter=moduleOwnershipEl.value;
+        renderModules();
+      };
+    }
+
+    const moduleClear=document.getElementById('moduleClearFilter');
+    if(moduleClear && !moduleClear.dataset.wired){
+      moduleClear.dataset.wired='1';
+      moduleClear.onclick=()=>{
+        moduleSearch='';
+        moduleSlotFilter='all';
+        moduleOwnershipFilter='all';
+        if(moduleSearchEl)moduleSearchEl.value='';
+        if(moduleSlotEl)moduleSlotEl.value='all';
+        if(moduleOwnershipEl)moduleOwnershipEl.value='all';
+        renderModules();
+      };
+    }
+
+    const weaponSearchEl=document.getElementById('weaponSearch');
+    const weaponTierEl=document.getElementById('weaponTierFilter');
+    const weaponOwnershipEl=document.getElementById('weaponOwnershipFilter');
+
+    if(weaponSearchEl && !weaponSearchEl.dataset.wired){
+      weaponSearchEl.dataset.wired='1';
+      weaponSearchEl.oninput=()=>{
+        weaponSearch=weaponSearchEl.value||'';
+        renderHardpoints();
+      };
+    }
+
+    if(weaponTierEl && !weaponTierEl.dataset.wired){
+      weaponTierEl.dataset.wired='1';
+      weaponTierEl.onchange=()=>{
+        weaponTierFilter=weaponTierEl.value;
+        renderHardpoints();
+      };
+    }
+
+    if(weaponOwnershipEl && !weaponOwnershipEl.dataset.wired){
+      weaponOwnershipEl.dataset.wired='1';
+      weaponOwnershipEl.onchange=()=>{
+        weaponOwnershipFilter=weaponOwnershipEl.value;
+        renderHardpoints();
+      };
+    }
+
+    const weaponClear=document.getElementById('weaponClearFilter');
+    if(weaponClear && !weaponClear.dataset.wired){
+      weaponClear.dataset.wired='1';
+      weaponClear.onclick=()=>{
+        weaponSearch='';
+        weaponTierFilter='all';
+        weaponOwnershipFilter='all';
+        if(weaponSearchEl)weaponSearchEl.value='';
+        if(weaponTierEl)weaponTierEl.value='all';
+        if(weaponOwnershipEl)weaponOwnershipEl.value='all';
+        renderHardpoints();
+      };
+    }
+
+    for(const btn of document.querySelectorAll('[data-station-tool]')){
+      if(btn.dataset.wired==='1')continue;
+      btn.dataset.wired='1';
+      btn.onclick=e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        stationToolView=btn.dataset.stationTool;
+        applyStationToolView();
+        markReleaseControls();
+      };
+    }
+  }
+
+  function enhanceForgeWindows(){
+    // 0.26.5 release shell: the automatic desktop-window controls were useful
+    // during prototyping but read as debug chrome in the public UI.
+    document.body.classList.remove('forgeWindowFocus');
+
+    for(const panel of document.querySelectorAll('.forgeWindow')){
+      panel.classList.remove('collapsed','maximized');
+    }
+
+    for(const bar of document.querySelectorAll('.forgeWindowBar')){
+      bar.remove();
+    }
+
+    for(const panel of document.querySelectorAll(
+      '#screen-station .glassPanel,'+
+      '#screen-hangar .glassPanel,'+
+      '#screen-hardpoints .glassPanel,'+
+      '#screen-modules .glassPanel,'+
+      '#screen-hullforge .glassPanel,'+
+      '#screen-lore .glassPanel,'+
+      '#screen-codex .glassPanel,'+
+      '#screen-lineage .glassPanel'
+    )){
+      panel.classList.add('releasePanel');
+      panel.dataset.forgeWindow='release';
+    }
+  }
+
+  function markReleaseControls(){
+    const active=document.querySelector('.screen.active');
+    if(!active)return;
+
+    for(const btn of active.querySelectorAll('button')){
+      const known=
+        !!btn.dataset.open ||
+        btn.hasAttribute('data-back') ||
+        !!btn.id ||
+        !!btn.dataset.stationTool ||
+        !!btn.dataset.moduleView ||
+        !!btn.dataset.marketCat ||
+        !!btn.dataset.easyFit ||
+        !!btn.dataset.hfAdd ||
+        !!btn.dataset.hpSize ||
+        !!btn.dataset.sysAdd ||
+        btn.closest('#fleetRoster,#bankGrid,#weaponCatalog,#moduleCatalog,#codexRaceList,#droneCatalogGrid,#industryRecipeGrid,#researchProjectGrid');
+
+      btn.dataset.controlReady=known?'1':'0';
+    }
+  }
+
+  function wireShell(){
+    for(const btn of document.querySelectorAll('[data-open]')){
+      if(btn.dataset.navWired==='1')continue;
+      btn.dataset.navWired='1';
+      btn.addEventListener('click',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        navigateMenu(btn.dataset.open,{remember:true});
+      });
+    }
+
+    for(const btn of document.querySelectorAll('[data-back]')){
+      if(btn.dataset.backWired==='1')continue;
+      btn.dataset.backWired='1';
+      btn.addEventListener('click',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        navigateBack();
+      });
+    }
+
+    const byId=(id,handler)=>{
+      const el=document.getElementById(id);
+      if(!el)return;
+      el.onclick=handler;
+      el.dataset.controlReady='1';
+    };
+
+    byId('btnCinematicZoom',cycleMenuCinematicZoom);
+    byId('btnEnter',startNewSovereignGame);
+    byId('btnContinue',()=>{
+      applySectorPresentation();
+      currentContract=activeContract();
+      menuHistory=[];
+      navigateMenu('station',{remember:false});
+    });
+
+    byId('btnLaunchHangar',()=>{
+      navigateMenu('station',{remember:false});
+      renderStation();
+    });
+
+    byId('btnDeploy',()=>beginCountdown(true));
+    byId('btnStationMain',toMainMenu);
+    byId('btnStationMain2',toMainMenu);
+
+    const undockButton=document.getElementById('btnStationUndock');
+    if(undockButton){
+      undockButton.disabled=false;
+      undockButton.dataset.ready='1';
+      undockButton.dataset.controlReady='1';
+      undockButton.onclick=e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        undockFromStation();
+      };
+    }
+
+    byId('btnRepairAll',repairAll);
+
+    byId('btnResume',resumeGame);
+    byId('btnRestartPause',restartEncounter);
+    byId('btnPauseHangar',toHangar);
+    byId('btnPauseMain',toMainMenu);
+
+    byId('btnVictorySector',resumeSectorAfterVictory);
+    byId('btnVictoryRestart',restartEncounter);
+    byId('btnVictoryHangar',toHangar);
+    byId('btnVictoryMain',toMainMenu);
+
+    byId('btnDefeatRestart',restartEncounter);
+    byId('btnDefeatHangar',toHangar);
+    byId('btnDefeatMain',toMainMenu);
+
+    const quality=document.getElementById('settingQuality');
+    if(quality)quality.onchange=e=>{
+      settings.quality=Number(e.target.value);
+      settings.autoQuality=false;
+      applySettings();
+    };
+
+    const auto=document.getElementById('settingAuto');
+    if(auto)auto.onclick=()=>{
+      settings.autoQuality=!settings.autoQuality;
+      applySettings();
+    };
+
+    const bloom=document.getElementById('settingBloom');
+    if(bloom)bloom.onclick=()=>{
+      settings.bloom=!settings.bloom;
+      applySettings();
+    };
+
+    const volume=document.getElementById('settingVolume');
+    if(volume)volume.oninput=e=>{
+      settings.volume=Number(e.target.value);
+      saveSettings();
+    };
+
+    const shake=document.getElementById('settingShake');
+    if(shake)shake.oninput=e=>{
+      settings.shake=Number(e.target.value);
+      saveSettings();
+    };
+
+    syncSettingsUI();
+
+    // All visible workbench families are explicitly wired here so screen
+    // functionality does not depend on another settings/render side effect.
+    wireWorkbenchTools();
+    wireModuleForgeSuite();
+    wireMicroZJDrive();
+    wirePantheonCodex();
+    wireHullForge();
+
+    document.querySelectorAll('[data-easy-fit]').forEach(btn=>{
+      btn.onclick=()=>applyEasyFit(btn.dataset.easyFit);
+      btn.dataset.controlReady='1';
+    });
+
+    const fitAll=document.getElementById('fitAllSame');
+    if(fitAll){
+      fitAll.onclick=fitSelectedWeaponToAllBanks;
+      fitAll.dataset.controlReady='1';
+    }
+
+    const resetBanks=document.getElementById('clearToAuto');
+    if(resetBanks){
+      resetBanks.onclick=resetBanksToAutocannon;
+      resetBanks.dataset.controlReady='1';
+    }
+
+    enhanceForgeWindows();
+    renderFleetLineage();
+    renderHangar();
+    renderHardpoints();
+    renderModules();
+    renderPantheonCodex();
+    markReleaseControls();
+  }
+
+
+
+
+  // ============================================================
+  // FORGE 0.8 — HULL FRAMES + INDEPENDENT TURRET BANK FITTING
+  // ============================================================
+
+  }
+
+
+
+
+  let codexSelectedRace='savanah';
+  let codexSearch='';
+
+  function codexRaceEntry(id){
+    return PANTHEON_CODEX[id]||PANTHEON_CODEX.savanah;
+  }
+
+  function renderLoreArchive(){
+    refreshForgeNav();
+    markReleaseControls();
+  }
+
+  function renderPantheonCodex(){
+    const list=document.getElementById('codexRaceList');
+    if(!list)return;
+
+    const known=Object.keys(PANTHEON_CODEX);
+    const count=document.getElementById('codexCount');
+    if(count)count.textContent=known.length+' KNOWN DIVINITIES';
+
+    const q=codexSearch.trim().toLowerCase();
+    const filtered=known.filter(id=>{
+      const lore=codexRaceEntry(id);
+      const race=RACE_CATALOG[id];
+      const haystack=[
+        id,race?.name,lore.godName,lore.god,lore.domain,lore.temperament,
+        lore.doctrine,lore.weapon,lore.relic
+      ].join(' ').toLowerCase();
+      return !q||haystack.includes(q);
+    });
+
+    list.innerHTML='';
+
+    for(const id of filtered){
+      const lore=codexRaceEntry(id);
+      const race=RACE_CATALOG[id];
+      const button=document.createElement('button');
+      button.className='codexRaceCard'+(codexSelectedRace===id?' active':'');
+      button.type='button';
+      button.innerHTML=
+        '<span class="codexRaceGlyph">'+lore.glyph+'</span>'+
+        '<span><b>'+(race?.name||id.toUpperCase())+'</b>'+
+        '<span>'+lore.godName+' // '+lore.domain+'</span></span>';
+      button.onclick=()=>{
+        codexSelectedRace=id;
+        renderPantheonCodex();
+        document.querySelector('.codexLorePanel')?.scrollTo({top:0,behavior:'smooth'});
+      };
+      list.appendChild(button);
+    }
+
+    if(!PANTHEON_CODEX[codexSelectedRace]){
+      codexSelectedRace=filtered[0]||known[0];
+    }
+
+    const lore=codexRaceEntry(codexSelectedRace);
+    const race=RACE_CATALOG[codexSelectedRace];
+
+    const set=(id,value)=>{
+      const el=document.getElementById(id);
+      if(el)el.textContent=value||'—';
+    };
+
+    set('codexSigil',lore.glyph);
+    set('codexDomain',lore.domain);
+    set('codexRaceName',race?.name||codexSelectedRace.toUpperCase());
+    set('codexGodName',lore.godName);
+    set('codexTemperament',lore.temperament);
+    set('codexQuote','“'+lore.quote+'”');
+    set('codexOrigin',lore.origin);
+    set('codexGod',lore.god);
+    set('codexCivilisation',lore.civilisation);
+    set('codexWar',lore.war);
+    set('codexShips',lore.ships);
+    set('codexCurrent',lore.current);
+    set('codexArchive',lore.archive);
+    set('codexDoctrine',lore.doctrine);
+    set('codexWeapon',lore.weapon);
+    set('codexRelic',lore.relic);
+
+    const sigil=document.getElementById('codexSigil');
+    if(sigil && race?.accent){
+      sigil.style.color='#'+new THREE.Color(race.accent).getHexString();
+    }
+
+    refreshForgeNav();
+  }
+
+  function wirePantheonCodex(){
+    const search=document.getElementById('codexSearch');
+
+    if(search&&!search.dataset.wired){
+      search.dataset.wired='1';
+      search.oninput=()=>{
+        codexSearch=search.value||'';
+        renderPantheonCodex();
+      };
+    }
+
+    renderPantheonCodex();
+  }
+
+
+
+  const PLAYER_PROGRESSION_CLASSES=new Set(
+    PLAYER_CLASS_ORDER.filter(id=>!PLAYER_SANDBOX_CLASSES.has(id))
+  );
+
+  settings.ownedHulls=Array.from(new Set(
+    (settings.ownedHulls||[]).filter(id=>{
+      const frame=FRAME_CATALOG[id];
+      return frame && PLAYER_PROGRESSION_CLASSES.has(frame.classId);
+    })
+  ));
+
+  // Every faction starter frigate remains available so players can explore doctrine immediately.
+  for(const id of [...POD_FLEET,...STARTER_FLEET]){
+    if(!settings.ownedHulls.includes(id))settings.ownedHulls.push(id);
+  }
+
+  if(!FRAME_CATALOG[settings.selectedShip]){
+    let oldRace=String(settings.selectedShip||'savanah').split('_')[0];
+    oldRace=LEGACY_RACE_ALIASES[oldRace]||oldRace;
+    settings.selectedShip=FRAME_CATALOG[oldRace+'_starter']
+      ?oldRace+'_starter'
+      :'savanah_starter';
+  }
+
+  let sandboxHullId=null;
+
+  function totalMicroZJClears(){
+    return Object.values(settings.microZJCompletions||{})
+      .reduce((sum,value)=>sum+Number(value||0),0);
+  }
+
+  function distinctMicroZJClears(){
+    return Object.values(settings.microZJCompletions||{})
+      .filter(value=>Number(value||0)>0)
+      .length;
+  }
+
+  function hullOwned(id){
+    return (settings.ownedHulls||[]).includes(id);
+  }
+
+  function sandboxHullAllowed(id){
+    const frame=FRAME_CATALOG[id];
+    return !!(
+      frame &&
+      PLAYER_SANDBOX_CLASSES.has(frame.classId) &&
+      sandboxHullId===id
+    );
+  }
+
+
+  function hullManufactureCost(frame){
+    const cost={salvage:hullPrice(frame)};
+    const raceMat=materialFromRace(frame.raceId);
+    const add=(id,qty)=>{if(qty)cost[id]=(cost[id]||0)+qty};
+
+    const classCosts={
+      pod:{ferrite:1},
+      starter:{},
+      frigate:{ferrite:4},
+      assault_frigate:{ferrite:7,race:1},
+      specialist_frigate:{ferrite:6,race:1,drone_parts:1},
+      destroyer:{ferrite:10,race:2},
+      cruiser:{ferrite:18,race:5,drone_parts:2},
+      heavy_cruiser:{ferrite:22,race:5,drone_parts:2},
+      advanced_cruiser:{ferrite:20,race:5,ai_lattice:1},
+      battlecruiser:{ferrite:26,race:6,drone_parts:3},
+      specialist_ship:{ferrite:22,race:5,ai_lattice:2},
+      battleship:{ferrite:24,race:6,drone_parts:3},
+      drone_carrier:{ferrite:30,race:7,drone_parts:8,ai_lattice:1},
+      industrial:{ferrite:34,race:5,drone_parts:6},
+      autonomous:{ferrite:28,race:6,drone_parts:5,ai_lattice:3},
+      dreadnought:{ferrite:52,race:14,ai_lattice:3,drone_parts:8},
+      carrier:{ferrite:58,race:15,ai_lattice:4,drone_parts:14}
+    }[frame.classId]||{};
+
+    add('ferrite',classCosts.ferrite||0);
+    add(raceMat,classCosts.race||0);
+    add('drone_parts',classCosts.drone_parts||0);
+    add('ai_lattice',classCosts.ai_lattice||0);
+
+    return cost;
+  }
+
+  function hullManufactureDuration(frame){
+    return {
+      pod:18,starter:0,frigate:42,assault_frigate:58,specialist_frigate:62,
+      destroyer:75,cruiser:105,heavy_cruiser:120,advanced_cruiser:128,
+      battlecruiser:138,specialist_ship:132,battleship:145,
+      drone_carrier:170,industrial:155,autonomous:180,
+      dreadnought:240,carrier:280,titan:420
+    }[frame.classId]||90;
+  }
+
+  function hullJob(frameId){
+    return (settings.industryJobs||[]).find(j=>!j.completed&&j.kind==='hull'&&j.frameId===frameId)||null;
+  }
+
+  function industryMissingCost(cost={}){
+    for(const [id,qty] of Object.entries(cost)){
+      const have=id==='salvage'?(settings.salvage||0):(settings.materials?.[id]||0);
+      if(have<qty)return id==='salvage'?'NEED '+qty+' SALVAGE':'NEED '+qty+' '+(MATERIAL_CATALOG[id]?.name||id).toUpperCase();
+    }
+    return null;
+  }
+
+  function shortHullCostText(cost={}){
+    return Object.entries(cost).map(([id,qty])=>id==='salvage'?qty+'S':qty+' '+(MATERIAL_CATALOG[id]?.name||id).toUpperCase()).join(' · ');
+  }
+
+  function startHullManufacture(id){
+    const frame=FRAME_CATALOG[id];if(!frame)return;
+    const state=hullPurchaseState(frame);
+    if(state.owned){selectFrame(id);return}
+    if(!state.ok){flashMission('SHIPYARD LOCKED',state.reason,.85);return}
+    if((settings.industryJobs||[]).filter(j=>!j.completed).length>=3){flashMission('SHIPYARD QUEUE FULL','MAXIMUM 3 ACTIVE MANUFACTURING JOBS',.75);return}
+    const cost=hullManufactureCost(frame),missing=industryMissingCost(cost);
+    if(missing){flashMission('MATERIALS REQUIRED',missing,.8);return}
+    payIndustryCost(cost);
+    const now=Date.now(),duration=hullManufactureDuration(frame);
+    settings.industryJobs.push({id:'hull_job_'+now+'_'+Math.floor(Math.random()*9999),kind:'hull',frameId:id,startedAt:now,endAt:now+duration*1000,completed:false});
+    saveSettings();renderFleetRoster();renderIndustry();
+    flashMission('SHIPYARD JOB STARTED',frame.name.toUpperCase()+' // '+duration+'S // '+shortHullCostText(cost),1.0);
+  }
+
+  function hullPrice(frame){
+    const base=HULL_CLASS_PRICE[frame.classId]??9999;
+    const raceIndex=Math.max(0,RACE_ORDER.indexOf(frame.raceId));
+    return Math.round(base*(1+raceIndex*.025));
+  }
+
+  function hullRequiredTier(frame){
+    return HULL_CLASS_TIER[frame.classId]||1;
+  }
+
+  function hullPrerequisite(frame){
+    const race=frame.raceId;
+    return {
+      pod:null,
+      starter:null,
+      frigate:race+'_starter',
+      assault_frigate:race+'_frigate',
+      specialist_frigate:race+'_frigate',
+      destroyer:race+'_starter',
+      cruiser:race+'_destroyer',
+      heavy_cruiser:race+'_cruiser',
+      advanced_cruiser:race+'_cruiser',
+      battlecruiser:race+'_advanced_cruiser',
+      specialist_ship:race+'_cruiser',
+      battleship:race+'_destroyer',
+      drone_carrier:race+'_battleship',
+      industrial:race+'_cruiser',
+      autonomous:race+'_cruiser',
+      dreadnought:race+'_battleship',
+      carrier:race+'_drone_carrier',
+      titan:null
+    }[frame.classId]??null;
+  }
+
+  function hullPurchaseState(frame){
+    if(hullOwned(frame.id))return {ok:true,owned:true,reason:'OWNED'};
+    if(frame.classId==='titan')return {ok:false,owned:false,sandbox:true,reason:'EXPERIMENTAL SANDBOX HULL'};
+
+    const activeJob=hullJob(frame.id);
+    if(activeJob){
+      const remaining=Math.max(0,Math.ceil((activeJob.endAt-Date.now())/1000));
+      return {ok:false,owned:false,building:true,reason:'BUILDING '+remaining+'S'};
+    }
+
+    if(frame.classId==='destroyer'&&totalMicroZJClears()<1)return {ok:false,owned:false,reason:'CLEAR 1 MICRO ZJ WAR POCKET'};
+    if(frame.classId==='battleship'&&distinctMicroZJClears()<3)return {ok:false,owned:false,reason:'CLEAR ALL 3 MICRO ZJ WAR POCKETS'};
+
+    const tier=hullRequiredTier(frame);
+    if((settings.campaignTier||1)<tier)return {ok:false,owned:false,reason:'REQUIRES CAMPAIGN TIER '+tier};
+
+    const prereq=hullPrerequisite(frame);
+    if(prereq&&!hullOwned(prereq)){
+      const pf=FRAME_CATALOG[prereq];
+      return {ok:false,owned:false,reason:'OWN '+(pf?.name||prereq)+' FIRST'};
+    }
+
+    const researchReq=hullResearchRequirement(frame);
+    if(researchReq&&!researchUnlocked(researchReq)){
+      return {ok:false,owned:false,researchReq,reason:'RESEARCH '+(RESEARCH_PROJECTS[researchReq]?.name||researchReq).toUpperCase()};
+    }
+
+    const cost=hullManufactureCost(frame),missing=industryMissingCost(cost);
+    if(missing)return {ok:false,owned:false,reason:missing,cost};
+
+    return {ok:true,owned:false,reason:'BLUEPRINT READY',price:hullPrice(frame),cost,costText:shortHullCostText(cost)};
+  }
+
+  function enableSandboxHull(id){
+    const frame=FRAME_CATALOG[id];
+    if(!frame || frame.classId!=='titan')return;
+
+    sandboxHullId=id;
+    previewFrame(id);
+
+    flashMission(
+      'EXPERIMENTAL TITAN ONLINE',
+      frame.name.toUpperCase()+' // SANDBOX TEST FLIGHT // PROGRESSION UNCHANGED',
+      1.2
+    );
+
+    renderFleetRoster();
+  }
+
+  function purchaseHull(id){
+    const frame=FRAME_CATALOG[id];if(!frame)return;
+    const state=hullPurchaseState(frame);
+    if(state.sandbox){enableSandboxHull(id);return}
+    if(state.owned){selectFrame(id);return}
+    startHullManufacture(id);
+  }
+
+  const LEGACY_FRAME_MAP={needle:'lycheetah_frigate',destroyer:'lycheetah_destroyer',cruiser:'lycheetah_cruiser',battlecruiser:'lycheetah_battleship',corvette:'vanta_cruiser',marauder:'ossuary_battleship',dreadnought:'lycheetah_dreadnought',eclipse:'lycheetah_titan',monolith:'vanta_dreadnought'};
+
+
+
+
+
+
+
+  let researchCategory='all';
+
+  function researchUnlocked(id){return (settings.researchUnlocked||[]).includes(id)}
+
+  function researchProjectState(id){
+    const p=RESEARCH_PROJECTS[id];
+    if(!p)return {ok:false,reason:'UNKNOWN PROJECT'};
+    if(researchUnlocked(id))return {ok:true,unlocked:true,reason:'UNLOCKED'};
+    const missing=(p.prereq||[]).filter(req=>!researchUnlocked(req));
+    if(missing.length)return {ok:false,unlocked:false,reason:'REQUIRES '+missing.map(req=>RESEARCH_PROJECTS[req]?.name||req).join(' + ')};
+    if((settings.researchData||0)<p.cost)return {ok:false,unlocked:false,reason:'NEED '+p.cost+' RESEARCH DATA'};
+    return {ok:true,unlocked:false,reason:'READY'};
+  }
+
+  function unlockResearch(id){
+    const p=RESEARCH_PROJECTS[id],state=researchProjectState(id);
+    if(!p||state.unlocked)return;
+    if(!state.ok){flashMission('RESEARCH LOCKED',state.reason,.75);return}
+    settings.researchData=Math.max(0,(settings.researchData||0)-p.cost);
+    settings.researchUnlocked=Array.from(new Set([...(settings.researchUnlocked||[]),id]));
+    saveSettings();renderResearch();renderIndustry();renderModules();renderFleetRoster();
+    flashMission('RESEARCH COMPLETE',p.name.toUpperCase()+' // BLUEPRINT ACCESS UNLOCKED',1.05);
+  }
+
+  function moduleResearchRequirement(id){
+    if(['stable_fire_control','capacitor_battery_bank','flux_recharger','efficient_vector_drive'].includes(id))return 'capacitor_dynamics';
+    if(['active_aegis_booster','armor_nanoforge'].includes(id))return 'active_tanking';
+    if(['ai_core_covenant','ai_core_oracle'].includes(id))return 'ai_cognition';
+    if(['ai_core_wild','ai_core_anomaly'].includes(id))return 'wild_cognition';
+    if(['void_torpedo','siege_beam'].includes(id))return 'capital_ordnance';
+    return null;
+  }
+
+  function droneResearchRequirement(id){
+    return ['combat_interceptors','sentry_lattice','salvage_swarm','mining_wing'].includes(id)?'drone_command':null;
+  }
+
+  function hullResearchRequirement(frame){
+    if(!frame)return null;
+
+    return {
+      pod:'starter_fabrication',
+      starter:'starter_fabrication',
+      frigate:'frigate_specialization',
+      assault_frigate:'frigate_specialization',
+      specialist_frigate:'frigate_specialization',
+      destroyer:'destroyer_architecture',
+      cruiser:'cruiser_architecture',
+      heavy_cruiser:'cruiser_architecture',
+      advanced_cruiser:'battlecruiser_theory',
+      battlecruiser:'battlecruiser_theory',
+      specialist_ship:'battlecruiser_theory',
+      battleship:'battleship_architecture',
+      drone_carrier:'drone_command',
+      industrial:'sovereign_industry',
+      autonomous:'ai_cognition',
+      dreadnought:'subcapital_architecture',
+      carrier:'subcapital_architecture',
+      titan:'titan_theory'
+    }[frame.classId]||null;
+  }
+
+  function awardResearchData(amount,source='RECOVERED KNOWLEDGE',silent=false){
+    const gain=Math.max(0,Math.round(Number(amount)||0));
+    if(!gain)return 0;
+    settings.researchData=(settings.researchData||0)+gain;
+    if(!silent)flashMission('RESEARCH DATA +'+gain,String(source).toUpperCase(),.65);
+    return gain;
+  }
+
+  function wreckResearchValue(entity){
+    if(!entity)return 0;
+    const cls=entity.classId||entity.type;
+    const base={fighter:0,starter:1,frigate:1,destroyer:2,cruiser:3,battleship:5,dreadnought:8,titan:14}[cls]||1;
+    if(!base)return 0;
+    const integrity=typeof intactEnemySystemRatio==='function'?intactEnemySystemRatio(entity):1;
+    return Math.max(1,Math.round(base*(.65+.70*integrity)));
+  }
+
+  function renderResearch(){
+    const grid=document.getElementById('researchProjectGrid');if(!grid)return;
+    const data=document.getElementById('researchDataAmount');if(data)data.textContent=Math.floor(settings.researchData||0);
+    const unlocked=Object.keys(RESEARCH_PROJECTS).filter(researchUnlocked);
+    const count=document.getElementById('researchUnlockedCount');if(count)count.textContent=unlocked.length+' / '+Object.keys(RESEARCH_PROJECTS).length+' THEORIES UNLOCKED';
+    const progress=document.getElementById('researchProgressText');
+    if(progress)progress.textContent='WRECKS, ARCHIVES AND ANOMALIES PROVIDE DATA. RESEARCH OPENS BLUEPRINT ACCESS; SALVAGE + MATERIALS STILL MANUFACTURE THE HARDWARE.';
+    const summary=document.getElementById('researchBlueprintSummary');
+    if(summary){
+      const n=cat=>unlocked.filter(id=>RESEARCH_PROJECTS[id]?.cat===cat).length;
+      summary.innerHTML='<div><span>FLEET ARCHITECTURE</span><b>'+n('fleet')+'</b></div><div><span>COMBAT SYSTEMS</span><b>'+n('combat')+'</b></div><div><span>AI / DRONE THEORY</span><b>'+n('ai')+'</b></div><div><span>INDUSTRY / STATIONS</span><b>'+n('industry')+'</b></div>';
+    }
+    grid.innerHTML='';
+    for(const p of Object.values(RESEARCH_PROJECTS)){
+      if(researchCategory!=='all'&&p.cat!==researchCategory)continue;
+      const state=researchProjectState(p.id),card=document.createElement('article');
+      card.className='researchProject '+(state.unlocked?'unlocked':state.ok?'':'locked');
+      const prereq=(p.prereq||[]).map(id=>RESEARCH_PROJECTS[id]?.name||id).join(' · ')||'NONE';
+      card.innerHTML='<div class="researchProjectTop"><span>'+p.cat.toUpperCase()+'</span><b>'+(state.unlocked?'UNLOCKED':p.cost+' DATA')+'</b></div><h4>'+p.name+'</h4><p>'+p.desc+'</p><div class="researchUnlocks">UNLOCKS // '+p.unlocks+'</div><div class="researchPrereq">PREREQ // '+prereq+'</div><button id="research_'+p.id+'" '+(state.ok&&!state.unlocked?'':'disabled')+'>'+(state.unlocked?'RESEARCHED':state.ok?'RESEARCH NOW':state.reason)+'</button>';
+      const btn=card.querySelector('button');if(btn)btn.onclick=()=>unlockResearch(p.id);
+      grid.appendChild(card);
+    }
+    for(const btn of document.querySelectorAll('[data-research-cat]'))btn.classList.toggle('active',btn.dataset.researchCat===researchCategory);
+  }
+
+
+  function materialFromRace(raceId){
+    const id=LEGACY_RACE_ALIASES[raceId]||raceId;
+    return {
+      savanah:'biofiber',sol_symbiots:'solar_filament',chaos:'biofiber',
+      cosmic_darkness:'prism_shard',cosmic_light:'solar_filament',blackhole:'void_glass',
+      hybrid_fused:'biofiber',human_hunters:'ferrite',ai_hunters:'ai_lattice',
+      amethyst_angels:'prism_shard',techno_angels:'prism_shard',ai_gods:'ai_lattice',
+      pagan_ai:'ferrite',ai:'drone_parts'
+    }[id]||'ferrite';
+  }
+
+  function droneOwned(id){return (settings.ownedDrones||[]).includes(id);}
+
+  function activateDroneWing(id){
+    const drone=DRONE_CATALOG[id];if(!drone)return;
+    if(!droneOwned(id)){
+      const researchReq=droneResearchRequirement(id);
+      if(researchReq&&!researchUnlocked(researchReq)){
+        flashMission('DRONE BLUEPRINT LOCKED',(RESEARCH_PROJECTS[researchReq]?.name||researchReq).toUpperCase(),.85);
+        return;
+      }
+      if((settings.salvage||0)<(drone.cost||0)){
+        flashMission('INSUFFICIENT SALVAGE',drone.name+' // '+drone.cost+' REQUIRED',.8);return;
+      }
+      settings.salvage-=drone.cost||0;
+      settings.ownedDrones.push(id);
+      flashMission('DRONE WING ACQUIRED',drone.name.toUpperCase(),.9);
+    }
+    settings.activeDroneWing=id;
+    saveSettings();
+    applyModuleStats(false);
+    rebuildPlayerDrones();
+    renderDroneBay();
+  }
+
+  function ensurePlayerDroneGroup(){
+    if(!player?.model)return null;
+    if(!player.droneGroup){
+      player.droneGroup=new THREE.Group();
+      player.droneGroup.name='player_drone_wing';
+      player.model.add(player.droneGroup);
+    }
+    return player.droneGroup;
+  }
+
+  function rebuildPlayerDrones(){
+    const root=ensurePlayerDroneGroup();if(!root)return;
+    disposeGeneratedTree(root);
+    const drone=DRONE_CATALOG[settings.activeDroneWing];if(!drone)return;
+    const mat=drone.color==='red'?glowRed:drone.color==='purple'?glowPurple:drone.color==='gold'?glowGold:glowCyan;
+    for(let i=0;i<drone.count;i++){
+      const g=new THREE.Group();g.userData.droneIndex=i;root.add(g);
+      wedge(2.1,.9,.55,mat,[0,0,0],g,.06,.82,.3);
+      box(.28,.22,1.7,matArmorDark,[0,-.08,.55],[0,0,0],g);
+      addMesh(new THREE.SphereGeometry(.13,7,5),mat,[0,.22,-.55],[0,0,0],[1,1,1],g);
+    }
+  }
+
+  function updatePlayerDrones(dt){
+    const root=player?.droneGroup,drone=DRONE_CATALOG[settings.activeDroneWing];
+    if(!root||!drone)return;
+    const radius=Math.max(5.5,currentFrame().radius*.72);
+    root.rotation.y+=dt*.28;
+    for(let i=0;i<root.children.length;i++){
+      const c=root.children[i],a=(i/root.children.length)*Math.PI*2+gameTime*.20;
+      c.position.set(Math.cos(a)*radius,2.8+Math.sin(gameTime*1.2+i)*1.4,Math.sin(a)*radius);
+      c.rotation.y=-a+Math.PI/2;
+    }
+    if(drone.repair&&!player.destroyed){
+      if(drone.repair.armor&&player.armor<player.maxArmor)player.armor=Math.min(player.maxArmor,player.armor+player.maxArmor*drone.repair.armor*dt);
+      if(drone.repair.hull&&player.hull<player.maxHull){
+        player.hull=Math.min(player.maxHull,player.hull+player.maxHull*drone.repair.hull*dt);
+        player.structure=player.hull;
+      }
+      ensureCombatAnatomy(player,false);
+    }
+  }
+
+  function canPayIndustryCost(cost={}){
+    for(const [id,qty] of Object.entries(cost)){
+      if(id==='salvage'){if((settings.salvage||0)<qty)return false;}
+      else if((settings.materials?.[id]||0)<qty)return false;
+    }
+    return true;
+  }
+
+  function payIndustryCost(cost={}){
+    for(const [id,qty] of Object.entries(cost)){
+      if(id==='salvage')settings.salvage=Math.max(0,(settings.salvage||0)-qty);
+      else settings.materials[id]=Math.max(0,(settings.materials?.[id]||0)-qty);
+    }
+  }
+
+  function startIndustryJob(id){
+    const recipe=INDUSTRY_RECIPES[id];if(!recipe)return;
+    if(recipe.researchReq&&!researchUnlocked(recipe.researchReq)){
+      flashMission('RESEARCH REQUIRED',(RESEARCH_PROJECTS[recipe.researchReq]?.name||recipe.researchReq).toUpperCase(),.75);return;
+    }
+    if((settings.industryJobs||[]).filter(j=>!j.completed).length>=3){
+      flashMission('INDUSTRY QUEUE FULL','MAXIMUM 3 PROTOTYPE JOBS',.7);return;
+    }
+    if(!canPayIndustryCost(recipe.cost)){
+      flashMission('MATERIALS REQUIRED',recipe.name.toUpperCase(),.7);return;
+    }
+    payIndustryCost(recipe.cost);
+    const now=Date.now();
+    settings.industryJobs.push({id:'job_'+now+'_'+Math.floor(Math.random()*9999),recipeId:id,startedAt:now,endAt:now+recipe.duration*1000,completed:false});
+    saveSettings();renderIndustry();
+    flashMission('INDUSTRY JOB STARTED',recipe.name.toUpperCase(),.75);
+  }
+
+  function processIndustryJobs(){
+    if(!settings.industryJobs?.length)return;
+    const now=Date.now();let changed=false,hullChanged=false;
+
+    for(const job of settings.industryJobs){
+      if(job.completed||now<job.endAt)continue;
+
+      if(job.kind==='hull'){
+        const frame=FRAME_CATALOG[job.frameId];
+        if(frame){
+          settings.ownedHulls=Array.from(new Set([...(settings.ownedHulls||[]),frame.id]));
+          hullChanged=true;
+          flashMission('SHIPYARD COMPLETE',frame.name.toUpperCase()+' // HULL ENTERED SOVEREIGN INVENTORY',1.1);
+        }
+        job.completed=true;changed=true;continue;
+      }
+
+      const recipe=INDUSTRY_RECIPES[job.recipeId];
+      if(!recipe){job.completed=true;changed=true;continue}
+
+      const bonus=settings.activeDroneWing==='mining_wing'?1.25:1;
+      for(const [id,qty] of Object.entries(recipe.output||{})){
+        settings.materials[id]=(settings.materials[id]||0)+Math.max(1,Math.round(qty*bonus));
+      }
+      if(recipe.salvage)settings.salvage=(settings.salvage||0)+Math.round(recipe.salvage*bonus);
+      job.completed=true;changed=true;
+      flashMission('INDUSTRY COMPLETE',recipe.name.toUpperCase()+(bonus>1?' // MINING DRONE BONUS':''),.85);
+    }
+
+    if(changed){
+      settings.industryJobs=settings.industryJobs.slice(-20);
+      saveSettings();renderIndustry();renderModules();
+      if(hullChanged){renderFleetRoster();renderStation();renderHangar()}
+    }
+  }
+
+  function currentFrame(){
+    if(!FRAME_CATALOG[settings.selectedShip]){
+      const migrated=LEGACY_FRAME_MAP[settings.selectedShip];
+      settings.selectedShip=FRAME_CATALOG[migrated]?migrated:'savanah_starter';
+    }
+    const frame=FRAME_CATALOG[settings.selectedShip]||FRAME_CATALOG.savanah_starter;
+    // Generated-frame sanity guard: never let malformed save/catalog data reach Three.js.
+    if(!frame || !Array.isArray(frame.scale) || frame.scale.length!==3 ||
+       !Array.isArray(frame.shieldScale) || frame.shieldScale.length!==3 ||
+       !frame.activeBanks?.length){
+      settings.selectedShip='savanah_starter';
+      return FRAME_CATALOG.savanah_starter;
+    }
+    return frame;
+  }
+
+  // ============================================================
+  // FORGE 0.23 — HULL BLUEPRINT AUTHORING ENGINE
+  // ============================================================
+  const HULL_FORGE_MATERIALS={
+    hull:{label:'Dark Hull',mat:matHull,color:'#17232b'},
+    hull_dark:{label:'Void Hull',mat:matHullDark,color:'#071217'},
+    armor:{label:'Armour',mat:matArmor,color:'#34454e'},
+    armor_dark:{label:'Dark Armour',mat:matArmorDark,color:'#18242b'},
+    gold:{label:'Sovereign Gold',mat:matGold,color:'#c58a27'},
+    white:{label:'Seraph White',mat:matWhite,color:'#e7eef2'},
+    ivory:{label:'Aurelian Ivory',mat:matIvory,color:'#d8cda9'},
+    ferric:{label:'Ferric',mat:matFerric,color:'#525441'},
+    bone:{label:'Ossuary Bone',mat:matBone,color:'#8a7760'},
+    vanta:{label:'Vanta Black',mat:matVanta,color:'#101016'},
+    prism:{label:'Prism',mat:matPrism,color:'#9cdef0'},
+    organic:{label:'Living Hull',mat:matOrganic,color:'#173323'},
+    cyan:{label:'Cyan Energy',mat:glowCyan,color:'#70f6ff'},
+    blue:{label:'Blue Energy',mat:glowBlue,color:'#55bfff'},
+    purple:{label:'Void Purple',mat:glowPurple,color:'#b760ff'},
+    green:{label:'Living Green',mat:glowGreen,color:'#39ff69'},
+    amber:{label:'Amber Energy',mat:glowAmber,color:'#ff9d38'},
+    red:{label:'War Red',mat:glowRed,color:'#ff5a45'},
+    light:{label:'Radiant Light',mat:glowWhite,color:'#fffbe5'}
+  };
+
+  const HULL_FORGE_RACE_PALETTES={
+    savanah:['hull_dark','armor_dark','gold','green','organic'],
+    sol_symbiots:['white','ivory','cyan','blue','gold'],
+    chaos:['armor_dark','gold','purple','amber','red'],
+    cosmic_darkness:['vanta','hull_dark','purple','blue','gold'],
+    cosmic_light:['white','ivory','gold','light','cyan'],
+    blackhole:['vanta','hull_dark','amber','purple','red'],
+    hybrid_fused:['armor','bone','purple','organic','hull_dark'],
+    human_hunters:['ferric','armor','amber','red','hull_dark'],
+    ai_hunters:['vanta','armor_dark','red','hull_dark','cyan'],
+    amethyst_angels:['hull_dark','gold','purple','armor_dark','amber'],
+    techno_angels:['white','prism','cyan','blue','gold'],
+    ai_gods:['ivory','white','gold','red','light'],
+    pagan_ai:['bone','armor_dark','amber','red','gold'],
+    ai:['armor','hull_dark','cyan','blue','vanta']
+  };
+
+
+  const RACE_SHIP_MOTIFS={
+    savanah:{style:'predator',wing:1.20,sweep:1.08,width:1.18,core:'green'},
+    sol_symbiots:{style:'covenant',wing:1.05,sweep:.95,width:1.04,core:'cyan'},
+    chaos:{style:'chaos',wing:1.28,sweep:1.18,width:1.16,core:'purple'},
+    cosmic_darkness:{style:'veil',wing:1.15,sweep:1.16,width:.94,core:'purple'},
+    cosmic_light:{style:'solar',wing:1.22,sweep:1.13,width:1.02,core:'light'},
+    blackhole:{style:'singularity',wing:1.30,sweep:1.12,width:1.12,core:'amber'},
+    hybrid_fused:{style:'fused',wing:1.12,sweep:1.05,width:1.16,core:'purple'},
+    human_hunters:{style:'industrial',wing:.90,sweep:.78,width:1.35,core:'amber'},
+    ai_hunters:{style:'stealth',wing:1.08,sweep:1.24,width:.82,core:'red'},
+    amethyst_angels:{style:'gothic',wing:1.22,sweep:1.12,width:1.08,core:'purple'},
+    techno_angels:{style:'crystal',wing:1.34,sweep:1.05,width:.96,core:'cyan'},
+    ai_gods:{style:'regal',wing:1.16,sweep:.98,width:1.10,core:'red'},
+    pagan_ai:{style:'bone_temple',wing:.96,sweep:.86,width:1.32,core:'amber'},
+    ai:{style:'machine',wing:.88,sweep:.80,width:1.28,core:'cyan'}
+  };
+
+  let hullForgeDraft=null;
+  let hullForgeFrameId=null;
+  let hullForgeSelected=-1;
+  let hullForgeSelectedHardpoint=-1;
+  let hullForgeSelectedSystem=-1;
+  let hullForgeMode='hull';
+  let hullForgeDirty=false;
+  let hullForgeActive=false;
+  let hullForgeViewRange=80;
+  let hullForgeDrag=null;
+  let hullForgeNextId=1;
+
+  function cloneBlueprint(bp){
+    return JSON.parse(JSON.stringify(bp));
+  }
+
+  function hullForgePalette(frame=currentFrame()){
+    return HULL_FORGE_RACE_PALETTES[frame.raceId]||['hull','armor','gold','cyan'];
+  }
+
+  function hullForgeDefaultMaterial(frame=currentFrame()){
+    return hullForgePalette(frame)[0]||'hull';
+  }
+
+  function normalizeHullForgePart(part,index=0){
+    const type=['wedge','plate','spine','ring','core'].includes(part?.type)?part.type:'wedge';
+    return {
+      id:String(part?.id||('part_'+(hullForgeNextId++))),
+      type,
+      x:Number.isFinite(Number(part?.x))?Number(part.x):0,
+      z:Number.isFinite(Number(part?.z))?Number(part.z):0,
+      y:Number.isFinite(Number(part?.y))?Number(part.y):2,
+      w:clamp(Number(part?.w)||6,.25,90),
+      l:clamp(Number(part?.l)||18,.25,180),
+      h:clamp(Number(part?.h)||2,.1,40),
+      rot:Number.isFinite(Number(part?.rot))?Number(part.rot):0,
+      material:HULL_FORGE_MATERIALS[part?.material]?part.material:'hull',
+      mirror:part?.mirror!==false
+    };
+  }
+
+
+  const HARDPOINT_SIZE_CATALOG={
+    light:{id:'light',label:'LIGHT',tier:1,scale:.64,arc:300,color:'#74f6ff',glow:glowCyan},
+    medium:{id:'medium',label:'MEDIUM',tier:2,scale:.82,arc:260,color:'#7d9fff',glow:glowBlue},
+    heavy:{id:'heavy',label:'HEAVY',tier:3,scale:1.04,arc:220,color:'#d979ff',glow:glowPurple},
+    capital:{id:'capital',label:'CAPITAL',tier:4,scale:1.30,arc:180,color:'#ffc45d',glow:glowGold}
+  };
+
+  const BANK_MIRROR={
+    WPN_FL:'WPN_FR',WPN_FR:'WPN_FL',
+    WPN_ML:'WPN_MR',WPN_MR:'WPN_ML',
+    WPN_AL:'WPN_AR',WPN_AR:'WPN_AL'
+  };
+
+  function normalizeHardpointRecord(hp,frame=currentFrame()){
+    const active=frame.activeBanks||[];
+    let bankId=BANK_IDS.includes(hp?.bankId)?hp.bankId:(active[0]||'WPN_FL');
+    if(!active.includes(bankId))bankId=active[0]||'WPN_FL';
+    const classTier=CLASS_CATALOG[frame.classId]?.maxWeaponTier||1;
+    const classDefaultSize=
+      classTier>=4?'capital':
+      classTier>=3?'heavy':
+      classTier>=2?'medium':'light';
+
+    const size=HARDPOINT_SIZE_CATALOG[hp?.size]
+      ?hp.size
+      :classDefaultSize;
+
+    return {
+      id:String(hp?.id||('hp_'+(hullForgeNextId++))),
+      bankId,
+      x:Number.isFinite(Number(hp?.x))?Number(hp.x):-6,
+      z:Number.isFinite(Number(hp?.z))?Number(hp.z):-16,
+      y:Number.isFinite(Number(hp?.y))?Number(hp.y):4,
+      rot:Number.isFinite(Number(hp?.rot))?Number(hp.rot):0,
+      size,
+      mirror:hp?.mirror!==false
+    };
+  }
+
+  function seedHardpointsForFrame(frame=currentFrame()){
+    const cls=CLASS_CATALOG[frame.classId]||CLASS_CATALOG.starter;
+    const active=frame.activeBanks||[];
+    const tier=cls.maxWeaponTier||1;
+    const size=tier>=4?'capital':tier>=3?'heavy':tier>=2?'medium':'light';
+
+    const socketCount=
+      ['dreadnought','carrier','titan'].includes(frame.classId)?3:
+      ['battleship','drone_carrier','industrial','autonomous','battlecruiser'].includes(frame.classId)?2:
+      1;
+
+    const spread=Math.max(4.8,cls.radius*.62);
+    const length=Math.max(24,cls.radius*4.7);
+
+    const bankBase={
+      WPN_FL:{x:-spread,z:-length*.31,rot:-10},
+      WPN_FR:{x: spread,z:-length*.31,rot: 10},
+      WPN_ML:{x:-spread*1.12,z:0,rot:-32},
+      WPN_MR:{x: spread*1.12,z:0,rot:32},
+      WPN_AL:{x:-spread*.78,z:length*.30,rot:-58},
+      WPN_AR:{x: spread*.78,z:length*.30,rot:58}
+    };
+
+    const out=[];
+    for(const bankId of active){
+      const base=bankBase[bankId]||{x:0,z:0,rot:0};
+
+      for(let i=0;i<socketCount;i++){
+        if(out.length>=18)break;
+
+        const centered=i-(socketCount-1)/2;
+        out.push(normalizeHardpointRecord({
+          id:'hp_seed_'+bankId+'_'+i,
+          bankId,
+          x:active.length===1?0:base.x+centered*(bankId.endsWith('L')?-1:1)*1.8,
+          z:base.z+centered*5.6,
+          y:3.4+cls.radius*.16,
+          rot:base.rot,
+          size,
+          mirror:false
+        },frame));
+      }
+    }
+
+    return out.slice(0,18);
+  }
+
+
+  const SYSTEM_SIZE_CATALOG={
+    small:{id:'small',label:'SMALL',scale:.72,color:'#93f7ff'},
+    medium:{id:'medium',label:'MEDIUM',scale:1.0,color:'#6eeaff'},
+    large:{id:'large',label:'LARGE',scale:1.28,color:'#b886ff'},
+    capital:{id:'capital',label:'CAPITAL',scale:1.62,color:'#ffd16f'}
+  };
+
+  const SYSTEM_TYPE_CATALOG={
+    engine:{label:'ENGINE',color:'#67f2ff'},
+    reactor:{label:'REACTOR',color:'#ffc75e'},
+    shield:{label:'SHIELD',color:'#64cfff'},
+    command:{label:'COMMAND',color:'#db74ff'},
+    module:{label:'MODULE',color:'#f1f1df'}
+  };
+
+  function normalizeSystemRecord(sys,frame=currentFrame()){
+    const type=SYSTEM_TYPE_CATALOG[sys?.type]?sys.type:'engine';
+    const classDefaultSystemSize={
+      starter:'small',
+      destroyer:'medium',
+      battleship:'large',
+      titan:'large'
+    }[frame.classId]||'small';
+
+    const size=SYSTEM_SIZE_CATALOG[sys?.size]
+      ?sys.size
+      :classDefaultSystemSize;
+    const slot=['weapon','defense','drive','utility'].includes(sys?.slot)
+      ?sys.slot:'utility';
+
+    return {
+      id:String(sys?.id||('sys_'+(hullForgeNextId++))),
+      type,
+      slot,
+      x:Number.isFinite(Number(sys?.x))?Number(sys.x):0,
+      z:Number.isFinite(Number(sys?.z))?Number(sys.z):0,
+      y:Number.isFinite(Number(sys?.y))?Number(sys.y):3,
+      rot:Number.isFinite(Number(sys?.rot))?Number(sys.rot):0,
+      size,
+      mirror:type==='engine' ? sys?.mirror!==false : !!sys?.mirror
+    };
+  }
+
+  function seedSystemsForFrame(frame=currentFrame()){
+    const cls=CLASS_CATALOG[frame.classId]||CLASS_CATALOG.starter;
+    const radius=cls.radius||7;
+    const tier=cls.maxWeaponTier||1;
+
+    const engineSize=
+      radius>=20?'large':
+      radius>=12?'large':
+      radius>=8?'medium':'small';
+
+    const criticalSize=
+      radius>=22?'capital':
+      radius>=14?'large':
+      radius>=8?'medium':'small';
+
+    const supportSize=
+      radius>=18?'large':
+      radius>=9?'medium':'small';
+
+    const spread=Math.max(4.5,radius*.68);
+    const aft=Math.max(22,radius*2.35);
+    const top=Math.max(3.6,radius*.36);
+
+    const records=[
+      {id:'sys_engine_outer',type:'engine',x:-spread,z:aft,y:1.0,rot:0,size:engineSize,mirror:true},
+      {id:'sys_engine_inner',type:'engine',x:-spread*.45,z:aft+3,y:1.4,rot:0,size:engineSize,mirror:true},
+      {id:'sys_reactor',type:'reactor',x:0,z:3,y:top,size:criticalSize,mirror:false},
+      {id:'sys_shield',type:'shield',x:0,z:-Math.max(7,radius*.72),y:top+1.5,size:supportSize,mirror:false},
+      {id:'sys_command',type:'command',x:0,z:-Math.max(15,radius*1.45),y:top+2,size:supportSize,mirror:false},
+      {id:'sys_mod_weapon',type:'module',slot:'weapon',x:0,z:-4,y:top+2.3,size:supportSize},
+      {id:'sys_mod_defense',type:'module',slot:'defense',x:0,z:Math.max(11,radius*1.05),y:top+.8,size:supportSize},
+      {id:'sys_mod_drive',type:'module',slot:'drive',x:0,z:aft-4,y:2.2,size:supportSize},
+      {id:'sys_mod_utility',type:'module',slot:'utility',x:0,z:-Math.max(11,radius),y:top+3.2,size:supportSize}
+    ];
+
+    return records.map(r=>normalizeSystemRecord(r,frame));
+  }
+
+  function normalizeHullBlueprint(raw,frame=currentFrame()){
+    const parts=Array.isArray(raw?.parts)?raw.parts:[];
+    const rawHardpoints=Array.isArray(raw?.hardpoints)?raw.hardpoints:null;
+    const hardpoints=(rawHardpoints||seedHardpointsForFrame(frame))
+      .slice(0,18)
+      .map(hp=>normalizeHardpointRecord(hp,frame));
+
+    const rawSystems=Array.isArray(raw?.systems)?raw.systems:null;
+    const systems=(rawSystems||seedSystemsForFrame(frame))
+      .slice(0,24)
+      .map(sys=>normalizeSystemRecord(sys,frame));
+
+    return {
+      version:3,
+      frameId:frame.id,
+      raceId:frame.raceId,
+      classId:frame.classId,
+      name:String(raw?.name||frame.name),
+      parts:parts.slice(0,180).map(normalizeHullForgePart),
+      hardpoints,
+      systems
+    };
+  }
+
+  function seedHullBlueprint(frame=currentFrame()){
+    const p=hullForgePalette(frame);
+    const motif=RACE_SHIP_MOTIFS[frame.raceId]||RACE_SHIP_MOTIFS.ai;
+    const cfg={
+      pod:{L:34,W:5.6,wing:5,core:1.5,top:3.0,h:1.8,orn:0},
+      starter:{L:58,W:8.2,wing:12,core:2.4,top:4.3,h:2.6,orn:1},
+      frigate:{L:66,W:9.0,wing:14,core:2.8,top:4.6,h:2.9,orn:1},
+      assault_frigate:{L:72,W:9.8,wing:16,core:3.1,top:4.9,h:3.1,orn:2},
+      specialist_frigate:{L:70,W:9.4,wing:15,core:3.0,top:5.0,h:3.0,orn:2},
+      destroyer:{L:78,W:10.5,wing:18,core:3.4,top:5.1,h:3.3,orn:2},
+      cruiser:{L:88,W:12.0,wing:21,core:3.9,top:5.6,h:3.8,orn:2},
+      heavy_cruiser:{L:96,W:13.3,wing:24,core:4.2,top:5.9,h:4.1,orn:3},
+      advanced_cruiser:{L:94,W:12.6,wing:23,core:4.1,top:5.9,h:3.9,orn:3},
+      battlecruiser:{L:102,W:14.0,wing:27,core:4.5,top:6.2,h:4.2,orn:3},
+      specialist_ship:{L:100,W:13.7,wing:25,core:4.5,top:6.4,h:4.2,orn:4},
+      battleship:{L:108,W:14.5,wing:28,core:4.8,top:6.4,h:4.4,orn:3},
+      drone_carrier:{L:118,W:16.0,wing:31,core:5.2,top:6.9,h:4.8,orn:4},
+      industrial:{L:122,W:17.0,wing:29,core:5.1,top:6.6,h:5.0,orn:4},
+      autonomous:{L:116,W:15.5,wing:30,core:5.3,top:7.0,h:4.7,orn:4},
+      dreadnought:{L:130,W:18.0,wing:35,core:5.8,top:7.5,h:5.3,orn:4},
+      carrier:{L:136,W:19.0,wing:37,core:6.0,top:7.8,h:5.5,orn:5},
+      titan:{L:142,W:19,wing:40,core:6.4,top:8.1,h:5.8,orn:5}
+    }[frame.classId]||{L:64,W:9,wing:14,core:2.8,top:4.7,h:3,orn:1};
+    const k=cfg.L/58,wing=cfg.wing*motif.wing,width=cfg.W*motif.width,parts=[];
+    const add=(type,x,z,y,w,l,h,rot=0,material=p[0],mirror=true)=>parts.push({type,x,z,y,w,l,h,rot,material,mirror});
+
+    add('spine',0,-5*k,2*k,width,cfg.L,cfg.h,0,p[0],false);
+    add('wedge',wing*.48,-9*k,1.45*k,8.5*k,34*k,2.2*k,14*motif.sweep,p[1]||p[0],true);
+    add('wedge',wing,12*k,1.05*k,6.2*k,27*k,1.7*k,31*motif.sweep,p[0],true);
+    if(!['pod','starter'].includes(frame.classId)){
+      add('wedge',wing*1.22,28*k,.95*k,5*k,23*k,1.4*k,48*motif.sweep,p[1]||p[0],true);
+      add('plate',wing*.62,-25*k,1.4*k,7*k,13*k,1.8*k,0,p[2]||p[0],true);
+    }
+    if(['heavy_cruiser','advanced_cruiser','battlecruiser','specialist_ship','battleship','drone_carrier','industrial','autonomous','dreadnought','carrier','titan'].includes(frame.classId)){
+      add('wedge',wing*1.38,-2*k,1.15*k,5.2*k,38*k,1.6*k,58*motif.sweep,p[2]||p[1]||p[0],true);
+      add('plate',wing*.82,29*k,1*k,8*k,16*k,2*k,0,p[1]||p[0],true);
+    }
+
+    add('ring',0,-3*k,cfg.top,cfg.core,1,.65*k,0,motif.core,false);
+    add('core',0,-3*k,cfg.top,cfg.core*.43,1,1,0,motif.style==='singularity'?'vanta':motif.core,false);
+
+    switch(motif.style){
+      case 'predator':
+        for(let i=0;i<cfg.orn+2;i++){
+          const z=(-25+i*16)*k,x=wing*(.34+.09*(i%2));
+          add('ring',x,z,cfg.top*.86,1.18*k,1,.52*k,0,'green',true);
+          add('core',x,z,cfg.top*.86,.54*k,1,1,0,'green',true);
+        }
+        add('wedge',wing*.18,-35*k,cfg.top*.72,3.5*k,11*k,1.4*k,24,'gold',true);
+        add('wedge',wing*1.30,7*k,.8*k,4.2*k,22*k,1.4*k,62,'hull_dark',true);
+        break;
+      case 'covenant':
+        add('plate',0,-29*k,cfg.top*.78,width*.44,13*k,2.4*k,0,'white',false);
+        add('core',width*.13,-31*k,cfg.top*.98,.72*k,1,1,0,'cyan',true);
+        for(let i=0;i<cfg.orn+1;i++)add('ring',0,(-15+i*16)*k,cfg.top*1.06,(2+i*.35)*k,1,.42*k,0,'cyan',false);
+        add('wedge',wing*1.20,5*k,1*k,4.4*k,28*k,1.4*k,53,'white',true);
+        break;
+      case 'chaos':
+        add('wedge',wing*.22,-36*k,cfg.top*.84,4*k,13*k,1.7*k,29,'amber',true);
+        for(let i=0;i<cfg.orn+2;i++)add('wedge',wing*(.55+i*.14),(-15+i*12)*k,k,3.5*k,17*k,1.3*k,35+i*8,i%2?'armor_dark':'gold',true);
+        add('core',width*.14,-31*k,cfg.top*.92,.65*k,1,1,0,'amber',true);
+        add('ring',0,2*k,cfg.top*1.06,cfg.core*1.35,1,.75*k,0,'purple',false);
+        break;
+      case 'veil':
+        add('wedge',wing*1.26,5*k,.85*k,5*k,36*k,1.25*k,61,'purple',true);
+        add('wedge',wing*.65,31*k,.9*k,5*k,28*k,1.3*k,31,'hull_dark',true);
+        add('plate',0,-27*k,cfg.top*.8,width*.48,15*k,1.4*k,0,'vanta',false);
+        add('core',width*.14,-29*k,cfg.top*.95,.55*k,1,1,0,'purple',true);
+        break;
+      case 'solar':
+        add('wedge',wing*1.34,3*k,k,4.6*k,31*k,1.3*k,59,'gold',true);
+        add('wedge',wing*.76,25*k,1.1*k,6*k,29*k,1.5*k,32,'white',true);
+        for(let i=0;i<cfg.orn+1;i++)add('ring',0,(-21+i*18)*k,cfg.top*1.1,(2+i*.42)*k,1,.45*k,0,'light',false);
+        break;
+      case 'singularity':
+        add('wedge',wing*1.34,9*k,.82*k,6*k,31*k,1.4*k,58,'vanta',true);
+        add('wedge',wing*.78,28*k,.85*k,6*k,24*k,1.4*k,35,'hull_dark',true);
+        add('ring',0,-3*k,cfg.top*1.02,cfg.core*2,1,1.1*k,0,'amber',false);
+        add('core',0,-3*k,cfg.top*1.02,cfg.core*.9,1,1,0,'vanta',false);
+        break;
+      case 'fused':
+        add('plate',wing*.62,-17*k,1.4*k,8*k,26*k,2.5*k,-8,'armor',false);
+        add('plate',-wing*.62,-11*k,1.35*k,9*k,31*k,2.7*k,11,'bone',false);
+        add('wedge',wing*1.20,19*k,.8*k,6*k,26*k,1.8*k,48,'bone',true);
+        add('ring',wing*.42,11*k,cfg.top*.82,1.25*k,1,.55*k,0,'purple',true);
+        break;
+      case 'industrial':
+        for(let i=0;i<cfg.orn+3;i++)add('plate',wing*(.40+.14*(i%2)),(-27+i*15)*k,k,(7+i%2*2)*k,12*k,2.4*k,0,i%2?'armor':'ferric',true);
+        add('spine',0,15*k,3*k,width*.42,40*k,2.4*k,0,'amber',false);
+        break;
+      case 'stealth':
+        add('wedge',wing*1.28,2*k,.75*k,4.4*k,35*k,1.15*k,58,'vanta',true);
+        add('wedge',wing*.82,29*k,.75*k,4.8*k,28*k,1.1*k,37,'hull_dark',true);
+        add('plate',0,-19*k,cfg.top*.77,1*k,29*k,.65*k,0,'red',false);
+        break;
+      case 'gothic':
+        add('wedge',wing*.18,-38*k,cfg.top*.85,4*k,15*k,1.8*k,21,'gold',true);
+        for(let i=0;i<cfg.orn+1;i++)add('wedge',wing*(.58+i*.14),(-13+i*14)*k,k,4*k,21*k,1.5*k,38+i*6,'hull_dark',true);
+        add('core',width*.14,-32*k,cfg.top*.94,.64*k,1,1,0,'purple',true);
+        add('ring',0,-1*k,cfg.top*1.05,cfg.core*1.45,1,.75*k,0,'purple',false);
+        break;
+      case 'crystal':
+        for(let i=0;i<cfg.orn+3;i++)add('wedge',wing*(.56+i*.12),(-17+i*11)*k,.95*k,4.2*k,(20-i*.5)*k,1.05*k,31+i*6,i%2?'prism':'white',true);
+        add('ring',0,-31*k,cfg.top*1.14,cfg.core*1.65,1,.45*k,0,'cyan',false);
+        break;
+      case 'regal':
+        add('plate',0,-31*k,cfg.top*.78,width*.50,15*k,2.6*k,0,'ivory',false);
+        add('core',0,-30*k,cfg.top*1.05,1.1*k,1,1,0,'red',false);
+        add('wedge',wing*1.20,4*k,k,5*k,29*k,1.5*k,53,'gold',true);
+        add('wedge',wing*.78,25*k,1.1*k,6*k,27*k,1.6*k,34,'ivory',true);
+        break;
+      case 'bone_temple':
+        for(let i=0;i<cfg.orn+2;i++)add('plate',wing*(.44+.14*(i%2)),(-27+i*16)*k,k,6.5*k,15*k,2.5*k,0,i%2?'bone':'armor_dark',true);
+        add('wedge',wing*.20,-38*k,cfg.top*.82,5*k,15*k,2.2*k,24,'bone',true);
+        add('core',width*.14,-33*k,cfg.top*.95,.58*k,1,1,0,'amber',true);
+        break;
+      default:
+        for(let i=0;i<cfg.orn+3;i++)add('plate',wing*(.42+.15*(i%2)),(-25+i*17)*k,k,(7+i%2*2)*k,13*k,2.1*k,0,'armor',true);
+        add('spine',0,12*k,3*k,width*.36,38*k,1.7*k,0,'cyan',false);
+    }
+
+    return normalizeHullBlueprint({
+      version:3,frameId:frame.id,raceId:frame.raceId,classId:frame.classId,name:frame.name,
+      parts,hardpoints:seedHardpointsForFrame(frame),systems:seedSystemsForFrame(frame)
+    },frame);
+  }
+
+  function activeHullBlueprint(frameId=settings.selectedShip){
+    if(hullForgeActive && hullForgeFrameId===frameId && hullForgeDraft)return hullForgeDraft;
+    const frame=FRAME_CATALOG[frameId]||currentFrame();
+    const saved=settings.hullBlueprints?.[frameId];
+    return saved?normalizeHullBlueprint(saved,frame):seedHullBlueprint(frame);
+  }
+
+
+  function blueprintHardpoints(frame=currentFrame()){
+    const bp=activeHullBlueprint(frame.id);
+    if(bp?.hardpoints?.length)return bp.hardpoints.map(h=>normalizeHardpointRecord(h,frame));
+    return seedHardpointsForFrame(frame);
+  }
+
+  function expandedHardpoints(frame=currentFrame()){
+    const out=[];
+    const active=new Set(frame.activeBanks||[]);
+    for(const raw of blueprintHardpoints(frame)){
+      const hp=normalizeHardpointRecord(raw,frame);
+      if(!active.has(hp.bankId))continue;
+
+      out.push({
+        sourceId:hp.id,bankId:hp.bankId,
+        x:hp.x,y:hp.y,z:hp.z,rot:hp.rot,size:hp.size,mirrorSide:false
+      });
+
+      const mirrorBank=BANK_MIRROR[hp.bankId];
+      if(hp.mirror && Math.abs(hp.x)>.05 && active.has(mirrorBank)){
+        out.push({
+          sourceId:hp.id,bankId:mirrorBank,
+          x:-hp.x,y:hp.y,z:hp.z,rot:-hp.rot,size:hp.size,mirrorSide:true
+        });
+      }
+      if(out.length>=18)break;
+    }
+    return out.slice(0,18);
+  }
+
+  function bankHardpointRecords(bankId,frame=currentFrame()){
+    return expandedHardpoints(frame).filter(h=>h.bankId===bankId);
+  }
+
+  function bankHardpointTier(bankId,frame=currentFrame()){
+    const records=bankHardpointRecords(bankId,frame);
+    if(!records.length)return 0;
+    return Math.min(...records.map(h=>HARDPOINT_SIZE_CATALOG[h.size]?.tier||1));
+  }
+
+  function bankHardpointLabel(bankId,frame=currentFrame()){
+    const tier=bankHardpointTier(bankId,frame);
+    return tier?weaponTierLabel(tier):'NO SOCKET';
+  }
+
+  function weaponCompatibleWithBank(weaponId,bankId,frame=currentFrame()){
+    const w=TURRET_CATALOG[weaponId];
+    if(!w)return false;
+    if(!weaponCompatibleWithFrame(weaponId,frame))return false;
+    const tier=bankHardpointTier(bankId,frame);
+    return tier>0 && (w.tier||1)<=tier;
+  }
+
+
+  function blueprintSystems(frame=currentFrame()){
+    const bp=activeHullBlueprint(frame.id);
+    if(bp?.systems?.length)return bp.systems.map(s=>normalizeSystemRecord(s,frame));
+    return seedSystemsForFrame(frame);
+  }
+
+  function expandedSystems(frame=currentFrame()){
+    const out=[];
+    for(const raw of blueprintSystems(frame)){
+      const sys=normalizeSystemRecord(raw,frame);
+      out.push({...sys,mirrorSide:false});
+      if(sys.mirror && Math.abs(sys.x)>.05){
+        out.push({...sys,x:-sys.x,rot:-sys.rot,mirrorSide:true});
+      }
+    }
+    return out.slice(0,24);
+  }
+
+  function primarySystemPlacement(type,slot=null,frame=currentFrame()){
+    const records=expandedSystems(frame).filter(s=>
+      s.type===type && (slot==null || s.slot===slot)
+    );
+    if(!records.length)return null;
+    if(type==='engine')return records[0];
+
+    // Non-engine systems prefer the record closest to centerline.
+    return records.sort((a,b)=>Math.abs(a.x)-Math.abs(b.x))[0];
+  }
+
+  function moduleSocketPlacement(slot,frame=currentFrame()){
+    return primarySystemPlacement('module',slot,frame) || {
+      type:'module',slot,x:0,y:6,z:0,rot:0,size:'medium'
+    };
+  }
+
+  function ensureSystemVisualGroup(){
+    if(!player.systemVisuals){
+      player.systemVisuals=new THREE.Group();
+      player.systemVisuals.name='authored_system_architecture';
+      player.model.add(player.systemVisuals);
+    }
+    return player.systemVisuals;
+  }
+
+  function clearSystemVisuals(){
+    disposeGeneratedTree(ensureSystemVisualGroup());
+  }
+
+  function applySystemBlueprint(){
+    if(!player?.engines?.length)return;
+    const frame=currentFrame();
+    const systems=expandedSystems(frame);
+    const visuals=ensureSystemVisualGroup();
+    clearSystemVisuals();
+
+    // ----------------------------------------------------------
+    // ENGINES: reusable engine objects are repositioned by blueprint.
+    // ----------------------------------------------------------
+    const engineRecords=systems.filter(s=>s.type==='engine').slice(0,player.engines.length);
+    for(const e of player.engines){
+      e.group.visible=false;
+      e.systemNode=null;
+      e.group.scale.setScalar(1);
+    }
+
+    const engL=systemNode('ENG_L');
+    const engR=systemNode('ENG_R');
+    if(engL)engL.engineIndices=[];
+    if(engR)engR.engineIndices=[];
+
+    const leftPts=[],rightPts=[];
+    engineRecords.forEach((sys,index)=>{
+      const e=player.engines[index];
+      const data=SYSTEM_SIZE_CATALOG[sys.size]||SYSTEM_SIZE_CATALOG.medium;
+      e.group.position.set(sys.x,sys.y,sys.z);
+      e.group.rotation.set(0,THREE.MathUtils.degToRad(sys.rot),0);
+      e.group.scale.setScalar(data.scale);
+      e.group.visible=true;
+
+      const node=sys.x<0?engL:engR;
+      e.systemNode=node;
+      if(node)node.engineIndices.push(index);
+      (sys.x<0?leftPts:rightPts).push(new THREE.Vector3(sys.x,sys.y,sys.z));
+
+      // Builder-visible engine collar.
+      addMesh(
+        new THREE.TorusGeometry(1.25*data.scale,.16*data.scale,10,28),
+        glowCyan,
+        [sys.x,sys.y,sys.z+1.55*data.scale],
+        [0,0,0],[1,1,1],visuals
+      );
+    });
+
+    function centroid(points,fallback){
+      if(!points.length)return fallback.clone();
+      return points.reduce((a,p)=>a.add(p),new THREE.Vector3())
+        .multiplyScalar(1/points.length);
+    }
+
+    if(engL){
+      engL.anchor.position.copy(centroid(leftPts,new THREE.Vector3(-5,2,34)))
+        .add(new THREE.Vector3(0,1.1,0));
+      engL.frameDisabled=leftPts.length===0;
+      engL.anchor.visible=!engL.frameDisabled;
+    }
+    if(engR){
+      engR.anchor.position.copy(centroid(rightPts,new THREE.Vector3(5,2,34)))
+        .add(new THREE.Vector3(0,1.1,0));
+      engR.frameDisabled=rightPts.length===0;
+      engR.anchor.visible=!engR.frameDisabled;
+    }
+
+    // ----------------------------------------------------------
+    // CRITICAL SYSTEMS: move actual damageable nodes.
+    // ----------------------------------------------------------
+    const criticalMap={
+      reactor:'REACTOR',
+      shield:'SHIELD',
+      command:'COMMAND'
+    };
+    for(const [type,nodeId] of Object.entries(criticalMap)){
+      const node=systemNode(nodeId);
+      const sys=primarySystemPlacement(type,null,frame);
+      if(!node)continue;
+      if(sys){
+        node.anchor.position.set(sys.x,sys.y,sys.z);
+        node.frameDisabled=false;
+        node.anchor.visible=true;
+
+        const data=SYSTEM_SIZE_CATALOG[sys.size]||SYSTEM_SIZE_CATALOG.medium;
+        const mat=type==='reactor'?glowGold:type==='shield'?glowCyan:glowPurple;
+
+        addMesh(
+          new THREE.TorusGeometry(1.4*data.scale,.17*data.scale,10,34),
+          mat,[sys.x,sys.y-.18,sys.z],
+          [Math.PI/2,0,0],[1,1,1],visuals
+        );
+
+        if(type==='reactor'){
+          player.reactor.position.set(sys.x,sys.y,sys.z);
+          player.reactor.scale.setScalar(data.scale);
+        }
+      }else{
+        node.frameDisabled=true;
+        node.anchor.visible=false;
+      }
+    }
+
+    // ----------------------------------------------------------
+    // MODULE SOCKETS: visible physical architecture anchors.
+    // ----------------------------------------------------------
+    for(const slot of ['weapon','defense','drive','utility']){
+      const sys=moduleSocketPlacement(slot,frame);
+      const data=SYSTEM_SIZE_CATALOG[sys.size]||SYSTEM_SIZE_CATALOG.medium;
+      const mat=
+        slot==='weapon'?glowGold:
+        slot==='defense'?glowCyan:
+        slot==='drive'?glowAmber:glowPurple;
+
+      addMesh(
+        new THREE.TorusGeometry(1.28*data.scale,.18*data.scale,10,34),
+        mat,[sys.x,sys.y,sys.z],
+        [Math.PI/2,THREE.MathUtils.degToRad(sys.rot),0],[1,1,1],visuals
+      );
+    }
+
+    // Shield shell remains ship-centered, but its scale is frame-specific.
+    player.shieldMesh.position.set(0,1,0);
+  }
+
+  function ensureHardpointVisualGroup(){
+    if(!player.hardpointVisuals){
+      player.hardpointVisuals=new THREE.Group();
+      player.hardpointVisuals.name='authored_hardpoint_sockets';
+      player.model.add(player.hardpointVisuals);
+    }
+    return player.hardpointVisuals;
+  }
+
+  function clearHardpointVisuals(){
+    disposeGeneratedTree(ensureHardpointVisualGroup());
+  }
+
+  function hardpointArcContains(t,targetPos){
+    if(!t?.group||!targetPos)return true;
+    const worldPos=new THREE.Vector3();
+    t.group.getWorldPosition(worldPos);
+    const dirWorld=targetPos.clone().sub(worldPos);
+    if(dirWorld.lengthSq()<.00001)return true;
+
+    const parentQ=new THREE.Quaternion();
+    player.model.getWorldQuaternion(parentQ);
+    const local=dirWorld.applyQuaternion(parentQ.invert());
+    local.y=0;
+    if(local.lengthSq()<.00001)return true;
+    local.normalize();
+
+    const targetYaw=Math.atan2(local.x,-local.z);
+    const delta=Math.atan2(
+      Math.sin(targetYaw-(t.mountYaw||0)),
+      Math.cos(targetYaw-(t.mountYaw||0))
+    );
+    return Math.abs(delta)<=((t.arcHalf||Math.PI)*1.001);
+  }
+
+  function applyHardpointBlueprint(){
+    if(!player?.turrets?.length)return;
+    const frame=currentFrame();
+    const mounts=expandedHardpoints(frame);
+    const visualGroup=ensureHardpointVisualGroup();
+    clearHardpointVisuals();
+
+    // Clear all dynamic weapon-bank ownership.
+    for(const n of player.systemNodes.filter(n=>n.type==='weapon')){
+      n.turretIndices=[];
+      n.frameDisabled=!frame.activeBanks.includes(n.id);
+      n.anchor.visible=!n.frameDisabled;
+    }
+    for(const t of player.turrets){
+      t.group.visible=false;
+      t.systemNode=null;
+      t.mountYaw=0;
+      t.arcHalf=Math.PI;
+      t.hardpointSize='light';
+      t.group.scale.setScalar(1);
+    }
+
+    const bankPositions={};
+    let turretIndex=0;
+
+    for(const hp of mounts){
+      if(turretIndex>=player.turrets.length)break;
+      const t=player.turrets[turretIndex];
+      const node=systemNode(hp.bankId);
+      const sizeData=HARDPOINT_SIZE_CATALOG[hp.size]||HARDPOINT_SIZE_CATALOG.light;
+
+      t.group.position.set(hp.x,hp.y,hp.z);
+      t.group.rotation.set(0,THREE.MathUtils.degToRad(hp.rot),0);
+      t.basePos.set(hp.x,hp.y,hp.z);
+      t.mountYaw=THREE.MathUtils.degToRad(hp.rot);
+      t.arcHalf=THREE.MathUtils.degToRad(sizeData.arc*.5);
+      t.hardpointSize=hp.size;
+      t.group.scale.setScalar(sizeData.scale);
+      t.systemNode=node;
+
+      if(node){
+        node.turretIndices.push(turretIndex);
+        (bankPositions[hp.bankId]||(bankPositions[hp.bankId]=[]))
+          .push(new THREE.Vector3(hp.x,hp.y,hp.z));
+      }
+
+      // Physical socket ring beneath the weapon.
+      const ring=addMesh(
+        new THREE.TorusGeometry(.94*sizeData.scale,.13*sizeData.scale,10,28),
+        sizeData.glow,
+        [hp.x,hp.y-.22,hp.z],
+        [Math.PI/2,0,0],[1,1,1],visualGroup
+      );
+      ring.material=sizeData.glow;
+      const base=addMesh(
+        new THREE.CylinderGeometry(.64*sizeData.scale,.72*sizeData.scale,.16,18),
+        matArmorDark,
+        [hp.x,hp.y-.26,hp.z],
+        [0,0,0],[1,1,1],visualGroup
+      );
+
+      turretIndex++;
+    }
+
+    // Relocate gameplay bank subsystem nodes to authored socket centroids.
+    for(const bankId of BANK_IDS){
+      const node=systemNode(bankId);
+      if(!node)continue;
+      const pts=bankPositions[bankId]||[];
+      if(pts.length){
+        const avg=pts.reduce((a,p)=>a.add(p),new THREE.Vector3())
+          .multiplyScalar(1/pts.length);
+        node.anchor.position.copy(avg).add(new THREE.Vector3(0,.65,0));
+        node.frameDisabled=!frame.activeBanks.includes(bankId);
+      }else{
+        node.anchor.position.set(0,4,0);
+        node.frameDisabled=true;
+      }
+    }
+
+    // Apply weapon family models after placement and enforce bank capacity.
+    for(const bankId of frame.activeBanks){
+      const build=currentFrameBuild();
+      const fitted=build[bankId];
+      if(!weaponCompatibleWithBank(fitted,bankId,frame)){
+        build[bankId]='autocannon';
+      }
+    }
+    applyTurretBuildVisuals();
+  }
+
+  function hullForgeMaterial(key){
+    return HULL_FORGE_MATERIALS[key]?.mat||matHull;
+  }
+
+  function renderHullBlueprintInto(parent,blueprint,frame){
+    if(!blueprint?.parts?.length)return false;
+
+    function renderOne(part,x,rot){
+      const mat=hullForgeMaterial(part.material);
+      const pos=[x,part.y,part.z];
+      const ry=THREE.MathUtils.degToRad(rot||0);
+
+      if(part.type==='plate'){
+        box(part.w,part.h,part.l,mat,pos,[0,ry,0],parent);
+      }else if(part.type==='ring'){
+        addMesh(
+          new THREE.TorusGeometry(part.w,Math.max(.12,part.h*.22),10,44),
+          mat,pos,[Math.PI/2,ry,0],[1,1,1],parent
+        );
+      }else if(part.type==='core'){
+        addMesh(
+          new THREE.SphereGeometry(part.w,18,12),
+          mat,pos,[0,ry,0],[1,1,1],parent
+        );
+      }else{
+        const front=part.type==='spine'?.025:.05;
+        const rear=part.type==='spine'?.62:.86;
+        const mesh=wedge(part.l,part.w,part.h,mat,pos,parent,front,rear,.42);
+        mesh.rotation.y=ry;
+      }
+    }
+
+    for(const raw of blueprint.parts){
+      const part=normalizeHullForgePart(raw);
+      renderOne(part,part.x,part.rot);
+      if(part.mirror && Math.abs(part.x)>.05){
+        renderOne(part,-part.x,-part.rot);
+      }
+    }
+    return true;
+  }
+
+
+  function setHullForgeMode(mode){
+    hullForgeMode=['hull','hardpoints','systems'].includes(mode)?mode:'hull';
+    hullForgeDrag=null;
+
+    const hullBtn=document.getElementById('hfModeHull');
+    const hpBtn=document.getElementById('hfModeHardpoints');
+    const sysBtn=document.getElementById('hfModeSystems');
+    hullBtn?.classList.toggle('active',hullForgeMode==='hull');
+    hpBtn?.classList.toggle('active',hullForgeMode==='hardpoints');
+    sysBtn?.classList.toggle('active',hullForgeMode==='systems');
+
+    const hullLib=document.getElementById('hfHullLibrary');
+    const hpLib=document.getElementById('hfHardpointLibrary');
+    const sysLib=document.getElementById('hfSystemsLibrary');
+    if(hullLib)hullLib.style.display=hullForgeMode==='hull'?'block':'none';
+    if(hpLib)hpLib.style.display=hullForgeMode==='hardpoints'?'block':'none';
+    if(sysLib)sysLib.style.display=hullForgeMode==='systems'?'block':'none';
+
+    renderHullForge();
+  }
+
+  function hullForgeSelectedHardpointRecord(){
+    return hullForgeDraft?.hardpoints?.[hullForgeSelectedHardpoint]||null;
+  }
+
+  function hardpointPhysicalCount(draft=hullForgeDraft){
+    if(!draft)return 0;
+    let count=0;
+    const frame=currentFrame();
+    const active=new Set(frame.activeBanks||[]);
+    for(const raw of draft.hardpoints||[]){
+      const hp=normalizeHardpointRecord(raw,frame);
+      if(!active.has(hp.bankId))continue;
+      count++;
+      if(hp.mirror && Math.abs(hp.x)>.05 && active.has(BANK_MIRROR[hp.bankId]))count++;
+    }
+    return count;
+  }
+
+  function defaultHardpointBankForAdd(){
+    const frame=currentFrame();
+    const active=frame.activeBanks||[];
+    const preferred=active.find(id=>id.endsWith('L'))||active[0]||'WPN_FL';
+    return preferred;
+  }
+
+  function addHullForgeHardpoint(size='light'){
+    if(!hullForgeDraft)return;
+    const physical=hardpointPhysicalCount();
+    if(physical>=18){
+      flashMission('HARDPOINT LIMIT','18 PHYSICAL TURRET MOUNTS MAXIMUM',.65);
+      return;
+    }
+    const frame=currentFrame();
+    const bankId=defaultHardpointBankForAdd();
+    const x=frame.classId==='titan'?-12:-6.5;
+    const hp=normalizeHardpointRecord({
+      id:'hp_'+(hullForgeNextId++),
+      bankId,x,z:0,y:frame.classId==='titan'?6:4,
+      rot:0,size,mirror:true
+    },frame);
+
+    // A mirrored record consumes two physical turret objects.
+    if(physical+2>18)hp.mirror=false;
+
+    hullForgeDraft.hardpoints.push(hp);
+    hullForgeSelectedHardpoint=hullForgeDraft.hardpoints.length-1;
+    hullForgeMode='hardpoints';
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function deleteHullForgeHardpoint(){
+    if(!hullForgeDraft||hullForgeSelectedHardpoint<0)return;
+    hullForgeDraft.hardpoints.splice(hullForgeSelectedHardpoint,1);
+    hullForgeSelectedHardpoint=Math.min(
+      hullForgeSelectedHardpoint,
+      hullForgeDraft.hardpoints.length-1
+    );
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function duplicateHullForgeHardpoint(){
+    const hp=hullForgeSelectedHardpointRecord();
+    if(!hp||!hullForgeDraft)return;
+
+    const current=hardpointPhysicalCount();
+    const added=hp.mirror&&Math.abs(hp.x)>.05?2:1;
+    if(current+added>18){
+      flashMission('HARDPOINT LIMIT','DUPLICATE WOULD EXCEED 18 PHYSICAL MOUNTS',.7);
+      return;
+    }
+
+    const copy={
+      ...cloneBlueprint(hp),
+      id:'hp_'+(hullForgeNextId++),
+      z:hp.z+5
+    };
+    hullForgeDraft.hardpoints.push(copy);
+    hullForgeSelectedHardpoint=hullForgeDraft.hardpoints.length-1;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function hardpointBankSummary(bankId){
+    const frame=currentFrame();
+    const records=(hullForgeDraft?.hardpoints||[])
+      .flatMap(raw=>{
+        const hp=normalizeHardpointRecord(raw,frame);
+        const arr=[];
+        if(hp.bankId===bankId)arr.push(hp);
+        if(hp.mirror && BANK_MIRROR[hp.bankId]===bankId)arr.push({...hp,bankId});
+        return arr;
+      });
+
+    if(!records.length)return 'NO PHYSICAL SOCKET';
+    const tier=Math.min(...records.map(h=>HARDPOINT_SIZE_CATALOG[h.size]?.tier||1));
+    return records.length+' SOCKETS // '+weaponTierLabel(tier)+' MAX';
+  }
+
+  function syncHardpointInspector(){
+    const hp=hullForgeSelectedHardpointRecord();
+    const hard=document.getElementById('hfHardpointInspector');
+    const hull=document.getElementById('hfInspectorFields');
+    const empty=document.getElementById('hfNoSelection');
+    const title=document.getElementById('hfInspectorTitle');
+
+    if(hullForgeMode!=='hardpoints'){
+      if(hard)hard.style.display='none';
+      if(title)title.textContent='Selected Part';
+      return;
+    }
+
+    if(hull)hull.style.display='none';
+    document.getElementById('hfSystemInspector')?.style.setProperty('display','none');
+    if(title)title.textContent='Selected Hardpoint';
+    if(empty)empty.style.display=hp?'none':'block';
+    if(hard)hard.style.display=hp?'grid':'none';
+    if(!hp)return;
+
+    const set=(id,val)=>{
+      const el=document.getElementById(id);
+      if(el && document.activeElement!==el)el.value=String(val);
+    };
+    set('hpBank',hp.bankId);
+    set('hpSize',hp.size);
+    set('hpX',hp.x);
+    set('hpZ',hp.z);
+    set('hpY',hp.y);
+    set('hpRot',hp.rot);
+
+    const mirror=document.getElementById('hpMirror');
+    if(mirror)mirror.checked=!!hp.mirror;
+
+    const meta=document.getElementById('hpInspectorMeta');
+    if(meta){
+      const data=HARDPOINT_SIZE_CATALOG[hp.size]||HARDPOINT_SIZE_CATALOG.light;
+      const opposite=BANK_MIRROR[hp.bankId];
+      meta.innerHTML=
+        '<b>'+BANK_LABELS[hp.bankId]+'</b> // '+data.label+' // TIER '+data.tier+
+        ' // '+data.arc+'° TRAVERSE<br>'+
+        (hp.mirror
+          ?'MIRROR → '+(BANK_LABELS[opposite]||opposite)
+          :'SINGLE PHYSICAL SOCKET')+
+        '<br>BANK STATUS // '+hardpointBankSummary(hp.bankId);
+    }
+  }
+
+  function renderHullForgeHardpointList(){
+    const list=document.getElementById('hfHardpointList');
+    const records=document.getElementById('hfHardpointRecordCount');
+    const sockets=document.getElementById('hfSocketCount');
+    if(!list||!hullForgeDraft)return;
+
+    list.innerHTML='';
+    hullForgeDraft.hardpoints.forEach((hp,index)=>{
+      const data=HARDPOINT_SIZE_CATALOG[hp.size]||HARDPOINT_SIZE_CATALOG.light;
+      const row=document.createElement('div');
+      row.className='hfPartRow'+(index===hullForgeSelectedHardpoint?' selected':'');
+      row.innerHTML=
+        '<div><b>'+(index+1)+' // '+BANK_LABELS[hp.bankId]+'</b>'+
+        '<span class="hpTier">'+data.label+' // TIER '+data.tier+'</span></div>'+
+        '<span>X '+hp.x.toFixed(1)+' · Z '+hp.z.toFixed(1)+(hp.mirror?' · MIRROR':'')+'</span>';
+      row.onclick=()=>{
+        hullForgeSelectedHardpoint=index;
+        hullForgeMode='hardpoints';
+        renderHullForge();
+      };
+      list.appendChild(row);
+    });
+
+    if(records)records.textContent=String(hullForgeDraft.hardpoints.length);
+    if(sockets)sockets.textContent=hardpointPhysicalCount()+' / 18';
+  }
+
+  function hardpointCanvasInstances(hp){
+    const out=[{
+      x:hp.x,z:hp.z,rot:hp.rot,bankId:hp.bankId,sign:1
+    }];
+    const mirrorBank=BANK_MIRROR[hp.bankId];
+    if(hp.mirror && Math.abs(hp.x)>.05 && currentFrame().activeBanks.includes(mirrorBank)){
+      out.push({
+        x:-hp.x,z:hp.z,rot:-hp.rot,bankId:mirrorBank,sign:-1
+      });
+    }
+    return out;
+  }
+
+  function drawHardpointOnCanvas(ctx,m,hp,instance,selected=false){
+    const p=m.worldToCanvas(instance.x,instance.z);
+    const data=HARDPOINT_SIZE_CATALOG[hp.size]||HARDPOINT_SIZE_CATALOG.light;
+    const r=(5+data.tier*2.2);
+    ctx.save();
+    ctx.translate(p.x,p.y);
+
+    ctx.fillStyle='rgba(0,5,9,.90)';
+    ctx.strokeStyle=selected?'#ffe07d':data.color;
+    ctx.lineWidth=selected?3:2;
+    ctx.beginPath();
+    ctx.arc(0,0,r,0,Math.PI*2);
+    ctx.fill();ctx.stroke();
+
+    const yaw=THREE.MathUtils.degToRad(-instance.rot);
+    ctx.rotate(yaw);
+    ctx.strokeStyle=selected?'#ffe07d':data.color;
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(0,-r-8);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-3,-r-5);
+    ctx.lineTo(0,-r-9);
+    ctx.lineTo(3,-r-5);
+    ctx.stroke();
+
+    ctx.rotate(-yaw);
+    ctx.fillStyle=selected?'#ffe7a8':data.color;
+    ctx.font='700 8px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(
+      (BANK_LABELS[instance.bankId]||instance.bankId)
+        .replace('Fore ','F').replace('Mid ','M').replace('Aft ','A')
+        .replace('Port','L').replace('Starboard','R'),
+      0,3
+    );
+    ctx.restore();
+  }
+
+  function pickHullForgeHardpoint(clientX,clientY){
+    const m=hullForgeCanvasMetrics();
+    if(!m||!hullForgeDraft)return null;
+    const rect=m.canvas.getBoundingClientRect();
+    const px=(clientX-rect.left)*(m.canvas.width/rect.width);
+    const py=(clientY-rect.top)*(m.canvas.height/rect.height);
+    const world=m.canvasToWorld(px,py);
+
+    let best=null,bestD=Infinity;
+    hullForgeDraft.hardpoints.forEach((hp,index)=>{
+      for(const instance of hardpointCanvasInstances(hp)){
+        const d=Math.hypot(world.x-instance.x,world.z-instance.z);
+        const radius=3.2+(HARDPOINT_SIZE_CATALOG[hp.size]?.tier||1)*1.2;
+        if(d<radius && d<bestD){
+          best={index,sign:instance.sign};
+          bestD=d;
+        }
+      }
+    });
+    return best;
+  }
+
+  function hullForgeHardpointNudge(dx,dz){
+    const hp=hullForgeSelectedHardpointRecord();
+    if(!hp)return;
+    hp.x+=dx;hp.z+=dz;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+
+  function hullForgeSelectedSystemRecord(){
+    return hullForgeDraft?.systems?.[hullForgeSelectedSystem]||null;
+  }
+
+  function systemPhysicalCount(draft=hullForgeDraft){
+    if(!draft)return 0;
+    let count=0;
+    for(const raw of draft.systems||[]){
+      const sys=normalizeSystemRecord(raw,currentFrame());
+      count++;
+      if(sys.mirror&&Math.abs(sys.x)>.05)count++;
+    }
+    return count;
+  }
+
+  function canAddUniqueSystem(type,slot=null){
+    if(!hullForgeDraft)return false;
+    if(type==='engine')return true;
+    return !hullForgeDraft.systems.some(s=>
+      s.type===type && (type!=='module'||s.slot===slot)
+    );
+  }
+
+  function addHullForgeSystem(type='engine'){
+    if(!hullForgeDraft)return;
+    if(systemPhysicalCount()>=24){
+      flashMission('SYSTEM LIMIT','24 PHYSICAL SYSTEM RECORDS MAXIMUM',.65);
+      return;
+    }
+
+    const frame=currentFrame();
+    let slot='utility';
+    if(type==='module'){
+      slot=['weapon','defense','drive','utility']
+        .find(s=>canAddUniqueSystem('module',s))||'utility';
+      if(!canAddUniqueSystem('module',slot)){
+        flashMission('MODULE SOCKETS COMPLETE','ALL FOUR ARCHITECTURE SLOTS ALREADY EXIST',.7);
+        return;
+      }
+    }else if(type!=='engine'&&!canAddUniqueSystem(type)){
+      flashMission(
+        'SYSTEM ALREADY PRESENT',
+        SYSTEM_TYPE_CATALOG[type].label+' IS UNIQUE // MOVE THE EXISTING RECORD',
+        .7
+      );
+      return;
+    }
+
+    const titan=frame.classId==='titan';
+    const defaults={
+      engine:{x:titan?-12:-6,z:titan?48:27,y:titan?1.4:.8,mirror:true,size:titan?'large':'small'},
+      reactor:{x:0,z:3,y:titan?7:4.5,mirror:false,size:titan?'capital':'medium'},
+      shield:{x:0,z:-10,y:titan?8.5:5.5,mirror:false,size:titan?'large':'medium'},
+      command:{x:0,z:-23,y:titan?9:6,mirror:false,size:titan?'large':'medium'},
+      module:{x:0,z:0,y:titan?9:5.5,mirror:false,size:titan?'large':'medium'}
+    }[type];
+
+    const sys=normalizeSystemRecord({
+      id:'sys_'+(hullForgeNextId++),
+      type,slot,rot:0,...defaults
+    },frame);
+
+    if(sys.mirror&&systemPhysicalCount()+2>24)sys.mirror=false;
+
+    hullForgeDraft.systems.push(sys);
+    hullForgeSelectedSystem=hullForgeDraft.systems.length-1;
+    hullForgeMode='systems';
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function deleteHullForgeSystem(){
+    if(!hullForgeDraft||hullForgeSelectedSystem<0)return;
+    const sys=hullForgeSelectedSystemRecord();
+    hullForgeDraft.systems.splice(hullForgeSelectedSystem,1);
+    hullForgeSelectedSystem=Math.min(
+      hullForgeSelectedSystem,
+      hullForgeDraft.systems.length-1
+    );
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+    if(sys?.type!=='engine'){
+      flashMission('SYSTEM REMOVED',SYSTEM_TYPE_CATALOG[sys.type]?.label+' OFFLINE UNTIL REPLACED',.55);
+    }
+  }
+
+  function duplicateHullForgeSystem(){
+    const sys=hullForgeSelectedSystemRecord();
+    if(!sys||!hullForgeDraft)return;
+    if(sys.type!=='engine'){
+      flashMission('UNIQUE SYSTEM','ONLY ENGINES MAY BE DUPLICATED DIRECTLY',.55);
+      return;
+    }
+    const added=sys.mirror&&Math.abs(sys.x)>.05?2:1;
+    if(systemPhysicalCount()+added>24){
+      flashMission('SYSTEM LIMIT','DUPLICATE WOULD EXCEED 24 PHYSICAL RECORDS',.65);
+      return;
+    }
+    const copy={...cloneBlueprint(sys),id:'sys_'+(hullForgeNextId++),z:sys.z+4};
+    hullForgeDraft.systems.push(copy);
+    hullForgeSelectedSystem=hullForgeDraft.systems.length-1;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function renderHullForgeSystemList(){
+    const list=document.getElementById('hfSystemList');
+    const count=document.getElementById('hfSystemCount');
+    const records=document.getElementById('hfSystemRecordCount');
+    if(!list||!hullForgeDraft)return;
+
+    list.innerHTML='';
+    hullForgeDraft.systems.forEach((sys,index)=>{
+      const type=SYSTEM_TYPE_CATALOG[sys.type]||SYSTEM_TYPE_CATALOG.engine;
+      const size=SYSTEM_SIZE_CATALOG[sys.size]||SYSTEM_SIZE_CATALOG.medium;
+      const row=document.createElement('div');
+      row.className='hfPartRow'+(index===hullForgeSelectedSystem?' selected':'');
+      row.innerHTML=
+        '<div><b>'+(index+1)+' // '+type.label+
+          (sys.type==='module'?' // '+sys.slot.toUpperCase():'')+'</b>'+
+        '<span class="hpTier">'+size.label+'</span></div>'+
+        '<span>X '+sys.x.toFixed(1)+' · Z '+sys.z.toFixed(1)+(sys.mirror?' · MIRROR':'')+'</span>';
+      row.onclick=()=>{
+        hullForgeSelectedSystem=index;
+        hullForgeMode='systems';
+        renderHullForge();
+      };
+      list.appendChild(row);
+    });
+    if(count)count.textContent=String(systemPhysicalCount());
+    if(records)records.textContent=String(hullForgeDraft.systems.length);
+  }
+
+  function syncSystemInspector(){
+    const sys=hullForgeSelectedSystemRecord();
+    const hard=document.getElementById('hfHardpointInspector');
+    const hull=document.getElementById('hfInspectorFields');
+    const panel=document.getElementById('hfSystemInspector');
+    const empty=document.getElementById('hfNoSelection');
+    const title=document.getElementById('hfInspectorTitle');
+
+    if(hullForgeMode!=='systems'){
+      if(panel)panel.style.display='none';
+      return;
+    }
+
+    if(hull)hull.style.display='none';
+    if(hard)hard.style.display='none';
+    if(title)title.textContent='Selected System';
+    if(empty)empty.style.display=sys?'none':'block';
+    if(panel)panel.style.display=sys?'grid':'none';
+    if(!sys)return;
+
+    const set=(id,val)=>{
+      const el=document.getElementById(id);
+      if(el&&document.activeElement!==el)el.value=String(val);
+    };
+    set('sysType',sys.type);
+    set('sysSlot',sys.slot);
+    set('sysSize',sys.size);
+    set('sysX',sys.x);
+    set('sysZ',sys.z);
+    set('sysY',sys.y);
+    set('sysRot',sys.rot);
+
+    const mirror=document.getElementById('sysMirror');
+    if(mirror)mirror.checked=!!sys.mirror;
+    const slotLabel=document.getElementById('sysSlotLabel');
+    if(slotLabel)slotLabel.style.display=sys.type==='module'?'grid':'none';
+    const mirrorLabel=document.getElementById('sysMirrorLabel');
+    if(mirrorLabel)mirrorLabel.style.display=sys.type==='engine'?'flex':'none';
+
+    const meta=document.getElementById('sysInspectorMeta');
+    if(meta){
+      const size=SYSTEM_SIZE_CATALOG[sys.size]||SYSTEM_SIZE_CATALOG.medium;
+      let binding='';
+      if(sys.type==='engine'){
+        binding=(sys.x<0?'PORT':'STARBOARD')+' DRIVE // '+(sys.mirror?'MIRRORED PAIR':'SINGLE ENGINE');
+      }else if(sys.type==='module'){
+        binding=sys.slot.toUpperCase()+' FITTING ARCHITECTURE // '+(MODULE_CATALOG[settings.loadout[sys.slot]]?.name||'EMPTY');
+      }else{
+        binding='DAMAGEABLE '+SYSTEM_TYPE_CATALOG[sys.type].label+' NODE';
+      }
+      meta.innerHTML=
+        '<b>'+SYSTEM_TYPE_CATALOG[sys.type].label+'</b> // '+size.label+
+        '<br>'+binding+
+        '<br>WORLD BINDING // ACTIVE BLUEPRINT';
+    }
+  }
+
+  function systemCanvasInstances(sys){
+    const out=[{x:sys.x,z:sys.z,rot:sys.rot,sign:1}];
+    if(sys.mirror&&Math.abs(sys.x)>.05){
+      out.push({x:-sys.x,z:sys.z,rot:-sys.rot,sign:-1});
+    }
+    return out;
+  }
+
+  function drawSystemOnCanvas(ctx,m,sys,instance,selected=false){
+    const p=m.worldToCanvas(instance.x,instance.z);
+    const type=SYSTEM_TYPE_CATALOG[sys.type]||SYSTEM_TYPE_CATALOG.engine;
+    const size=SYSTEM_SIZE_CATALOG[sys.size]||SYSTEM_SIZE_CATALOG.medium;
+    const r=5+Object.keys(SYSTEM_SIZE_CATALOG).indexOf(sys.size)*1.7;
+
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.strokeStyle=selected?'#ffe07d':type.color;
+    ctx.fillStyle='rgba(0,5,9,.88)';
+    ctx.lineWidth=selected?3:2;
+
+    if(sys.type==='engine'){
+      ctx.rotate(THREE.MathUtils.degToRad(-instance.rot));
+      ctx.beginPath();
+      ctx.moveTo(-r*.8,-r);
+      ctx.lineTo(r*.8,-r);
+      ctx.lineTo(r*.55,r);
+      ctx.lineTo(-r*.55,r);
+      ctx.closePath();
+      ctx.fill();ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0,r);
+      ctx.lineTo(0,r+8);
+      ctx.stroke();
+    }else if(sys.type==='reactor'){
+      ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,r*.45,0,Math.PI*2);ctx.stroke();
+    }else if(sys.type==='shield'){
+      ctx.beginPath();ctx.arc(0,0,r,Math.PI*.12,Math.PI*.88);ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,r,Math.PI*1.12,Math.PI*1.88);ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,r*.42,0,Math.PI*2);ctx.fill();ctx.stroke();
+    }else if(sys.type==='command'){
+      ctx.beginPath();
+      ctx.moveTo(0,-r);ctx.lineTo(r,0);ctx.lineTo(0,r);ctx.lineTo(-r,0);ctx.closePath();
+      ctx.fill();ctx.stroke();
+    }else{
+      ctx.beginPath();ctx.rect(-r,-r,r*2,r*2);ctx.fill();ctx.stroke();
+      ctx.font='700 7px sans-serif';
+      ctx.fillStyle=selected?'#ffe7a8':type.color;
+      ctx.textAlign='center';
+      ctx.fillText(sys.slot.slice(0,1).toUpperCase(),0,2);
+    }
+    ctx.restore();
+  }
+
+  function pickHullForgeSystem(clientX,clientY){
+    const m=hullForgeCanvasMetrics();
+    if(!m||!hullForgeDraft)return null;
+    const rect=m.canvas.getBoundingClientRect();
+    const px=(clientX-rect.left)*(m.canvas.width/rect.width);
+    const py=(clientY-rect.top)*(m.canvas.height/rect.height);
+    const world=m.canvasToWorld(px,py);
+
+    let best=null,bestD=Infinity;
+    hullForgeDraft.systems.forEach((sys,index)=>{
+      for(const instance of systemCanvasInstances(sys)){
+        const d=Math.hypot(world.x-instance.x,world.z-instance.z);
+        const radius=4.0;
+        if(d<radius&&d<bestD){
+          best={index,sign:instance.sign};
+          bestD=d;
+        }
+      }
+    });
+    return best;
+  }
+
+  function hullForgeSystemNudge(dx,dz){
+    const sys=hullForgeSelectedSystemRecord();
+    if(!sys)return;
+    sys.x+=dx;sys.z+=dz;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function markHullForgeDirty(){
+    hullForgeDirty=true;
+    const state=document.getElementById('hfSaveState');
+    if(state)state.textContent='DRAFT // NOT SAVED';
+  }
+
+  function applyHullForgeDraftPreview(){
+    if(!hullForgeActive||!hullForgeDraft)return;
+    if(hullForgeMode==='hardpoints'){
+      applyHardpointBlueprint();
+      renderHardpoints();
+    }else if(hullForgeMode==='systems'){
+      applySystemBlueprint();
+      rebuildVisualModules();
+      renderSystemIntegrity(true);
+    }else{
+      rebuildFrameDecor();
+      rebuildVisualModules();
+    }
+  }
+
+  function openHullForge(){
+    const frame=currentFrame();
+    hullForgeFrameId=frame.id;
+    hullForgeDraft=normalizeHullBlueprint(
+      settings.hullBlueprints?.[frame.id]||seedHullBlueprint(frame),
+      frame
+    );
+    hullForgeSelected=hullForgeDraft.parts.length?0:-1;
+    hullForgeSelectedHardpoint=hullForgeDraft.hardpoints.length?0:-1;
+    hullForgeSelectedSystem=hullForgeDraft.systems.length?0:-1;
+    hullForgeMode='hull';
+    hullForgeDirty=false;
+    hullForgeActive=true;
+    hullForgeViewRange=clamp(
+      (CLASS_CATALOG[frame.classId]?.radius||8)*5.2+24,
+      44,165
+    );
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function closeHullForgePreview(){
+    if(!hullForgeActive)return;
+    hullForgeActive=false;
+    hullForgeDrag=null;
+    hullForgeFrameId=null;
+    hullForgeDraft=null;
+    hullForgeSelected=-1;
+    hullForgeSelectedHardpoint=-1;
+    hullForgeSelectedSystem=-1;
+    hullForgeMode='hull';
+    rebuildFrameDecor();
+  }
+
+  function hullForgeSelectedPart(){
+    return hullForgeDraft?.parts?.[hullForgeSelected]||null;
+  }
+
+  function addHullForgePart(type){
+    if(!hullForgeDraft)return;
+    const frame=currentFrame();
+    const defaults={
+      wedge:{w:9,l:28,h:2.4},
+      plate:{w:10,l:18,h:2.5},
+      spine:{w:6,l:42,h:3.0},
+      ring:{w:5,l:1,h:.8},
+      core:{w:3,l:1,h:1}
+    }[type]||{w:8,l:20,h:2};
+
+    const part=normalizeHullForgePart({
+      id:'part_'+(hullForgeNextId++),
+      type,
+      x:type==='spine'||type==='ring'||type==='core'?0:8,
+      z:0,y:type==='ring'||type==='core'?5:2,
+      w:defaults.w,l:defaults.l,h:defaults.h,
+      rot:0,
+      material:hullForgeDefaultMaterial(frame),
+      mirror:!['spine','ring','core'].includes(type)
+    });
+    hullForgeDraft.parts.push(part);
+    hullForgeSelected=hullForgeDraft.parts.length-1;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function deleteHullForgePart(){
+    if(!hullForgeDraft||hullForgeSelected<0)return;
+    hullForgeDraft.parts.splice(hullForgeSelected,1);
+    hullForgeSelected=Math.min(hullForgeSelected,hullForgeDraft.parts.length-1);
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function duplicateHullForgePart(){
+    const p=hullForgeSelectedPart();
+    if(!p||!hullForgeDraft)return;
+    const copy={...cloneBlueprint(p),id:'part_'+(hullForgeNextId++),z:p.z+4};
+    hullForgeDraft.parts.push(copy);
+    hullForgeSelected=hullForgeDraft.parts.length-1;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function moveHullForgeLayer(dir){
+    if(!hullForgeDraft||hullForgeSelected<0)return;
+    const to=clamp(hullForgeSelected+dir,0,hullForgeDraft.parts.length-1);
+    if(to===hullForgeSelected)return;
+    const [part]=hullForgeDraft.parts.splice(hullForgeSelected,1);
+    hullForgeDraft.parts.splice(to,0,part);
+    hullForgeSelected=to;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function saveHullForgeBlueprint(){
+    if(!hullForgeDraft||!hullForgeFrameId)return;
+    settings.hullBlueprints=settings.hullBlueprints||{};
+    settings.hullBlueprints[hullForgeFrameId]=cloneBlueprint(hullForgeDraft);
+    saveSettings();
+    hullForgeDirty=false;
+    const state=document.getElementById('hfSaveState');
+    if(state)state.textContent='SAVED // '+currentFrame().name.toUpperCase();
+    rebuildFrameDecor();
+    flashMission('HULL BLUEPRINT SAVED',currentFrame().name.toUpperCase()+' // '+hullForgeDraft.parts.length+' COMPONENTS',.7);
+  }
+
+  function useFactionDefaultHull(){
+    if(!hullForgeFrameId)return;
+    delete settings.hullBlueprints[hullForgeFrameId];
+    saveSettings();
+    hullForgeDraft=seedHullBlueprint(currentFrame());
+    hullForgeSelected=hullForgeDraft.parts.length?0:-1;
+    hullForgeSelectedHardpoint=hullForgeDraft.hardpoints.length?0:-1;
+    hullForgeSelectedSystem=hullForgeDraft.systems.length?0:-1;
+    hullForgeDirty=false;
+    hullForgeActive=false;
+    rebuildFrameDecor();
+    hullForgeActive=true;
+    renderHullForge();
+    const state=document.getElementById('hfSaveState');
+    if(state)state.textContent='FACTION DEFAULT ACTIVE // DRAFT RESET';
+  }
+
+  function newSeedHullForge(){
+    hullForgeDraft=seedHullBlueprint(currentFrame());
+    hullForgeSelected=hullForgeDraft.parts.length?0:-1;
+    hullForgeSelectedHardpoint=hullForgeDraft.hardpoints.length?0:-1;
+    hullForgeSelectedSystem=hullForgeDraft.systems.length?0:-1;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function blankHullForge(){
+    hullForgeDraft=normalizeHullBlueprint({
+      name:currentFrame().name,
+      parts:[],
+      hardpoints:cloneBlueprint(hullForgeDraft?.hardpoints||seedHardpointsForFrame(currentFrame())),
+      systems:cloneBlueprint(hullForgeDraft?.systems||seedSystemsForFrame(currentFrame()))
+    },currentFrame());
+    hullForgeSelected=-1;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function exportHullForgeJSON(){
+    if(!hullForgeDraft)return;
+    const json=JSON.stringify(hullForgeDraft,null,2);
+    const area=document.getElementById('hfJson');
+    if(area)area.value=json;
+    try{navigator.clipboard?.writeText(json);}catch(_){}
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=(hullForgeFrameId||'hull')+'.blueprint.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),500);
+    const state=document.getElementById('hfSaveState');
+    if(state)state.textContent='JSON EXPORTED // ALSO COPIED WHEN PERMITTED';
+  }
+
+  function importHullForgeJSON(){
+    const area=document.getElementById('hfJson');
+    if(!area)return;
+    try{
+      const parsed=JSON.parse(area.value);
+      hullForgeDraft=normalizeHullBlueprint(parsed,currentFrame());
+      hullForgeSelected=hullForgeDraft.parts.length?0:-1;
+      hullForgeSelectedHardpoint=hullForgeDraft.hardpoints.length?0:-1;
+      hullForgeSelectedSystem=hullForgeDraft.systems.length?0:-1;
+      markHullForgeDirty();
+      renderHullForge();
+      applyHullForgeDraftPreview();
+      flashMission('BLUEPRINT IMPORTED',hullForgeDraft.parts.length+' COMPONENTS // SAVE TO COMMIT',.65);
+    }catch(error){
+      flashMission('BLUEPRINT IMPORT FAILED',String(error?.message||error).toUpperCase(),.85);
+    }
+  }
+
+  function hullForgeCanvasMetrics(){
+    const canvas=document.getElementById('hullForgeCanvas');
+    if(!canvas)return null;
+    const range=hullForgeViewRange;
+    const scale=Math.min(canvas.width,canvas.height)/(range*2);
+    return {
+      canvas,range,scale,
+      cx:canvas.width*.5,
+      cy:canvas.height*.5,
+      worldToCanvas(x,z){
+        return {x:this.cx+x*this.scale,y:this.cy+z*this.scale};
+      },
+      canvasToWorld(x,y){
+        return {x:(x-this.cx)/this.scale,z:(y-this.cy)/this.scale};
+      }
+    };
+  }
+
+  function hullForgePartInstances(part){
+    const out=[{x:part.x,z:part.z,rot:part.rot,sign:1}];
+    if(part.mirror&&Math.abs(part.x)>.05){
+      out.push({x:-part.x,z:part.z,rot:-part.rot,sign:-1});
+    }
+    return out;
+  }
+
+  function drawHullForgePart(ctx,m,part,instance,selected=false){
+    const p=m.worldToCanvas(instance.x,instance.z);
+    const scale=m.scale;
+    const color=HULL_FORGE_MATERIALS[part.material]?.color||'#7deeff';
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(THREE.MathUtils.degToRad(-instance.rot));
+    ctx.fillStyle=color;
+    ctx.strokeStyle=selected?'#ffd16c':'rgba(215,244,250,.38)';
+    ctx.lineWidth=selected?2.2:1;
+
+    if(part.type==='ring'){
+      ctx.beginPath();
+      ctx.arc(0,0,Math.max(3,part.w*scale),0,Math.PI*2);
+      ctx.lineWidth=Math.max(2,part.h*scale*.5);
+      ctx.strokeStyle=selected?'#ffd16c':color;
+      ctx.globalAlpha=.82;
+      ctx.stroke();
+    }else if(part.type==='core'){
+      ctx.beginPath();
+      ctx.arc(0,0,Math.max(3,part.w*scale),0,Math.PI*2);
+      ctx.globalAlpha=.80;
+      ctx.fill();
+      ctx.globalAlpha=1;
+      ctx.stroke();
+    }else{
+      const w=part.w*scale;
+      const l=part.l*scale;
+      ctx.beginPath();
+      if(part.type==='plate'){
+        ctx.rect(-w*.5,-l*.5,w,l);
+      }else{
+        const tip=part.type==='spine'?.10:.18;
+        ctx.moveTo(-w*tip,-l*.5);
+        ctx.lineTo(w*tip,-l*.5);
+        ctx.lineTo(w*.5,l*.5);
+        ctx.lineTo(-w*.5,l*.5);
+        ctx.closePath();
+      }
+      ctx.globalAlpha=.68;
+      ctx.fill();
+      ctx.globalAlpha=1;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function renderHullForgeCanvas(){
+    const m=hullForgeCanvasMetrics();
+    if(!m)return;
+    const {canvas}=m;
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Grid.
+    ctx.fillStyle='#02080c';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    const major=10*m.scale;
+    const minor=5*m.scale;
+    ctx.lineWidth=1;
+
+    for(let x=m.cx%minor;x<canvas.width;x+=minor){
+      const majorLine=Math.abs((x-m.cx)/major-Math.round((x-m.cx)/major))<.01;
+      ctx.strokeStyle=majorLine?'rgba(107,221,244,.13)':'rgba(107,221,244,.055)';
+      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();
+    }
+    for(let y=m.cy%minor;y<canvas.height;y+=minor){
+      const majorLine=Math.abs((y-m.cy)/major-Math.round((y-m.cy)/major))<.01;
+      ctx.strokeStyle=majorLine?'rgba(107,221,244,.13)':'rgba(107,221,244,.055)';
+      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();
+    }
+
+    // Centerline and forward marker.
+    ctx.strokeStyle='rgba(255,205,100,.34)';
+    ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.moveTo(m.cx,0);ctx.lineTo(m.cx,canvas.height);ctx.stroke();
+    ctx.fillStyle='rgba(255,218,135,.75)';
+    ctx.font='700 12px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('▲ FORWARD',m.cx,18);
+
+    if(!hullForgeDraft)return;
+    hullForgeDraft.parts.forEach((part,index)=>{
+      for(const instance of hullForgePartInstances(part)){
+        drawHullForgePart(
+          ctx,m,part,instance,
+          hullForgeMode==='hull' && index===hullForgeSelected
+        );
+      }
+    });
+
+    // Physical combat sockets are always visible; brighter in hardpoint mode.
+    hullForgeDraft.hardpoints.forEach((hp,index)=>{
+      for(const instance of hardpointCanvasInstances(hp)){
+        drawHardpointOnCanvas(
+          ctx,m,hp,instance,
+          hullForgeMode==='hardpoints' && index===hullForgeSelectedHardpoint
+        );
+      }
+    });
+
+    // Physical ship architecture overlays.
+    hullForgeDraft.systems.forEach((sys,index)=>{
+      for(const instance of systemCanvasInstances(sys)){
+        drawSystemOnCanvas(
+          ctx,m,sys,instance,
+          hullForgeMode==='systems' && index===hullForgeSelectedSystem
+        );
+      }
+    });
+
+    if(hullForgeMode==='hull' && hullForgeSelected>=0){
+      const part=hullForgeSelectedPart();
+      if(part){
+        const p=m.worldToCanvas(part.x,part.z);
+        ctx.strokeStyle='#ffd16c';
+        ctx.lineWidth=1;
+        ctx.beginPath();
+        ctx.moveTo(p.x-9,p.y);ctx.lineTo(p.x+9,p.y);
+        ctx.moveTo(p.x,p.y-9);ctx.lineTo(p.x,p.y+9);
+        ctx.stroke();
+      }
+    }
+
+    if(hullForgeMode==='hardpoints' && hullForgeSelectedHardpoint>=0){
+      const hp=hullForgeSelectedHardpointRecord();
+      if(hp){
+        const p=m.worldToCanvas(hp.x,hp.z);
+        ctx.strokeStyle='#ffe07d';
+        ctx.lineWidth=1;
+        ctx.beginPath();
+        ctx.moveTo(p.x-12,p.y);ctx.lineTo(p.x+12,p.y);
+        ctx.moveTo(p.x,p.y-12);ctx.lineTo(p.x,p.y+12);
+        ctx.stroke();
+      }
+    }
+
+    if(hullForgeMode==='systems' && hullForgeSelectedSystem>=0){
+      const sys=hullForgeSelectedSystemRecord();
+      if(sys){
+        const p=m.worldToCanvas(sys.x,sys.z);
+        ctx.strokeStyle='#ffe07d';
+        ctx.lineWidth=1;
+        ctx.beginPath();
+        ctx.moveTo(p.x-12,p.y);ctx.lineTo(p.x+12,p.y);
+        ctx.moveTo(p.x,p.y-12);ctx.lineTo(p.x,p.y+12);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function pickHullForgePart(clientX,clientY){
+    const m=hullForgeCanvasMetrics();
+    if(!m||!hullForgeDraft)return null;
+    const rect=m.canvas.getBoundingClientRect();
+    const px=(clientX-rect.left)*(m.canvas.width/rect.width);
+    const py=(clientY-rect.top)*(m.canvas.height/rect.height);
+    const world=m.canvasToWorld(px,py);
+
+    let best=null;
+    let bestD=Infinity;
+    hullForgeDraft.parts.forEach((part,index)=>{
+      const radius=Math.max(
+        part.type==='ring'||part.type==='core'?part.w:Math.max(part.w,part.l)*.42,
+        2
+      );
+      for(const instance of hullForgePartInstances(part)){
+        const d=Math.hypot(world.x-instance.x,world.z-instance.z);
+        if(d<radius*1.15&&d<bestD){
+          best={index,sign:instance.sign};
+          bestD=d;
+        }
+      }
+    });
+    return best;
+  }
+
+  function hullForgePointerDown(e){
+    if(!hullForgeActive)return;
+    const m=hullForgeCanvasMetrics();
+    if(!m)return;
+
+    const rect=m.canvas.getBoundingClientRect();
+    const px=(e.clientX-rect.left)*(m.canvas.width/rect.width);
+    const py=(e.clientY-rect.top)*(m.canvas.height/rect.height);
+    const world=m.canvasToWorld(px,py);
+
+    if(hullForgeMode==='systems'){
+      const picked=pickHullForgeSystem(e.clientX,e.clientY);
+      if(!picked)return;
+      hullForgeSelectedSystem=picked.index;
+      const sys=hullForgeSelectedSystemRecord();
+      hullForgeDrag={
+        kind:'system',
+        sign:picked.sign,
+        dx:sys.x-world.x*picked.sign,
+        dz:sys.z-world.z
+      };
+    }else if(hullForgeMode==='hardpoints'){
+      const picked=pickHullForgeHardpoint(e.clientX,e.clientY);
+      if(!picked)return;
+      hullForgeSelectedHardpoint=picked.index;
+      const hp=hullForgeSelectedHardpointRecord();
+      hullForgeDrag={
+        kind:'hardpoint',
+        sign:picked.sign,
+        dx:hp.x-world.x*picked.sign,
+        dz:hp.z-world.z
+      };
+    }else{
+      const picked=pickHullForgePart(e.clientX,e.clientY);
+      if(!picked)return;
+      hullForgeSelected=picked.index;
+      const part=hullForgeSelectedPart();
+      hullForgeDrag={
+        kind:'part',
+        sign:picked.sign,
+        dx:part.x-world.x*picked.sign,
+        dz:part.z-world.z
+      };
+    }
+
+    m.canvas.classList.add('dragging');
+    renderHullForge();
+    e.preventDefault();
+  }
+
+  function hullForgePointerMove(e){
+    if(!hullForgeDrag||!hullForgeActive)return;
+    const m=hullForgeCanvasMetrics();
+    const rect=m.canvas.getBoundingClientRect();
+    const px=(e.clientX-rect.left)*(m.canvas.width/rect.width);
+    const py=(e.clientY-rect.top)*(m.canvas.height/rect.height);
+    const world=m.canvasToWorld(px,py);
+
+    if(hullForgeDrag.kind==='system'){
+      const sys=hullForgeSelectedSystemRecord();
+      if(!sys)return;
+      sys.x=Math.round((world.x*hullForgeDrag.sign+hullForgeDrag.dx)*2)/2;
+      sys.z=Math.round((world.z+hullForgeDrag.dz)*2)/2;
+    }else if(hullForgeDrag.kind==='hardpoint'){
+      const hp=hullForgeSelectedHardpointRecord();
+      if(!hp)return;
+      hp.x=Math.round((world.x*hullForgeDrag.sign+hullForgeDrag.dx)*2)/2;
+      hp.z=Math.round((world.z+hullForgeDrag.dz)*2)/2;
+    }else{
+      const part=hullForgeSelectedPart();
+      if(!part)return;
+      part.x=Math.round((world.x*hullForgeDrag.sign+hullForgeDrag.dx)*2)/2;
+      part.z=Math.round((world.z+hullForgeDrag.dz)*2)/2;
+    }
+
+    markHullForgeDirty();
+    syncHullForgeInspector();
+    syncHardpointInspector();
+    syncSystemInspector();
+    renderHullForgeCanvas();
+    renderHullForgePartList();
+    renderHullForgeHardpointList();
+    renderHullForgeSystemList();
+    applyHullForgeDraftPreview();
+  }
+
+  function hullForgePointerUp(){
+    hullForgeDrag=null;
+    document.getElementById('hullForgeCanvas')?.classList.remove('dragging');
+  }
+
+  function hullForgeNudge(dx,dz){
+    const p=hullForgeSelectedPart();
+    if(!p)return;
+    p.x+=dx;
+    p.z+=dz;
+    markHullForgeDirty();
+    renderHullForge();
+    applyHullForgeDraftPreview();
+  }
+
+  function syncHullForgeInspector(){
+    const p=hullForgeSelectedPart();
+    const empty=document.getElementById('hfNoSelection');
+    const fields=document.getElementById('hfInspectorFields');
+    if(hullForgeMode!=='hull'){
+      if(fields)fields.style.display='none';
+      return;
+    }
+    document.getElementById('hfHardpointInspector')?.style.setProperty('display','none');
+    document.getElementById('hfSystemInspector')?.style.setProperty('display','none');
+    const title=document.getElementById('hfInspectorTitle');
+    if(title)title.textContent='Selected Part';
+    if(empty)empty.style.display=p?'none':'block';
+    if(fields)fields.style.display=p?'grid':'none';
+    if(!p)return;
+
+    const set=(id,val)=>{
+      const el=document.getElementById(id);
+      if(el && document.activeElement!==el)el.value=String(val);
+    };
+    set('hfType',p.type);
+    set('hfMaterial',p.material);
+    set('hfX',p.x);
+    set('hfZ',p.z);
+    set('hfY',p.y);
+    set('hfW',p.w);
+    set('hfL',p.l);
+    set('hfH',p.h);
+    set('hfRot',p.rot);
+    const mirror=document.getElementById('hfMirror');
+    if(mirror)mirror.checked=!!p.mirror;
+  }
+
+  function renderHullForgePartList(){
+    const list=document.getElementById('hullForgePartList');
+    const count=document.getElementById('hullForgePartCount');
+    if(!list||!hullForgeDraft)return;
+    list.innerHTML='';
+    hullForgeDraft.parts.forEach((part,index)=>{
+      const row=document.createElement('div');
+      row.className='hfPartRow'+(index===hullForgeSelected?' selected':'');
+      row.innerHTML=
+        '<div><b>'+(index+1)+' // '+part.type.toUpperCase()+'</b>'+
+        '<span>'+HULL_FORGE_MATERIALS[part.material]?.label+'</span></div>'+
+        '<span>X '+part.x.toFixed(1)+' · Z '+part.z.toFixed(1)+(part.mirror?' · MIRROR':'')+'</span>';
+      row.onclick=()=>{hullForgeSelected=index;renderHullForge();};
+      list.appendChild(row);
+    });
+    if(count)count.textContent=String(hullForgeDraft.parts.length);
+  }
+
+  function renderHullForge(){
+    if(!hullForgeActive||!hullForgeDraft)return;
+    const frame=currentFrame();
+    const label=document.getElementById('hullForgeFrameLabel');
+    if(label)label.textContent=frame.raceName+' // '+frame.className+' // '+frame.name;
+    const range=document.getElementById('hfViewRange');
+    if(range)range.textContent=Math.round(hullForgeViewRange)+'U';
+    const status=document.getElementById('hfCanvasStatus');
+    if(status)status.textContent=
+      'FORWARD ↑ // '+frame.raceName.toUpperCase()+' // '+
+      (hullForgeMode==='hardpoints'
+        ?hardpointPhysicalCount()+' PHYSICAL HARDPOINTS'
+        :hullForgeMode==='systems'
+          ?systemPhysicalCount()+' PHYSICAL SYSTEMS'
+          :hullForgeDraft.parts.length+' HULL COMPONENTS');
+
+    document.getElementById('hfModeHull')?.classList.toggle('active',hullForgeMode==='hull');
+    document.getElementById('hfModeHardpoints')?.classList.toggle('active',hullForgeMode==='hardpoints');
+    document.getElementById('hfModeSystems')?.classList.toggle('active',hullForgeMode==='systems');
+    const hullLib=document.getElementById('hfHullLibrary');
+    const hpLib=document.getElementById('hfHardpointLibrary');
+    const sysLib=document.getElementById('hfSystemsLibrary');
+    if(hullLib)hullLib.style.display=hullForgeMode==='hull'?'block':'none';
+    if(hpLib)hpLib.style.display=hullForgeMode==='hardpoints'?'block':'none';
+    if(sysLib)sysLib.style.display=hullForgeMode==='systems'?'block':'none';
+
+    renderHullForgePartList();
+    renderHullForgeHardpointList();
+    renderHullForgeSystemList();
+    syncHullForgeInspector();
+    syncHardpointInspector();
+    syncSystemInspector();
+    renderHullForgeCanvas();
+  }
+
+  function wireHullForge(){
+    const canvas=document.getElementById('hullForgeCanvas');
+    if(!canvas||canvas.dataset.wired==='1')return;
+    canvas.dataset.wired='1';
+
+    const matSelect=document.getElementById('hfMaterial');
+    for(const [key,data] of Object.entries(HULL_FORGE_MATERIALS)){
+      const o=document.createElement('option');
+      o.value=key;o.textContent=data.label;
+      matSelect.appendChild(o);
+    }
+
+    const bankSelect=document.getElementById('hpBank');
+    for(const bankId of BANK_IDS){
+      const o=document.createElement('option');
+      o.value=bankId;o.textContent=BANK_LABELS[bankId];
+      bankSelect.appendChild(o);
+    }
+
+    document.getElementById('hfModeHull').onclick=()=>setHullForgeMode('hull');
+    document.getElementById('hfModeHardpoints').onclick=()=>setHullForgeMode('hardpoints');
+    document.getElementById('hfModeSystems').onclick=()=>setHullForgeMode('systems');
+
+    document.querySelectorAll('[data-hp-size]').forEach(btn=>{
+      btn.onclick=()=>addHullForgeHardpoint(btn.dataset.hpSize);
+    });
+
+    document.querySelectorAll('[data-sys-add]').forEach(btn=>{
+      btn.onclick=()=>addHullForgeSystem(btn.dataset.sysAdd);
+    });
+
+    document.querySelectorAll('[data-hf-add]').forEach(btn=>{
+      btn.onclick=()=>addHullForgePart(btn.dataset.hfAdd);
+    });
+
+    const numeric=[
+      ['hfX','x'],['hfZ','z'],['hfY','y'],
+      ['hfW','w'],['hfL','l'],['hfH','h'],['hfRot','rot']
+    ];
+    for(const [id,key] of numeric){
+      const el=document.getElementById(id);
+      el.oninput=()=>{
+        const p=hullForgeSelectedPart();
+        if(!p)return;
+        const v=Number(el.value);
+        if(!Number.isFinite(v))return;
+        p[key]=['w','l','h'].includes(key)?Math.max(key==='h'?.1:.25,v):v;
+        markHullForgeDirty();
+        renderHullForgeCanvas();
+        renderHullForgePartList();
+        applyHullForgeDraftPreview();
+      };
+    }
+
+    document.getElementById('hfType').onchange=e=>{
+      const p=hullForgeSelectedPart();if(!p)return;
+      p.type=e.target.value;markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+    matSelect.onchange=e=>{
+      const p=hullForgeSelectedPart();if(!p)return;
+      p.material=e.target.value;markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+    document.getElementById('hfMirror').onchange=e=>{
+      const p=hullForgeSelectedPart();if(!p)return;
+      p.mirror=e.target.checked;markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+
+    document.getElementById('hfDuplicate').onclick=duplicateHullForgePart;
+    document.getElementById('hfDelete').onclick=deleteHullForgePart;
+    document.getElementById('hfCenter').onclick=()=>{
+      const p=hullForgeSelectedPart();if(!p)return;
+      p.x=0;p.mirror=false;markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+    document.getElementById('hfLayerUp').onclick=()=>moveHullForgeLayer(1);
+    document.getElementById('hfLayerDown').onclick=()=>moveHullForgeLayer(-1);
+
+    document.getElementById('hfSave').onclick=saveHullForgeBlueprint;
+    document.getElementById('hfExport').onclick=exportHullForgeJSON;
+    document.getElementById('hfImport').onclick=importHullForgeJSON;
+    document.getElementById('hfNewSeed').onclick=newSeedHullForge;
+    document.getElementById('hfBlank').onclick=blankHullForge;
+    document.getElementById('hfFactionDefault').onclick=useFactionDefaultHull;
+
+    document.getElementById('hfViewMinus').onclick=()=>{
+      hullForgeViewRange=clamp(hullForgeViewRange*.82,30,180);renderHullForge();
+    };
+    document.getElementById('hfViewPlus').onclick=()=>{
+      hullForgeViewRange=clamp(hullForgeViewRange*1.22,30,180);renderHullForge();
+    };
+
+    const hpNumeric=[
+      ['hpX','x'],['hpZ','z'],['hpY','y'],['hpRot','rot']
+    ];
+    for(const [id,key] of hpNumeric){
+      const el=document.getElementById(id);
+      el.oninput=()=>{
+        const hp=hullForgeSelectedHardpointRecord();
+        if(!hp)return;
+        const v=Number(el.value);
+        if(!Number.isFinite(v))return;
+        hp[key]=v;
+        markHullForgeDirty();
+        renderHullForgeCanvas();
+        renderHullForgeHardpointList();
+        applyHullForgeDraftPreview();
+      };
+    }
+
+    bankSelect.onchange=e=>{
+      const hp=hullForgeSelectedHardpointRecord();if(!hp)return;
+      if(!currentFrame().activeBanks.includes(e.target.value)){
+        flashMission('BANK NOT AVAILABLE','THIS HULL DOES NOT CARRY '+BANK_LABELS[e.target.value].toUpperCase(),.65);
+        renderHullForge();
+        return;
+      }
+      hp.bankId=e.target.value;
+      markHullForgeDirty();
+      renderHullForge();
+      applyHullForgeDraftPreview();
+    };
+
+    document.getElementById('hpSize').onchange=e=>{
+      const hp=hullForgeSelectedHardpointRecord();if(!hp)return;
+      hp.size=e.target.value;
+      markHullForgeDirty();
+      renderHullForge();
+      applyHullForgeDraftPreview();
+    };
+
+    document.getElementById('hpMirror').onchange=e=>{
+      const hp=hullForgeSelectedHardpointRecord();if(!hp)return;
+      const wanted=e.target.checked;
+      if(wanted && hardpointPhysicalCount()+1>18){
+        e.target.checked=false;
+        flashMission('HARDPOINT LIMIT','MIRROR WOULD EXCEED 18 PHYSICAL MOUNTS',.65);
+        return;
+      }
+      hp.mirror=wanted;
+      markHullForgeDirty();
+      renderHullForge();
+      applyHullForgeDraftPreview();
+    };
+
+    document.getElementById('hpDuplicate').onclick=duplicateHullForgeHardpoint;
+    document.getElementById('hpDelete').onclick=deleteHullForgeHardpoint;
+    document.getElementById('hpCenter').onclick=()=>{
+      const hp=hullForgeSelectedHardpointRecord();if(!hp)return;
+      hp.x=0;hp.mirror=false;
+      markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+
+    const sysNumeric=[
+      ['sysX','x'],['sysZ','z'],['sysY','y'],['sysRot','rot']
+    ];
+    for(const [id,key] of sysNumeric){
+      const el=document.getElementById(id);
+      el.oninput=()=>{
+        const sys=hullForgeSelectedSystemRecord();
+        if(!sys)return;
+        const v=Number(el.value);
+        if(!Number.isFinite(v))return;
+        sys[key]=v;
+        markHullForgeDirty();
+        renderHullForgeCanvas();
+        renderHullForgeSystemList();
+        applyHullForgeDraftPreview();
+      };
+    }
+
+    document.getElementById('sysType').onchange=e=>{
+      const sys=hullForgeSelectedSystemRecord();
+      if(!sys)return;
+      const next=e.target.value;
+      if(next!=='engine' && hullForgeDraft.systems.some((s,i)=>
+        i!==hullForgeSelectedSystem &&
+        s.type===next &&
+        (next!=='module'||s.slot===sys.slot)
+      )){
+        flashMission('SYSTEM ALREADY PRESENT','UNIQUE SYSTEM RECORD EXISTS',.6);
+        renderHullForge();return;
+      }
+      sys.type=next;
+      if(next!=='engine')sys.mirror=false;
+      markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+
+    document.getElementById('sysSlot').onchange=e=>{
+      const sys=hullForgeSelectedSystemRecord();if(!sys)return;
+      if(hullForgeDraft.systems.some((s,i)=>
+        i!==hullForgeSelectedSystem && s.type==='module' && s.slot===e.target.value
+      )){
+        flashMission('MODULE SOCKET EXISTS',e.target.value.toUpperCase()+' ARCHITECTURE ALREADY PLACED',.65);
+        renderHullForge();return;
+      }
+      sys.slot=e.target.value;
+      markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+
+    document.getElementById('sysSize').onchange=e=>{
+      const sys=hullForgeSelectedSystemRecord();if(!sys)return;
+      sys.size=e.target.value;
+      markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+
+    document.getElementById('sysMirror').onchange=e=>{
+      const sys=hullForgeSelectedSystemRecord();if(!sys||sys.type!=='engine')return;
+      const wanted=e.target.checked;
+      if(wanted&&systemPhysicalCount()+1>24){
+        e.target.checked=false;
+        flashMission('SYSTEM LIMIT','MIRROR WOULD EXCEED 24 PHYSICAL RECORDS',.6);
+        return;
+      }
+      sys.mirror=wanted;
+      markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+
+    document.getElementById('sysDuplicate').onclick=duplicateHullForgeSystem;
+    document.getElementById('sysDelete').onclick=deleteHullForgeSystem;
+    document.getElementById('sysCenter').onclick=()=>{
+      const sys=hullForgeSelectedSystemRecord();if(!sys)return;
+      sys.x=0;sys.mirror=false;
+      markHullForgeDirty();renderHullForge();applyHullForgeDraftPreview();
+    };
+
+    canvas.addEventListener('pointerdown',hullForgePointerDown);
+    window.addEventListener('pointermove',hullForgePointerMove);
+    window.addEventListener('pointerup',hullForgePointerUp);
+
+    window.addEventListener('keydown',e=>{
+      if(appMode!=='hullforge')return;
+      const editing=['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName);
+      if(editing)return;
+
+      const step=e.shiftKey?5:1;
+      const nudge=
+        hullForgeMode==='hardpoints'?hullForgeHardpointNudge:
+        hullForgeMode==='systems'?hullForgeSystemNudge:
+        hullForgeNudge;
+      if(e.code==='ArrowLeft'){e.preventDefault();nudge(-step,0);}
+      if(e.code==='ArrowRight'){e.preventDefault();nudge(step,0);}
+      if(e.code==='ArrowUp'){e.preventDefault();nudge(0,-step);}
+      if(e.code==='ArrowDown'){e.preventDefault();nudge(0,step);}
+      if(e.code==='Delete'||e.code==='Backspace'){
+        e.preventDefault();
+        if(hullForgeMode==='hardpoints')deleteHullForgeHardpoint();
+        else if(hullForgeMode==='systems')deleteHullForgeSystem();
+        else deleteHullForgePart();
+      }
+      if((e.ctrlKey||e.metaKey)&&e.code==='KeyD'){
+        e.preventDefault();
+        if(hullForgeMode==='hardpoints')duplicateHullForgeHardpoint();
+        else if(hullForgeMode==='systems')duplicateHullForgeSystem();
+        else duplicateHullForgePart();
+      }
+    });
+  }
+
+  function currentFrameBuild(){
+    const f=currentFrame();
+    if(!settings.frameBuilds[f.id])settings.frameBuilds[f.id]={};
+    const build=settings.frameBuilds[f.id];
+
+    for(const bank of f.activeBanks){
+      const wid=build[bank];
+      if(
+        !TURRET_CATALOG[wid] ||
+        !weaponCompatibleWithFrame(wid,f) ||
+        (typeof bankHardpointTier==='function' && bankHardpointTier(bank,f)>0 && !weaponCompatibleWithBank(wid,bank,f))
+      ){
+        build[bank]='autocannon';
+      }
+    }
+
+    for(const key of Object.keys(build)){
+      if(!BANK_IDS.includes(key))delete build[key];
+    }
+    return build;
+  }
+  function turretOwned(id){return settings.ownedTurretWeapons.includes(id);}
+  function bankWeapon(bankId){const id=currentFrameBuild()[bankId]||'autocannon';return TURRET_CATALOG[id]||TURRET_CATALOG.autocannon;}
+
+  function fittingUsage(frameId=settings.selectedShip,buildOverride=null,loadoutOverride=null){
+    const f=FRAME_CATALOG[frameId]||FRAME_CATALOG.savanah_starter;
+    const build=buildOverride||settings.frameBuilds[frameId]||{};
+    const loadout=loadoutOverride||settings.frameLoadouts?.[frameId]||settings.loadout||defaultSettings.loadout||{};
+    let weaponPG=0,systemPG=0,fitMass=0;
+
+    for(const bankId of f.activeBanks){
+      const w=TURRET_CATALOG[build[bankId]||'autocannon']||TURRET_CATALOG.autocannon;
+      weaponPG+=w.pg||0;
+      fitMass+=w.mass||0;
+    }
+    for(const slot of ['weapon','defense','drive','utility']){
+      const mod=MODULE_CATALOG?.[loadout[slot]];
+      if(!mod)continue;
+      systemPG+=(mod.pg||0)*(f.architecturePGScale||1);
+      fitMass+=(mod.mass||0)*(f.architectureMassScale||1);
+    }
+
+    const totalPG=weaponPG+systemPG;
+    const totalMass=(f.baseMass||0)+fitMass;
+    const massRatio=totalMass/Math.max(1,f.baseMass||1);
+    const handling=clamp(1-(massRatio-1)*.72,.46,1);
+    return {
+      capacity:f.powergrid||0,weaponPG,systemPG,totalPG,
+      baseMass:f.baseMass||0,fitMass,totalMass,massRatio,handling,
+      overGrid:totalPG>(f.powergrid||0)
+    };
+  }
+
+  function canFitTurret(bankId,weaponId){
+    const f=currentFrame();
+    if(!weaponCompatibleWithFrame(weaponId,f))return false;
+    const next={...currentFrameBuild(),[bankId]:weaponId};
+    return !fittingUsage(f.id,next,currentFrameLoadout()).overGrid;
+  }
+
+  function canFitModule(moduleId){
+    const mod=MODULE_CATALOG[moduleId];if(!mod)return false;
+    const loadout=currentFrameLoadout();
+    const next={...loadout,[mod.slot]:moduleId};
+    return !fittingUsage(settings.selectedShip,currentFrameBuild(),next).overGrid;
+  }
+
+  function updateFittingBudgetUI(){
+    currentFrameLoadout();
+    const fit=fittingUsage();
+    const pct=Math.min(100,(fit.totalPG/Math.max(1,fit.capacity))*100);
+    const handling=Math.round(fit.handling*100);
+
+    const apply=(textId,gaugeId)=>{
+      const t=document.getElementById(textId);
+      const g=document.getElementById(gaugeId);
+      if(t)t.textContent=Math.round(fit.totalPG)+' / '+fit.capacity+' PG';
+      if(g){
+        g.classList.toggle('over',fit.overGrid);
+        const i=g.querySelector('i');if(i)i.style.width=pct+'%';
+      }
+    };
+    apply('hardpointGridText','hardpointGridGauge');
+    apply('moduleGridText','moduleGridGauge');
+
+    const bm=document.getElementById('hardpointBaseMass');if(bm)bm.textContent=Math.round(fit.baseMass);
+    const fm=document.getElementById('hardpointFitMass');if(fm)fm.textContent='+'+Math.round(fit.fitMass);
+    const hh=document.getElementById('hardpointHandling');if(hh)hh.textContent=handling+'%';
+    const wg=document.getElementById('moduleWeaponGrid');if(wg)wg.textContent=Math.round(fit.weaponPG);
+    const sg=document.getElementById('moduleSystemGrid');if(sg)sg.textContent=Math.round(fit.systemPG);
+    const tm=document.getElementById('moduleTotalMass');if(tm)tm.textContent=Math.round(fit.totalMass);
+
+    const pr=document.getElementById('physicalFitReadout');
+    if(pr){
+      pr.innerHTML=
+        '<b>Physical fit:</b> '+currentFrame().name+' carries '+currentFrame().activeBanks.length+
+        ' weapon banks plus four architecture modules. Added mass currently leaves '+
+        handling+"% of the hull\'s nominal handling envelope. Reactor capacitor: "+
+        Math.round(effectiveCapMax())+" effective / "+player.maxCapacitor+" fitted.";
+    }
+  }
+
+  function ensureVisualModuleGroup(){
+    if(!player.visualModules){
+      player.visualModules=new THREE.Group();
+      player.visualModules.name='physical_module_hardware';
+      player.model.add(player.visualModules);
+    }
+    return player.visualModules;
+  }
+
+  function clearVisualModules(){
+    const g=ensureVisualModuleGroup();
+    disposeGeneratedTree(g);
+  }
+
+  function moduleSocket(parent,pos,kind='cyan',scale=1){
+    const mat=kind==='gold'?glowGold:kind==='purple'?glowPurple:glowCyan;
+    const ring=addMesh(new THREE.TorusGeometry(.95*scale,.13*scale,10,30),mat,pos,[Math.PI/2,0,0],[1,1,1],parent);
+    ring.material=ring.material.clone();
+    ring.material.opacity=.62;
+    const core=addMesh(new THREE.SphereGeometry(.18*scale,9,6),mat,[pos[0],pos[1]+.15*scale,pos[2]],[0,0,0],[1,1,1],parent);
+    core.material=core.material.clone();core.material.opacity=.80;
+    return {ring,core};
+  }
+
+  function rebuildVisualModules(){
+    clearVisualModules();
+    const root=ensureVisualModuleGroup();
+    const f=currentFrame();
+    const s=f.visualModuleScale||1;
+
+    const fitted={
+      weapon:MODULE_CATALOG[settings.loadout.weapon],
+      defense:MODULE_CATALOG[settings.loadout.defense],
+      drive:MODULE_CATALOG[settings.loadout.drive],
+      utility:MODULE_CATALOG[settings.loadout.utility]
+    };
+
+    function socketGroup(slot){
+      const sys=moduleSocketPlacement(slot,f);
+      const data=SYSTEM_SIZE_CATALOG[sys.size]||SYSTEM_SIZE_CATALOG.medium;
+      const g=new THREE.Group();
+      g.position.set(sys.x,sys.y,sys.z);
+      g.rotation.y=THREE.MathUtils.degToRad(sys.rot||0);
+      g.scale.setScalar(data.scale);
+      root.add(g);
+
+      const mat=
+        slot==='weapon'?glowGold:
+        slot==='defense'?glowCyan:
+        slot==='drive'?glowAmber:glowPurple;
+      addMesh(new THREE.TorusGeometry(1.0*s,.13*s,9,30),mat,[0,0,0],[Math.PI/2,0,0],[1,1,1],g);
+      return g;
+    }
+
+    const groups={
+      weapon:socketGroup('weapon'),
+      defense:socketGroup('defense'),
+      drive:socketGroup('drive'),
+      utility:socketGroup('utility')
+    };
+
+    // WEAPON ARCHITECTURE
+    const wg=groups.weapon;
+    if(fitted.weapon?.id==='targeting_core'){
+      for(const side of [-1,1])for(let i=0;i<3;i++){
+        box(.34*s,(2.5+i)*s,.34*s,matGold,[side*(1.6+i*.7)*s,1.6*s,i*1.7*s],[0,0,side*.08],wg);
+        addMesh(new THREE.SphereGeometry(.20*s,8,6),glowCyan,[side*(1.6+i*.7)*s,(3.1+i*.35)*s,i*1.7*s],[0,0,0],[1,1,1],wg);
+      }
+    }else if(fitted.weapon?.id==='siege_calibrator'){
+      box(1.4*s,1.2*s,18*s,matGold,[0,1*s,-4*s],[0,0,0],wg);
+      for(let i=0;i<3;i++)box((3.5+i)*s,.38*s,1.2*s,matArmor,[0,(1.8+i*.25)*s,(-10+i*7)*s],[0,0,0],wg);
+    }else if(fitted.weapon?.id==='void_lance'){
+      box(1.2*s,1.3*s,18*s,matGold,[0,1*s,-4*s],[0,0,0],wg);
+      for(let i=0;i<3;i++)addMesh(new THREE.TorusGeometry((1.4+i*.5)*s,.10*s,9,30),glowPurple,[0,1.7*s,-9*s+i*6*s],[Math.PI/2,0,0],[1,1,1],wg);
+    }else{
+      for(const side of [-1,1]){
+        box(1.4*s,.8*s,8*s,matGold,[side*2.1*s,.8*s,0],[0,0,side*.04],wg);
+        cyl(.26*s,.32*s,4.2*s,10,matArmor,[side*2.1*s,1.3*s,-4*s],[Math.PI/2,0,0],wg);
+      }
+    }
+
+    // DEFENCE ARCHITECTURE
+    const dg=groups.defense;
+    if(fitted.defense?.visual==='armor'){
+      for(const side of [-1,1]){
+        box(4.5*s,1.2*s,12*s,matArmor,[side*4.3*s,.2*s,1*s],[0,0,side*.05],dg);
+        box(3.0*s,.30*s,10*s,matGold,[side*4.3*s,.95*s,1*s],[0,0,side*.05],dg);
+      }
+    }else if(fitted.defense?.aiCore){
+      const tier=fitted.defense.aiTier||1;
+      addMesh(new THREE.SphereGeometry((1.05+tier*.12)*s,18,12),new THREE.MeshBasicMaterial({color:0x030308}),[0,.9*s,0],[0,0,0],[1,1,1],dg);
+      for(let i=0;i<2+tier;i++){
+        const glow=i%2?glowPurple:glowCyan;
+        const ring=addMesh(new THREE.TorusGeometry((1.7+i*.56)*s,.10*s,9,36),glow,[0,.9*s,0],[Math.PI/2,i*.24,i*.13],[1,1,1],dg);
+        ring.userData.spin=(i%2?-.06:.045);
+      }
+    }else{
+      const glow=fitted.defense?.id==='phase_aegis'?glowPurple:glowCyan;
+      for(let i=0;i<3;i++)addMesh(
+        new THREE.TorusGeometry((2.2+i*.9)*s,.12*s,9,38),
+        glow,[0,.7*s,0],[Math.PI/2,i*.16,0],[1,1,1],dg
+      );
+    }
+
+    // DRIVE ARCHITECTURE
+    const drg=groups.drive;
+    if(fitted.drive?.id==='gravitic_drive'){
+      for(let i=0;i<4;i++)addMesh(
+        new THREE.TorusGeometry((2.2+i*.72)*s,.13*s,10,40),
+        glowPurple,[0,.6*s,0],[Math.PI/2,i*.15,0],[1,1,1],drg
+      );
+    }else{
+      for(const side of [-1,1]){
+        cyl(.72*s,1.0*s,3.4*s,14,matArmorDark,[side*2.3*s,.3*s,1.2*s],[Math.PI/2,0,0],drg);
+        addMesh(new THREE.RingGeometry(.48*s,.76*s,22),glowCyan,[side*2.3*s,.3*s,3.0*s],[0,0,0],[1,1,1],drg);
+      }
+    }
+
+    // UTILITY ARCHITECTURE
+    const ug=groups.utility;
+    if(fitted.utility?.id==='pd_mesh'||fitted.utility?.id==='oracle_mesh'){
+      const glow=fitted.utility?.id==='oracle_mesh'?glowPurple:glowCyan;
+      for(const side of [-1,1])for(let i=0;i<3;i++){
+        box(.25*s,(2.4+i*.55)*s,.25*s,matArmor,[side*(1.2+i*.65)*s,1.7*s,i*1.3*s],[0,0,side*.10],ug);
+        addMesh(new THREE.SphereGeometry(.18*s,8,6),glow,[side*(1.2+i*.65)*s,(3.1+i*.3)*s,i*1.3*s],[0,0,0],[1,1,1],ug);
+      }
+    }else{
+      addMesh(new THREE.SphereGeometry(1.2*s,16,10),new THREE.MeshBasicMaterial({color:0x000000}),[0,.7*s,0],[0,0,0],[1,1,1],ug);
+      for(let i=0;i<3;i++)addMesh(new THREE.TorusGeometry((1.6+i*.5)*s,.09*s,9,32),glowGold,[0,.7*s,0],[Math.PI/2,i*.3,0],[1,1,1],ug);
+    }
+  }
+
+  function rebuildFrameDecor(){
+    if(!player.frameDecor){
+      player.frameDecor=new THREE.Group();
+      player.model.add(player.frameDecor);
+    }
+    const d=player.frameDecor;
+    disposeGeneratedTree(d);
+
+    const f=currentFrame();
+    const race=RACE_CATALOG[f.raceId];
+    const cls=CLASS_CATALOG[f.classId];
+    const s=cls.visual;
+
+    function socket(x,z,size=1,core=glowCyan,ring=matGold,y=5.6){
+      const g=new THREE.Group();
+      g.position.set(x*s,y*s,z*s);
+      d.add(g);
+      addMesh(new THREE.TorusGeometry(.92*size*s,.15*size*s,9,28),ring,[0,0,0],[Math.PI/2,0,0],[1,1,1],g);
+      addMesh(new THREE.CylinderGeometry(.57*size*s,.57*size*s,.18*size*s,20),core,[0,.05*size*s,0],[0,0,0],[1,1,1],g);
+      return g;
+    }
+    function socketPair(x,z,size=1,core=glowCyan,ring=matGold,y=5.6){
+      socket(-x,z,size,core,ring,y);
+      socket(x,z,size,core,ring,y);
+    }
+    function blade(x,z,len,wid,mat,rot=0,y=1.8,h=2.1){
+      const q=wedge(len*s,wid*s,h*s,mat,[x*s,y*s,z*s],d,.03,.84,.45);
+      q.rotation.y=rot;
+      return q;
+    }
+    function bladePair(x,z,len,wid,mat,rot=.12,y=1.8,h=2.1){
+      blade(-x,z,len,wid,mat,-rot,y,h);
+      blade(x,z,len,wid,mat,rot,y,h);
+    }
+    function spine(z,len,wid,mat,y=3,h=3){
+      wedge(len*s,wid*s,h*s,mat,[0,y*s,z*s],d,.02,.68,.6);
+    }
+    function halo(z,r,core=glowCyan,y=7,tilt=0){
+      addMesh(new THREE.TorusGeometry(r*s,.20*s,10,48),core,[0,y*s,z*s],[Math.PI/2,tilt,0],[1,1,1],d);
+    }
+    function coreOrb(z,r,core=glowCyan,y=6){
+      addMesh(new THREE.SphereGeometry(r*s,18,12),core,[0,y*s,z*s],[0,0,0],[1,1,1],d);
+    }
+    function catMask(z,mat=matGold,eye=glowPurple,y=8){
+      bladePair(4.0,z-1,10,4.2,mat,.22,y,2.6);
+      bladePair(2.1,z+1,7,2.2,mat,.10,y+.8,2.2);
+      addMesh(new THREE.SphereGeometry(.55*s,10,7),eye,[-1.25*s,(y+.5)*s,(z-2)*s],[0,0,0],[1,1,1],d);
+      addMesh(new THREE.SphereGeometry(.55*s,10,7),eye,[1.25*s,(y+.5)*s,(z-2)*s],[0,0,0],[1,1,1],d);
+    }
+
+    const customBlueprint=activeHullBlueprint(f.id);
+    if(customBlueprint?.parts?.length){
+      renderHullBlueprintInto(d,customBlueprint,f);
+      for(const n of player.systemNodes){
+        n.anchor.visible=!n.frameDisabled;
+      }
+      applyHardpointBlueprint();
+      applySystemBlueprint();
+      return;
+    }
+
+    function forgeStarter(){
+      // Compact hulls echo their faction Titan language without being miniature Titans.
+      switch(f.raceId){
+        case 'lycheetah':
+          spine(-4,66,10,matHullDark,2.4,3.4);
+          bladePair(10,4,38,10,matArmorDark,.22,1.7,2.6);
+          bladePair(15,14,26,7,matVanta,.36,1.3,2.0);
+          catMask(-20,matGold,glowPurple,5.5);
+          halo(8,5,glowPurple,5.4);
+          socketPair(7,-14,.75,glowPurple,matGold,4.7);
+          socketPair(10,12,.72,glowPurple,matGold,4.5);
+          socket(0,0,1.0,glowPurple,matGold,5.1);
+          break;
+        case 'aurelian':
+          spine(-5,70,9,matWhite,2.6,3.3);
+          bladePair(10,2,42,9,matWhite,.23,1.5,2.4);
+          bladePair(16,16,30,6,matIvory,.40,1.1,1.8);
+          halo(-18,6,glowBlue,6.3);
+          coreOrb(-18,1.2,glowBlue,6.2);
+          socketPair(6,-7,.70,glowBlue,matGold,4.7);
+          socketPair(10,15,.70,glowBlue,matGold,4.4);
+          break;
+        case 'vanta':
+          spine(-5,74,8,matVanta,2.0,2.7);
+          bladePair(12,0,45,11,matVanta,.30,1.2,1.7);
+          bladePair(18,20,29,7,matHullDark,.42,1.0,1.5);
+          box(1.2*s,.45*s,18*s,glowRed,[0,4.3*s,-24*s],[0,0,0],d);
+          socketPair(7,-10,.65,glowRed,matVanta,4.1);
+          socketPair(12,15,.65,glowRed,matVanta,4.0);
+          break;
+        case 'mycelium':
+          spine(-4,64,12,matOrganic,2.1,4.0);
+          bladePair(12,5,34,12,matOrganic,.26,1.2,3.5);
+          for(const z of [-20,-4,13,28])socketPair(8+Math.abs(z)*.10,z,.72,glowGreen,matBone,4.4);
+          addMesh(new THREE.TorusGeometry(5.5*s,.65*s,12,42),glowGreen,[0,5.0*s,2*s],[Math.PI/2,0,0],[1,1,1],d);
+          break;
+        case 'ferric':
+          spine(-4,68,13,matFerric,1.8,3.7);
+          for(const side of [-1,1]){
+            for(let i=0;i<3;i++)box((7+i*2)*s,2.2*s,12*s,matArmor,[side*(8+i*3)*s,1.2*s,(-10+i*16)*s],[0,0,side*.04],d);
+          }
+          socketPair(7,-16,.70,glowAmber,matFerric,4.1);
+          socketPair(11,8,.80,glowAmber,matFerric,4.0);
+          socketPair(8,27,.68,glowAmber,matFerric,3.8);
+          break;
+        case 'seraphim':
+          spine(-6,72,8,matWhite,2.8,3.0);
+          bladePair(11,2,45,8,matIvory,.26,1.7,2.0);
+          bladePair(18,10,36,5,matGold,.48,1.3,1.5);
+          halo(-8,7,glowGold,6.7);
+          socketPair(7,-18,.72,glowGold,matGold,4.7);
+          socketPair(12,12,.72,glowGold,matGold,4.4);
+          break;
+        case 'ossuary':
+          spine(-4,72,12,matBone,2.0,4.2);
+          bladePair(11,2,39,10,matArmorDark,.28,1.4,3.0);
+          bladePair(17,20,28,7,matBone,.44,1.1,2.6);
+          catMask(-22,matBone,glowAmber,5.7);
+          socketPair(8,-9,.72,glowAmber,matBone,4.5);
+          socketPair(11,18,.72,glowAmber,matBone,4.2);
+          break;
+        case 'prism':
+          spine(-4,72,8,matPrism,2.5,2.5);
+          bladePair(11,1,44,8,matPrism,.24,1.4,1.8);
+          bladePair(17,16,35,5,matWhite,.40,1.2,1.4);
+          halo(-10,5.8,glowCyan,6.2);
+          socketPair(7,-18,.65,glowCyan,matWhite,4.6);
+          socketPair(12,12,.65,glowCyan,matWhite,4.3);
+          break;
+        case 'abyssal':
+          spine(-5,70,10,matVanta,2.0,3.2);
+          bladePair(13,2,41,10,matHullDark,.31,1.3,2.5);
+          bladePair(18,18,30,8,matVanta,.52,1.0,2.0);
+          addMesh(new THREE.TorusGeometry(7*s,1.0*s,12,44),glowAmber,[0,5.7*s,0],[Math.PI/2,0,0],[1,1,1],d);
+          addMesh(new THREE.SphereGeometry(4.3*s,16,10),new THREE.MeshBasicMaterial({color:0x000000}),[0,5.7*s,0],[0,0,0],[1,1,1],d);
+          socketPair(8,-15,.70,glowPurple,matGold,4.3);
+          socketPair(11,20,.70,glowPurple,matGold,4.0);
+          break;
+      }
+    }
+
+    function forgeTitan(){
+      // Common Titan skeleton: long keel plus faction-specific massing.
+      switch(f.raceId){
+        case 'lycheetah':
+          spine(-10,126,13,matHullDark,3.8,5.5);
+          bladePair(18,-8,78,16,matArmorDark,.18,2.1,4.0);
+          bladePair(29,5,70,13,matVanta,.34,1.8,3.5);
+          bladePair(35,28,52,10,matArmorDark,.52,1.5,3.0);
+          catMask(-43,matGold,glowPurple,9.0);
+          halo(-5,11,glowPurple,8.5);
+          coreOrb(-5,2.7,glowPurple,8.4);
+          for(const z of [-42,-28,-14,2,18,34])socketPair(9+Math.abs(z)*.24,z,1.00,glowPurple,matGold,7.0);
+          for(const z of [-33,-5,24,45])socketPair(24,z,.85,glowPurple,matGold,6.4);
+          for(const z of [-30,-12,8,28])socket(0,z,.78,glowPurple,matGold,8.0);
+          break;
+
+        case 'aurelian':
+          spine(-10,130,12,matWhite,4.0,5.2);
+          bladePair(18,-10,86,15,matWhite,.17,2.0,3.2);
+          bladePair(31,4,75,12,matIvory,.35,1.6,2.4);
+          bladePair(40,24,56,8,matWhite,.55,1.2,2.0);
+          // Serene mask crown.
+          catMask(-46,matIvory,glowBlue,8.6);
+          halo(-25,12,glowBlue,9.0);
+          halo(2,15,glowBlue,8.2,.16);
+          coreOrb(2,3.4,glowBlue,8.2);
+          for(const z of [-42,-29,-15,0,16,32,46])socketPair(10+Math.abs(z)*.22,z,.95,glowBlue,matGold,6.6);
+          for(const z of [-30,-2,25])socketPair(28,z,.82,glowBlue,matGold,6.0);
+          for(const z of [-20,8,34])socket(0,z,.85,glowBlue,matGold,8.0);
+          break;
+
+        case 'vanta':
+          spine(-12,138,10,matVanta,3.2,4.0);
+          bladePair(19,-7,92,18,matVanta,.22,1.4,2.7);
+          bladePair(32,12,74,13,matHullDark,.38,1.1,2.2);
+          bladePair(43,28,53,9,matVanta,.58,.9,1.8);
+          // Long red sensor wound.
+          box(1.5*s,.6*s,52*s,glowRed,[0,6.6*s,-20*s],[0,0,0],d);
+          for(const z of [-45,-30,-14,3,20,37])socketPair(11+Math.abs(z)*.20,z,.92,glowRed,matVanta,5.8);
+          for(const z of [-32,-5,24,44])socketPair(29,z,.78,glowRed,matVanta,5.3);
+          socket(0,12,1.15,glowRed,matVanta,6.7);
+          break;
+
+        case 'mycelium':
+          spine(-8,122,18,matOrganic,3.0,6.8);
+          bladePair(18,-5,76,20,matOrganic,.19,1.4,5.2);
+          bladePair(31,9,64,15,matBone,.38,1.1,4.0);
+          bladePair(38,30,44,12,matOrganic,.60,.9,3.2);
+          // Central living singularity.
+          addMesh(new THREE.TorusGeometry(12*s,1.1*s,14,54),glowGreen,[0,8.3*s,0],[Math.PI/2,0,0],[1,1,1],d);
+          addMesh(new THREE.SphereGeometry(6.5*s,18,12),new THREE.MeshBasicMaterial({color:0x000000}),[0,8.3*s,0],[0,0,0],[1,1,1],d);
+          for(const z of [-42,-28,-14,5,22,38])socketPair(11+Math.abs(z)*.23,z,1.0,glowGreen,matBone,6.3);
+          for(const z of [-34,-8,20,43])socketPair(28,z,.84,glowGreen,matBone,5.8);
+          for(const z of [-28,-13,18,34])socket(0,z,.82,glowGreen,matBone,7.2);
+          break;
+
+        case 'ferric':
+          spine(-8,128,18,matFerric,2.7,5.7);
+          for(const side of [-1,1]){
+            for(let i=0;i<6;i++){
+              const z=-38+i*16;
+              box((10+i*1.5)*s,(2.8+i*.20)*s,14*s,matArmor,[side*(12+i*3.0)*s,1.7*s,z*s],[0,0,side*.04],d);
+              box((7+i)*s,.5*s,10*s,matGold,[side*(12+i*3.0)*s,3.4*s,z*s],[0,0,side*.04],d);
+            }
+          }
+          bladePair(35,15,52,10,matFerric,.48,1.0,3.0);
+          // Industrial axial reactor.
+          for(const z of [-30,-10,10,30])cyl(2.6*s,2.6*s,8*s,16,matArmorDark,[0,6.2*s,z*s],[Math.PI/2,0,0],d);
+          for(const z of [-43,-28,-12,4,20,36,48])socketPair(10+Math.abs(z)*.18,z,.90,glowAmber,matFerric,5.6);
+          for(const z of [-30,0,29])socketPair(29,z,.78,glowAmber,matFerric,5.2);
+          for(const z of [-22,12,39])socket(0,z,.78,glowAmber,matFerric,6.8);
+          break;
+
+        case 'seraphim':
+          spine(-12,134,10,matWhite,4.1,4.8);
+          bladePair(18,-10,88,13,matIvory,.16,2.0,2.8);
+          bladePair(31,0,80,10,matWhite,.36,1.6,2.2);
+          bladePair(43,18,64,7,matGold,.56,1.2,1.7);
+          halo(-34,10,glowGold,9.4);
+          halo(-4,17,glowGold,8.8);
+          coreOrb(-4,3.6,glowWhite,8.8);
+          for(const z of [-43,-29,-15,0,16,32,47])socketPair(10+Math.abs(z)*.22,z,.95,glowGold,matGold,6.7);
+          for(const z of [-28,2,30])socketPair(30,z,.82,glowGold,matGold,6.0);
+          for(const z of [-22,12,38])socket(0,z,.84,glowGold,matGold,8.0);
+          break;
+
+        case 'ossuary':
+          spine(-10,132,17,matBone,3.1,6.2);
+          bladePair(19,-5,82,17,matArmorDark,.20,1.5,4.5);
+          bladePair(32,8,68,13,matBone,.40,1.2,4.0);
+          bladePair(42,28,48,10,matArmorDark,.60,.9,3.2);
+          catMask(-46,matBone,glowAmber,8.4);
+          for(const z of [-41,-27,-13,3,20,37,48])socketPair(10+Math.abs(z)*.22,z,.95,glowAmber,matBone,6.0);
+          for(const z of [-30,-2,26])socketPair(29,z,.82,glowAmber,matBone,5.5);
+          for(const z of [-22,8,35])socket(0,z,.82,glowAmber,matBone,7.2);
+          break;
+
+        case 'prism':
+          spine(-10,134,10,matPrism,3.8,4.0);
+          bladePair(18,-10,90,12,matPrism,.17,1.8,2.3);
+          bladePair(31,3,78,9,matWhite,.37,1.4,1.8);
+          bladePair(43,22,59,6,matPrism,.58,1.0,1.4);
+          halo(-30,9,glowCyan,8.5);
+          halo(1,14,glowBlue,8.0);
+          coreOrb(1,3.0,glowCyan,8.0);
+          for(const z of [-43,-29,-15,0,16,32,47])socketPair(10+Math.abs(z)*.21,z,.90,glowCyan,matWhite,6.3);
+          for(const z of [-30,-1,28])socketPair(29,z,.78,glowCyan,matWhite,5.7);
+          for(const z of [-20,12,39])socket(0,z,.80,glowCyan,matWhite,7.5);
+          break;
+
+        case 'abyssal':
+          spine(-9,130,15,matVanta,3.0,5.4);
+          bladePair(20,-4,82,18,matHullDark,.22,1.4,4.0);
+          bladePair(34,8,68,15,matVanta,.43,1.1,3.4);
+          bladePair(43,28,48,11,matHullDark,.64,.8,2.8);
+          addMesh(new THREE.TorusGeometry(14*s,1.55*s,14,60),glowAmber,[0,8.4*s,-2*s],[Math.PI/2,0,0],[1,1,1],d);
+          addMesh(new THREE.SphereGeometry(8.2*s,18,12),new THREE.MeshBasicMaterial({color:0x000000}),[0,8.4*s,-2*s],[0,0,0],[1,1,1],d);
+          for(const z of [-42,-28,-14,8,24,40])socketPair(11+Math.abs(z)*.22,z,.98,glowPurple,matGold,6.0);
+          for(const z of [-31,-5,24,45])socketPair(30,z,.82,glowPurple,matGold,5.5);
+          for(const z of [-31,-18,20,37])socket(0,z,.80,glowPurple,matGold,7.2);
+          break;
+      }
+    }
+
+    if(f.classId==='titan')forgeTitan();
+    else forgeStarter();
+
+    // Keep the functional physical sockets on top of the faction hull.
+    for(const n of player.systemNodes){
+      n.anchor.visible=!n.frameDisabled;
+    }
+    applyHardpointBlueprint();
+    applySystemBlueprint();
+  }
+
+  function applyTurretWeaponVisual(t,w){
+    t.weaponId=w.id;
+    const mat=w.material==='gold'?matGold:w.material==='purple'?glowPurple:w.material==='cyan'?matGlass:matArmor;
+    for(const b of t.barrels){b.material=mat;b.scale.set(w.barrelWidth,w.barrelLength,w.barrelWidth);}
+    const mz=-2.8*w.barrelLength;t.muzzle.position.z=mz;t.emitter.position.z=mz-.03;
+    t.emitter.material=w.material==='gold'?glowGold:w.material==='purple'?glowPurple:glowCyan;
+    t.emitter.scale.setScalar(w.radius/.16);
+  }
+
+  function applyTurretBuildVisuals(){
+    const f=currentFrame();
+
+    // First hide every reusable turret. Authored mounts opt-in below.
+    for(const t of player.turrets)t.group.visible=false;
+
+    for(const n of player.systemNodes.filter(n=>n.type==='weapon')){
+      const sockets=n.turretIndices||[];
+      const available=f.activeBanks.includes(n.id)&&sockets.length>0;
+      n.frameDisabled=!available;
+      n.anchor.visible=available;
+      n.anchor.scale.setScalar(currentFrame().visualModuleScale||1);
+
+      const w=available?bankWeapon(n.id):TURRET_CATALOG.autocannon;
+      for(const idx of sockets){
+        const t=player.turrets[idx];
+        if(!t)continue;
+        t.group.visible=available&&!n.disabled;
+        if(available)applyTurretWeaponVisual(t,w);
+      }
+    }
+  }
+
+  function applySelectedFrame(restore=false){
+    const f=currentFrame();
+    currentFrameLoadout();
+
+    const finite3=a=>Array.isArray(a)&&a.length===3&&a.every(Number.isFinite);
+    if(!finite3(f.scale)||!finite3(f.shieldScale)){
+      throw new Error('Invalid generated hull dimensions for '+f.id);
+    }
+
+    for(const n of player.systemNodes.filter(n=>n.type==='weapon'))n.frameDisabled=!f.activeBanks.includes(n.id);
+    const sr=player.maxShield?player.shield/player.maxShield:1;
+    const ar=player.maxArmor?player.armor/player.maxArmor:1;
+    const hr=player.maxHull?player.hull/player.maxHull:1;
+
+    // Canonical faction hull scale. The old universal Titan mesh is gone.
+    player.model.scale.set(...f.scale);
+    player.shieldMesh.scale.set(...f.shieldScale);
+
+    rebuildFrameDecor();
+    applyTurretBuildVisuals();
+    applyModuleStats(restore);
+    rebuildVisualModules();
+
+    if(!restore){
+      player.shield=player.maxShield*clamp(sr,0,1);
+      player.armor=player.maxArmor*clamp(ar,0,1);
+      player.hull=player.maxHull*clamp(hr,0,1);
+    }
+    combatCamera.resetRequested=true;
+    saveSettings();
+    renderHangar();renderHardpoints();renderSystemIntegrity(true);updateFittingBudgetUI();
+  }
+
+  function previewFrame(id){
+    if(!FRAME_CATALOG[id])return;
+    const previous=settings.selectedShip;
+    try{
+      saveCurrentFrameLoadout();
+      settings.selectedShip=id;
+      currentFrameLoadout();
+      resetCombatCamera(true);
+      applySelectedFrame(false);
+      flashMission(
+        'HULL PREVIEW',
+        currentFrame().raceName.toUpperCase()+' // '+currentFrame().className.toUpperCase()+
+        (hullOwned(id)?' // OWNED':' // NOT OWNED'),
+        .65
+      );
+    }catch(err){
+      console.error('Preview frame recovered:',id,err);
+      settings.selectedShip=FRAME_CATALOG[previous]?previous:'savanah_starter';
+      applySelectedFrame(false);
+    }
+  }
+
+  function selectFrame(id){
+    if(!FRAME_CATALOG[id]||settings.selectedShip===id)return;
+    if(!hullOwned(id)){
+      const f=FRAME_CATALOG[id];
+      const state=hullPurchaseState(f);
+      flashMission('HULL NOT OWNED',state.reason||('PURCHASE '+f.name.toUpperCase()),.85);
+      return;
+    }
+    const previous=settings.selectedShip;
+    saveCurrentFrameLoadout();
+    sandboxHullId=null;
+    try{
+      settings.selectedShip=id;
+      currentFrameLoadout();
+      resetCombatCamera(true);
+      if(!selectedGroupBanks().length)player.selectedWeaponGroup='fore';
+      applySelectedFrame(false);
+      flashMission('FRAME SELECTED',currentFrame().name.toUpperCase(),.75);
+    }catch(err){
+      console.error('Hull switch recovered:',id,err);
+      // Clear partially generated disposable visuals before restoring previous frame.
+      try{if(player.frameDecor)disposeGeneratedTree(player.frameDecor);}catch(_){}
+      try{if(player.visualModules)disposeGeneratedTree(player.visualModules);}catch(_){}
+      settings.selectedShip=FRAME_CATALOG[previous]?previous:'savanah_starter';
+      try{
+        currentFrameLoadout();
+        applySelectedFrame(false);
+      }catch(recoveryErr){
+        console.error('Primary hull recovery failed:',recoveryErr);
+        settings.selectedShip='savanah_starter';
+        currentFrameLoadout();
+        applySelectedFrame(false);
+      }
+      flashMission('HULL VISUAL RECOVERED','INVALID FRAME BLOCKED // RETURNED TO '+currentFrame().name.toUpperCase(),1.2);
+    }
+  }
+
+  function fitTurretWeapon(bankId,weaponId){
+    const f=currentFrame();if(!f.activeBanks.includes(bankId))return;
+    const w=TURRET_CATALOG[weaponId];if(!w)return;
+    if(!weaponCompatibleWithFrame(weaponId,f)){
+      flashMission('HARDPOINT SIZE MISMATCH',w.size+' WEAPON // '+f.className.toUpperCase()+' MAX '+weapon_labelsForFrame(f),.8);
+      return;
+    }
+    if(!weaponCompatibleWithBank(weaponId,bankId,f)){
+      flashMission(
+        'PHYSICAL SOCKET TOO SMALL',
+        BANK_LABELS[bankId].toUpperCase()+' // '+bankHardpointLabel(bankId,f)+' CAPACITY // '+weaponTierLabel(w.tier)+' WEAPON',
+        .9
+      );
+      return;
+    }
+    if(!canFitTurret(bankId,weaponId)){
+      const fit=fittingUsage(f.id,{...currentFrameBuild(),[bankId]:weaponId},currentFrameLoadout());
+      flashMission('POWERGRID EXCEEDED',Math.round(fit.totalPG)+' / '+fit.capacity+' PG',.9);
+      return;
+    }
+    if(w.sectorReq&&settings.currentSector!==w.sectorReq&&!turretOwned(weaponId)){flashMission('FAR-SIDE WEAPON LOCKED','DISCOVER '+w.sectorReq.toUpperCase(),.75);return;}
+    if(!turretOwned(weaponId)){
+      if((settings.salvage||0)<w.cost){flashMission('INSUFFICIENT SALVAGE',w.name+' // '+w.cost+' REQUIRED',.75);return;}
+      settings.salvage-=w.cost;settings.ownedTurretWeapons.push(weaponId);flashMission('TURRET FAMILY ACQUIRED',w.name.toUpperCase(),.75);
+    }
+    currentFrameBuild()[bankId]=weaponId;saveSettings();applyTurretBuildVisuals();renderHardpoints();renderHangar();renderStation();updateFittingBudgetUI();
+  }
+
+  let selectedBankId='WPN_FL';
+  let moduleSearch='';
+  let moduleSlotFilter='all';
+  let moduleOwnershipFilter='all';
+  let weaponSearch='';
+  let weaponTierFilter='all';
+  let weaponOwnershipFilter='all';
+  let stationToolView='operations';
+
+  function fitSelectedWeaponToAllBanks(){
+    const f=currentFrame();
+    const selectedWeapon=bankWeapon(selectedBankId);
+    if(!weaponCompatibleWithFrame(selectedWeapon.id,f))return;
+    const candidate={...currentFrameBuild()};
+    for(const bank of f.activeBanks)candidate[bank]=selectedWeapon.id;
+    const fit=fittingUsage(f.id,candidate,currentFrameLoadout());
+    if(fit.overGrid){
+      flashMission('FIT ALL BLOCKED','WOULD REQUIRE '+Math.round(fit.totalPG)+' / '+fit.capacity+' PG',.75);
+      return;
+    }
+    settings.frameBuilds[f.id]=candidate;
+    saveSettings();applyTurretBuildVisuals();renderHardpoints();renderHangar();
+    flashMission('ALL BANKS FITTED',selectedWeapon.name.toUpperCase(),.55);
+  }
+
+  function resetBanksToAutocannon(){
+    const f=currentFrame(),build=currentFrameBuild();
+    for(const bank of f.activeBanks)build[bank]='autocannon';
+    saveSettings();applyTurretBuildVisuals();renderHardpoints();renderHangar();
+    flashMission('BANKS RESET','EARNED-LIGHT AUTOCANNON BASELINE',.55);
+  }
+
+  function renderHardpoints(){
+    const frame=currentFrame();
+    currentFrameLoadout();
+
+    const grid=document.getElementById('bankGrid');
+    const weapons=document.getElementById('turretWeaponGrid');
+
+    if(!grid||!weapons)return;
+
+    if(!frame.activeBanks.includes(selectedBankId)){
+      selectedBankId=frame.activeBanks[0];
+    }
+
+    const name=document.getElementById('hardpointFrameName');
+    if(name)name.textContent=frame.name;
+
+    const desc=document.getElementById('hardpointFrameDesc');
+    if(desc){
+      desc.textContent=
+        frame.desc+' // '+
+        frame.activeBanks.length+
+        ' active weapon banks.';
+    }
+
+    grid.innerHTML='';
+
+    for(const bid of BANK_IDS){
+      const available=frame.activeBanks.includes(bid);
+      const w=available?bankWeapon(bid):null;
+      const node=systemNode(bid);
+
+      const el=document.createElement('div');
+
+      el.className=
+        'bankCard'+
+        (!available?' unavailable':'')+
+        (selectedBankId===bid?' selectedBank':'');
+
+      el.innerHTML=
+        '<div class="bankTop">'+
+          '<b>'+BANK_LABELS[bid]+'</b>'+
+          '<span>'+(available?'PHYSICAL BANK':'NO SLOT')+'</span>'+
+        '</div>'+
+        '<div class="bankWeapon">'+(w?w.name:'UNAVAILABLE')+'</div>'+
+        '<div class="bankMeta">'+
+          (
+            available
+              ?'Integrity '+Math.round(nodeRatio(node)*100)+'% · '+
+               (node?.turretIndices?.length||0)+' SOCKETS · '+
+               bankHardpointLabel(bid,frame)
+              :'This hull does not carry this weapon bank.'
+          )+
+        '</div>'+
+        (available?'<button class="miniBtn bankPick">SELECT BANK</button>':'');
+
+      if(available){
+        el.querySelector('button').onclick=()=>{
+          selectedBankId=bid;
+          renderHardpoints();
+        };
+      }
+
+      grid.appendChild(el);
+    }
+
+    const allWeapons=Object.values(TURRET_CATALOG);
+
+    const filtered=allWeapons.filter(w=>{
+      const owned=turretOwned(w.id);
+      const compatible=
+        weaponCompatibleWithFrame(w.id,frame) &&
+        weaponCompatibleWithBank(w.id,selectedBankId,frame);
+
+      const q=weaponSearch.trim().toLowerCase();
+      const searchOk=!q || (
+        w.name+' '+w.desc+' '+w.damageType+' '+w.size+' '+weaponDoctrineProfile(w).role
+      ).toLowerCase().includes(q);
+
+      const tierOk=
+        weaponTierFilter==='all' ||
+        String(w.tier)===String(weaponTierFilter);
+
+      const ownershipOk=
+        weaponOwnershipFilter==='all' ||
+        (weaponOwnershipFilter==='owned'&&owned) ||
+        (weaponOwnershipFilter==='market'&&!owned) ||
+        (weaponOwnershipFilter==='compatible'&&compatible);
+
+      return searchOk&&tierOk&&ownershipOk;
+    });
+
+    weapons.innerHTML='';
+
+    for(const w of filtered){
+      const owned=turretOwned(w.id);
+      const active=bankWeapon(selectedBankId).id===w.id;
+      const sectorLocked=!!(
+        w.sectorReq &&
+        settings.currentSector!==w.sectorReq &&
+        !owned
+      );
+
+      const sizeBlocked=
+        !weaponCompatibleWithFrame(w.id,frame) ||
+        !weaponCompatibleWithBank(w.id,selectedBankId,frame);
+
+      const gridBlocked=
+        !sizeBlocked &&
+        !active &&
+        !canFitTurret(selectedBankId,w.id);
+
+      const recommended=weaponRecommendedForRace(w.id,frame);
+
+      const el=document.createElement('div');
+
+      el.className=
+        'weaponCard'+
+        (active?' activeWeapon':'')+
+        ((!owned||sectorLocked)?' lockedWeapon':'')+
+        (gridBlocked?' gridBlocked':'')+
+        (sizeBlocked?' sizeBlocked':'')+
+        (recommended?' recommended':'');
+
+      el.innerHTML=
+        '<div class="wtop">'+
+          '<h4>'+w.name+'</h4>'+
+          '<div class="wrange">'+w.range+'U RANGE</div>'+
+        '</div>'+
+        '<p>'+w.desc+'</p>'+
+        '<div class="weaponStats">'+
+          '<span>DMG '+Math.round(w.damage*100)+'</span>'+
+          '<span>OPT '+w.optimal+'</span>'+
+          '<span>TRK '+Math.round(w.tracking*100)+'</span>'+
+        '</div>'+
+        weaponDoctrineBandHTML(w)+
+        '<div class="damageType type-'+w.damageType+'">'+
+          w.damageType.toUpperCase()+
+          ' · FALLOFF '+w.falloff+
+          ' · CAP '+w.cap+
+        '</div>'+
+        '<div class="compatTag '+(sizeBlocked?'bad':'good')+'">'+
+          w.size+' WEAPON · '+
+          (sizeBlocked?'SOCKET INCOMPATIBLE':'BANK COMPATIBLE')+
+        '</div>'+
+        (recommended?'<div class="doctrineBadge">DOCTRINE MATCH</div>':'')+
+        '<div class="fitCost">'+
+          w.pg+' PG · '+w.mass+' MASS'+
+          (gridBlocked?' · GRID BLOCKED':'')+
+        '</div>'+
+        (
+          sectorLocked
+            ?'<div class="weaponCost">REQUIRES // '+w.sectorReq.toUpperCase()+'</div>'
+            :sizeBlocked
+              ?'<div class="weaponCost">BANK HAS '+bankHardpointLabel(selectedBankId,frame)+'</div>'
+              :owned
+                ?'<div class="weaponOwned">'+(active?'FITTED':'OWNED // CLICK TO FIT')+'</div>'
+                :'<div class="weaponCost">BUY // '+w.cost+' SALVAGE</div>'
+        );
+
+      if(!sizeBlocked){
+        el.onclick=()=>fitTurretWeapon(selectedBankId,w.id);
+      }
+
+      weapons.appendChild(el);
+    }
+
+    const visible=document.getElementById('weaponVisibleCount');
+    if(visible)visible.textContent=filtered.length+' WEAPONS';
+
+    const capability=document.getElementById('weaponBankCapability');
+    if(capability){
+      capability.textContent=
+        BANK_LABELS[selectedBankId].toUpperCase()+
+        ' // '+
+        bankHardpointLabel(selectedBankId,frame);
+    }
+
+    const marketValue=document.getElementById('weaponMarketValue');
+    if(marketValue){
+      const value=filtered
+        .filter(w=>!turretOwned(w.id))
+        .reduce((sum,w)=>sum+Number(w.cost||0),0);
+      marketValue.textContent=value+' SALVAGE MARKET';
+    }
+
+    const summary=document.getElementById('buildSummary');
+    if(summary){
+      summary.innerHTML=
+        '<span class="frameBadge">'+frame.role+'</span>'+
+        '<div class="fitDoctrine">'+
+          frame.raceName+' DOCTRINE // '+
+          frame.doctrine+
+          ' // SELECTED '+BANK_LABELS[selectedBankId].toUpperCase()+
+          ' // '+bankHardpointLabel(selectedBankId,frame)+
+        '</div><br>'+
+        frame.activeBanks
+          .map(b=>BANK_LABELS[b]+': '+bankWeapon(b).name)
+          .join(' · ');
+    }
+
+    updateFittingBudgetUI();
+  }
+
+  function validateGeneratedFleetCatalog(){
+    const bad=[];
+    for(const [id,f] of Object.entries(FRAME_CATALOG)){
+      const ok=
+        f&&f.id===id&&RACE_CATALOG[f.raceId]&&CLASS_CATALOG[f.classId]&&
+        Array.isArray(f.scale)&&f.scale.length===3&&f.scale.every(Number.isFinite)&&
+        Array.isArray(f.shieldScale)&&f.shieldScale.length===3&&f.shieldScale.every(Number.isFinite)&&
+        Array.isArray(f.activeBanks)&&f.activeBanks.length>0&&
+        Number.isFinite(f.powergrid)&&f.powergrid>0&&Number.isFinite(f.baseMass)&&f.baseMass>0;
+      if(!ok)bad.push(id);
+    }
+    if(bad.length)console.error('Invalid generated hull definitions:',bad);
+    return bad;
+  }
+  const INVALID_GENERATED_HULLS=new Set(validateGeneratedFleetCatalog());
+
+  let fleetRaceFilter='all';
+  let fleetClassFilter='all';
+  let fleetSearch='';
+
+  function renderFleetRoster(){
+    const roster=document.getElementById('fleetRoster');if(!roster)return;
+    roster.innerHTML='';
+
+    const frames=Object.values(FRAME_CATALOG).filter(f=>{
+      if(INVALID_GENERATED_HULLS.has(f.id))return false;
+      const raceOk=fleetRaceFilter==='all'||f.raceId===fleetRaceFilter;
+      const classOk=fleetClassFilter==='all'||f.classId===fleetClassFilter;
+      const q=fleetSearch.trim().toLowerCase();
+      return raceOk&&classOk&&(!q||(f.name+' '+f.raceName+' '+f.className+' '+f.doctrine).toLowerCase().includes(q));
+    });
+
+    for(const f of frames){
+      const owned=hullOwned(f.id);
+      const state=hullPurchaseState(f);
+      const price=hullPrice(f);
+
+      const card=document.createElement('div');
+      card.className='shipCard '+f.classId+'Hull'+(settings.selectedShip===f.id?' selected':'')+(owned?' owned':' locked');
+      card.dataset.ship=f.id;
+
+      let action='';
+      if(owned){
+        action=
+          '<span class="owned">OWNED</span>'+
+          '<span class="req">'+
+            (settings.selectedShip===f.id?'ACTIVE HULL':'CLICK TO SELECT')+
+          '</span>';
+      }else if(state.sandbox){
+        action=
+          '<span class="lockedText">APEX SANDBOX</span>'+
+          '<button class="previewHull">PREVIEW</button>'+
+          '<button class="sandboxHull">'+
+            (sandboxHullAllowed(f.id)?'TEST READY':'TEST FLIGHT')+
+          '</button>';
+      }else{
+        action=
+          '<span class="lockedText">'+(state.ok?'AVAILABLE':'LOCKED')+'</span>'+
+          '<button class="previewHull">PREVIEW</button>'+
+          '<button class="buyHull" '+(state.ok?'':'disabled')+'>'+
+            (state.ok?('BUILD '+price+'S'):state.reason)+
+          '</button>'+
+          (state.ok&&state.costText?'<span class="shipBuildCost">'+state.costText+'</span>':'');
+      }
+
+      card.innerHTML=
+        '<div class="tier">'+f.className+' // '+f.raceName+'</div>'+
+        '<h3>'+f.name+'</h3><p>'+f.desc+'</p>'+
+        '<div class="frameSlots">'+f.activeBanks.length+' BANKS // '+f.powergrid+' PG</div>'+
+        '<div class="fleetRoleTag">'+f.familyRole+'</div>'+
+        (f.signatureRole?'<div class="signatureTag">'+f.signatureRole+'</div>':'')+
+        '<div class="raceTag">'+f.raceName+'</div>'+
+        '<div class="raceDoctrine">'+f.doctrine+'</div>'+
+        '<div class="classTag">'+f.className+'</div>'+
+        '<div class="ownershipLine">'+action+'</div>';
+
+      if(owned){
+        card.onclick=()=>selectFrame(f.id);
+      }else{
+        const btn=card.querySelector('.buyHull');
+        const preview=card.querySelector('.previewHull');
+        const sandbox=card.querySelector('.sandboxHull');
+
+        if(btn){
+          btn.onclick=e=>{
+            e.stopPropagation();
+            purchaseHull(f.id);
+          };
+        }
+
+        if(preview){
+          preview.onclick=e=>{
+            e.stopPropagation();
+            previewFrame(f.id);
+          };
+        }
+
+        if(sandbox){
+          sandbox.onclick=e=>{
+            e.stopPropagation();
+            enableSandboxHull(f.id);
+          };
+        }
+
+        card.onclick=()=>previewFrame(f.id);
+      }
+      roster.appendChild(card);
+    }
+
+    const count=document.getElementById('rosterCount');
+    if(count){
+      const ownedCount=(settings.ownedHulls||[]).filter(id=>FRAME_CATALOG[id]).length;
+      count.textContent=ownedCount+' OWNED // '+frames.length+' SHOWN // '+Object.keys(FRAME_CATALOG).length+' TOTAL HULL DEFINITIONS';
+    }
+  }
+
+  function renderFleetFilters(){
+    const race=document.getElementById('raceFilter'),cls=document.getElementById('classFilter');
+    if(race&&race.options.length===1){
+      for(const id of RACE_ORDER){const o=document.createElement('option');o.value=id;o.textContent=RACE_CATALOG[id].name;race.appendChild(o);}
+      race.onchange=()=>{fleetRaceFilter=race.value;renderFleetRoster();};
+    }
+    if(cls&&cls.options.length===1){
+      for(const id of PLAYER_CLASS_ORDER){const o=document.createElement('option');o.value=id;o.textContent=CLASS_CATALOG[id].name;cls.appendChild(o);}
+      cls.onchange=()=>{fleetClassFilter=cls.value;renderFleetRoster();};
+    }
+    const search=document.getElementById('shipSearch');
+    if(search&&!search.dataset.wired){search.dataset.wired='1';search.oninput=()=>{fleetSearch=search.value;renderFleetRoster();};}
+  }
+
+  const RACE_FIT_DOCTRINES={
+    savanah:{weapons:['repeater','autocannon','shard'],modules:{weapon:'cheetah_repeater',defense:'reactive_armor',drive:'vector_thrusters',utility:'pd_mesh'}},
+    sol_symbiots:{weapons:['ion','beam_laser','autocannon'],modules:{weapon:'targeting_core',defense:'aegis_projector',drive:'earned_drive',utility:'cap_matrix'}},
+    chaos:{weapons:['plasma','repeater','missile'],modules:{weapon:'cheetah_repeater',defense:'ai_core_wild',drive:'flux_drive',utility:'war_reactor'}},
+    cosmic_darkness:{weapons:['railgun','ion','void_torpedo'],modules:{weapon:'siege_calibrator',defense:'ai_core_oracle',drive:'bastion_drive',utility:'oracle_mesh'}},
+    cosmic_light:{weapons:['beam_laser','ion','siege_beam'],modules:{weapon:'targeting_core',defense:'prism_barrier',drive:'earned_drive',utility:'cap_matrix'}},
+    blackhole:{weapons:['plasma','void_torpedo','railgun'],modules:{weapon:'siege_calibrator',defense:'ai_core_anomaly',drive:'gravitic_drive',utility:'reactor_channel'}},
+    hybrid_fused:{weapons:['shard','repeater','plasma'],modules:{weapon:'earned_battery',defense:'sovereign_plating',drive:'vector_thrusters',utility:'damage_control'}},
+    human_hunters:{weapons:['autocannon','shard','missile'],modules:{weapon:'earned_battery',defense:'sovereign_plating',drive:'bastion_drive',utility:'damage_control'}},
+    ai_hunters:{weapons:['railgun','autocannon','void_torpedo'],modules:{weapon:'siege_calibrator',defense:'ai_core_oracle',drive:'flux_drive',utility:'war_reactor'}},
+    amethyst_angels:{weapons:['beam_laser','plasma','ion'],modules:{weapon:'targeting_core',defense:'phase_aegis',drive:'earned_drive',utility:'oracle_mesh'}},
+    techno_angels:{weapons:['ion','beam_laser','repeater'],modules:{weapon:'targeting_core',defense:'prism_barrier',drive:'vector_thrusters',utility:'cap_matrix'}},
+    ai_gods:{weapons:['beam_laser','ion','railgun'],modules:{weapon:'targeting_core',defense:'ai_core_covenant',drive:'earned_drive',utility:'cap_matrix'}},
+    pagan_ai:{weapons:['missile','shard','plasma'],modules:{weapon:'earned_battery',defense:'sovereign_plating',drive:'bastion_drive',utility:'damage_control'}},
+    ai:{weapons:['ion','autocannon','railgun'],modules:{weapon:'targeting_core',defense:'ai_core_covenant',drive:'vector_thrusters',utility:'pd_mesh'}}
+  };
+
+  function weaponTierLabel(tier){return ({1:'LIGHT',2:'MEDIUM',3:'HEAVY',4:'CAPITAL'})[tier]||'LIGHT';}
+  function weapon_labelsForFrame(frame=currentFrame()){
+    return weaponTierLabel(CLASS_CATALOG[frame.classId]?.maxWeaponTier||1);
+  }
+
+  function weaponCompatibleWithFrame(weaponId,frame=currentFrame()){
+    const w=TURRET_CATALOG[weaponId];if(!w)return false;
+    const cls=CLASS_CATALOG[frame.classId];
+    return (w.tier||1)<=(cls?.maxWeaponTier||1);
+  }
+
+  function moduleRecommendedForRace(modId,frame=currentFrame()){
+    const doctrine=RACE_FIT_DOCTRINES[frame.raceId];if(!doctrine)return false;
+    return Object.values(doctrine.modules||{}).includes(modId);
+  }
+
+  function weaponRecommendedForRace(weaponId,frame=currentFrame()){
+    return (RACE_FIT_DOCTRINES[frame.raceId]?.weapons||[]).includes(weaponId);
+  }
+
+  function currentFrameLoadout(){
+    const f=currentFrame();
+    if(!settings.frameLoadouts[f.id])settings.frameLoadouts[f.id]={...defaultSettings.loadout};
+    const merged={...defaultSettings.loadout,...settings.frameLoadouts[f.id]};
+    for(const slot of ['weapon','defense','drive','utility']){
+      const mod=MODULE_CATALOG[merged[slot]];
+      if(!mod || mod.slot!==slot)merged[slot]=defaultSettings.loadout[slot];
+    }
+    settings.frameLoadouts[f.id]={...merged};
+    settings.loadout={...merged};
+    return settings.loadout;
+  }
+
+  function saveCurrentFrameLoadout(){
+    const f=currentFrame();
+    settings.frameLoadouts[f.id]={...settings.loadout};
+  }
+
+  const EASY_FITS={
+    balanced:{weapons:['autocannon','beam_laser','repeater'],modules:{weapon:'targeting_core',defense:'aegis_projector',drive:'earned_drive',utility:'cap_matrix'}},
+    brawler:{weapons:['shard','plasma','repeater'],modules:{weapon:'cheetah_repeater',defense:'reactive_armor',drive:'flux_drive',utility:'damage_control'}},
+    artillery:{weapons:['railgun','siege_beam','autocannon'],modules:{weapon:'siege_calibrator',defense:'sovereign_plating',drive:'bastion_drive',utility:'cap_matrix'}},
+    anti_swarm:{weapons:['flak','repeater','ion'],modules:{weapon:'cheetah_repeater',defense:'prism_barrier',drive:'vector_thrusters',utility:'pd_mesh'}},
+    tank:{weapons:['autocannon','missile'],modules:{weapon:'earned_battery',defense:'sovereign_plating',drive:'bastion_drive',utility:'damage_control'}},
+    speed:{weapons:['repeater','beam_laser','missile'],modules:{weapon:'targeting_core',defense:'prism_barrier',drive:'flux_drive',utility:'cap_matrix'}}
+  };
+
+  function easiestOwnedWeapon(candidates,frame=currentFrame()){
+    return candidates.find(id=>turretOwned(id)&&TURRET_CATALOG[id]&&weaponCompatibleWithFrame(id,frame))||'autocannon';
+  }
+
+  function applyEasyFit(name){
+    const preset=EASY_FITS[name];if(!preset)return;
+    const f=currentFrame();
+    const raceDoctrine=RACE_FIT_DOCTRINES[f.raceId]||{weapons:[],modules:{}};
+    const build={...currentFrameBuild()};
+    const loadout={...currentFrameLoadout()};
+
+    // The role preset leads, race doctrine breaks ties and adds flavour.
+    const weaponPool=[...preset.weapons,...raceDoctrine.weapons,'autocannon'];
+    for(let i=0;i<f.activeBanks.length;i++){
+      const rotated=[weaponPool[i%weaponPool.length],...weaponPool];
+      build[f.activeBanks[i]]=easiestOwnedWeapon(rotated,f);
+    }
+
+    for(const slot of ['weapon','defense','drive','utility']){
+      const preferred=preset.modules[slot];
+      const racial=raceDoctrine.modules?.[slot];
+      const chosen=(preferred&&moduleOwned(preferred))?preferred:(racial&&moduleOwned(racial))?racial:null;
+      if(chosen)loadout[slot]=chosen;
+    }
+
+    // Respect PG automatically.
+    let fit=fittingUsage(f.id,build,loadout);
+    if(fit.overGrid){
+      const expensive=[...f.activeBanks].sort((a,b)=>(TURRET_CATALOG[build[b]]?.pg||0)-(TURRET_CATALOG[build[a]]?.pg||0));
+      for(const bank of expensive){
+        build[bank]='autocannon';
+        fit=fittingUsage(f.id,build,loadout);
+        if(!fit.overGrid)break;
+      }
+    }
+
+    if(fit.overGrid){
+      const safe={weapon:'earned_battery',defense:'aegis_projector',drive:'earned_drive',utility:'pd_mesh'};
+      for(const [slot,id] of Object.entries(safe))if(moduleOwned(id))loadout[slot]=id;
+      fit=fittingUsage(f.id,build,loadout);
+    }
+
+    settings.frameBuilds[f.id]=build;
+    settings.loadout=loadout;
+    settings.frameLoadouts[f.id]={...loadout};
+    saveSettings();
+
+    applyTurretBuildVisuals();
+    applyModuleStats(false);
+    rebuildVisualModules();
+    renderHardpoints();renderModules();renderHangar();renderStation();
+    flashMission('EASY FIT APPLIED',f.raceName.toUpperCase()+' // '+name.replace('_',' ').toUpperCase()+' // '+Math.round(fit.totalPG)+'/'+fit.capacity+' PG',.85);
+  }
+
+  function renderHangar(){
+    const f=currentFrame();renderFleetFilters();renderFleetRoster();
+    const n=document.getElementById('hangarFrameName');if(n)n.textContent=f.name;
+    currentFrameLoadout();
+    const r=document.getElementById('hangarFrameRole');
+    if(r){
+      const fit=fittingUsage();
+      r.textContent=f.raceName+' // '+f.className+' // '+Math.round(fit.totalPG)+'/'+fit.capacity+
+        ' PG // '+Math.round(fit.totalMass)+' MASS // '+(hullOwned(f.id)?'DEPLOYABLE':'PREVIEW');
+    }
+    const doctrine=document.getElementById('prototypeDoctrine');
+    if(doctrine){
+      doctrine.textContent='FACTION DOCTRINE // '+f.doctrine+' // '+
+        (f.classId==='titan'?'APEX SANDBOX':f.classId==='battleship'?'ELITE HULL':f.classId==='destroyer'?'COMBAT HULL':'STARTER FRIGATE')+
+        ' // intermediate classes intentionally retired during faction reforge.';
+    }
+    const own=document.getElementById('hangarOwnership');
+    if(own){
+      const count=(settings.ownedHulls||[]).filter(id=>FRAME_CATALOG[id]).length;
+      own.textContent='FLEET OWNERSHIP // '+count+' / 18 CANONICAL HULLS // CAMPAIGN TIER '+(settings.campaignTier||1);
+    }
+    const vals={hangarShieldStat:f.display.shield,hangarArmorStat:f.display.armor,hangarHullStat:f.display.hull,hangarMobilityStat:f.display.mobility,hangarHardpointStat:f.display.hardpoints};
+    for(const [id,val] of Object.entries(vals)){const e=document.getElementById(id);if(e)e.textContent=val;}
+    const wf=document.getElementById('hangarWeaponFit');
+    if(wf){const counts={};for(const b of f.activeBanks){const w=bankWeapon(b).name;counts[w]=(counts[w]||0)+1;}wf.textContent=Object.entries(counts).map(([w,c])=>w+' ×'+c).join(' // ');}
+    const sil=document.getElementById('shipBlueprintSil');
+    if(sil){
+      const clips={starter:'polygon(50% 0,55% 35%,72% 52%,58% 61%,53% 100%,47% 100%,42% 61%,28% 52%,45% 35%)',frigate:'polygon(50% 0,56% 30%,76% 50%,60% 60%,54% 100%,46% 100%,40% 60%,24% 50%,44% 30%)',destroyer:'polygon(50% 0,58% 27%,82% 48%,66% 61%,57% 100%,43% 100%,34% 61%,18% 48%,42% 27%)',cruiser:'polygon(50% 0,63% 25%,88% 44%,72% 60%,86% 70%,59% 75%,53% 100%,47% 100%,41% 75%,14% 70%,28% 60%,12% 44%,37% 25%)',battleship:'polygon(50% 0,67% 20%,91% 38%,80% 55%,95% 70%,68% 75%,58% 100%,42% 100%,32% 75%,5% 70%,20% 55%,9% 38%,33% 20%)',dreadnought:'polygon(50% 0,70% 18%,92% 33%,85% 52%,98% 69%,72% 77%,61% 100%,50% 88%,39% 100%,28% 77%,2% 69%,15% 52%,8% 33%,30% 18%)',titan:'polygon(50% 0,72% 15%,95% 31%,88% 49%,100% 65%,78% 75%,67% 100%,50% 86%,33% 100%,22% 75%,0% 65%,12% 49%,5% 31%,28% 15%)'};
+      sil.style.clipPath=clips[f.classId]||clips.cruiser;
+      sil.style.filter=f.accent==='purple'?'drop-shadow(0 0 10px rgba(185,98,255,.38))':f.accent==='cyan'?'drop-shadow(0 0 10px rgba(98,239,255,.35))':'drop-shadow(0 0 10px rgba(255,201,90,.28))';
+    }
+  }
+
+  // ============================================================
+  // FORGE 0.4 — MODULE SYSTEM
+  // ============================================================
+
+  function moduleRuntime(id){return MODULE_RUNTIME[id]||null}
+  function moduleRuntimeLabel(mod){
+    const r=moduleRuntime(mod?.id);
+    return r?r.label+' // '+r.cap+' CAP / '+r.cycle.toFixed(1)+'S':'PASSIVE ARCHITECTURE';
+  }
+  function moduleAutomationEnabled(slot='defense'){
+    settings.moduleAutomation=settings.moduleAutomation||{defense:true};
+    return settings.moduleAutomation[slot]!==false;
+  }
+  function toggleModuleAutomation(slot='defense',announce=true){
+    settings.moduleAutomation=settings.moduleAutomation||{defense:true};
+    settings.moduleAutomation[slot]=!moduleAutomationEnabled(slot);
+    saveSettings();
+    if(announce){
+      const mod=MODULE_CATALOG[settings.loadout?.[slot]];
+      flashMission(
+        'ACTIVE MODULE '+(settings.moduleAutomation[slot]?'ARMED':'HOLD'),
+        (mod?.name||slot).toUpperCase()+' // '+(settings.moduleAutomation[slot]?'AUTO CYCLE':'PASSIVE ONLY'),
+        .55
+      );
+    }
+    if(appMode==='modules')renderModules();
+  }
+  function activeDefenseModule(){
+    const id=settings.loadout?.defense;
+    const mod=MODULE_CATALOG[id],runtime=moduleRuntime(id);
+    return mod&&runtime?{mod,runtime}:null;
+  }
+
+  const AI_CORE_EFFECT_LABELS={
+    turretDamage:'Turret Damage',turretRate:'Turret Cadence',shieldRegen:'Shield Regeneration',
+    maxSpeed:'Top Speed',turn:'Turn Authority',capRegen:'Capacitor Recharge',
+    abilityDamage:'Ability Output',armor:'Armour',hull:'Hull',
+    weaponCapUse:'Weapon Cap Cost',abilityCapUse:'Ability Cap Cost',boostCapUse:'Boost Cap Cost'
+  };
+
+  function stableStringHash(str=''){
+    let h=2166136261>>>0;
+    for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
+    return h>>>0;
+  }
+
+  function resolveAICoreMutation(mod,frame=currentFrame()){
+    if(!mod?.aiCore)return null;
+    const tier=clamp(Number(mod.aiTier)||1,1,4);
+    const seed=stableStringHash(frame.id+'::'+mod.id);
+    const benefits=['turretDamage','turretRate','shieldRegen','maxSpeed','turn','capRegen','abilityDamage'];
+    const costs=['armor','hull','weaponCapUse','abilityCapUse','boostCapUse'];
+    const benefit=benefits[seed%benefits.length];
+    const cost=costs[(seed>>>5)%costs.length];
+    const benefitMult=[1,1.13,1.24,1.38,1.58][tier];
+    const survivalCost=[1,.95,.90,.83,.72][tier];
+    const capCost=[1,1.08,1.16,1.28,1.46][tier];
+    const costMult=cost.endsWith('CapUse')?capCost:survivalCost;
+    const stats={[benefit]:benefitMult,[cost]:costMult};
+    return {
+      tier,benefit,cost,stats,
+      benefitText:AI_CORE_EFFECT_LABELS[benefit]+' +'+Math.round((benefitMult-1)*100)+'%',
+      costText:AI_CORE_EFFECT_LABELS[cost]+' '+(
+        cost.endsWith('CapUse')
+          ?'+'+Math.round((costMult-1)*100)+'%'
+          :'-'+Math.round((1-costMult)*100)+'%'
+      ),
+      strain:['','LOW','MODERATE','HIGH','EXTREME'][tier]
+    };
+  }
+
+
+  const SLOT_LABELS={weapon:'Weapon Architecture',defense:'Defence Architecture',drive:'Drive Architecture',utility:'Utility Architecture'};
+  let moduleStats={};
+
+
+  function computeModuleStatsForLoadout(
+    frame=currentFrame(),
+    loadout={...currentFrameLoadout()},
+    build=currentFrameBuild()
+  ){
+    const s={
+      shield:1,armor:1,hull:1,shieldRegen:1,
+      turretDamage:1,turretRate:1,abilityDamage:1,
+      maxSpeed:1,accel:1,turn:1,
+      capacitor:1,capRegen:1,
+      weaponCapUse:1,abilityCapUse:1,boostCapUse:1,
+      damageControlRate:1,damageControlCapUse:1
+    };
+
+    for(const [k,v] of Object.entries(frame.stats||{})){
+      s[k]=(s[k]??1)*v;
+    }
+
+    for(const slot of ['weapon','defense','drive','utility']){
+      const mod=MODULE_CATALOG[loadout?.[slot]];
+      if(!mod)continue;
+
+      for(const [k,v] of Object.entries(mod.stats||{})){
+        s[k]=(s[k]??1)*v;
+      }
+
+      if(mod.aiCore){
+        const mutation=resolveAICoreMutation(mod,frame);
+        if(mutation){
+          for(const [k,v] of Object.entries(mutation.stats)){
+            s[k]=(s[k]??1)*v;
+          }
+          s.aiCoreMutation=mutation;
+        }
+      }
+    }
+
+    const drone=DRONE_CATALOG[settings.activeDroneWing];
+    for(const [k,v] of Object.entries(drone?.stats||{})){
+      s[k]=(s[k]??1)*v;
+    }
+
+    const fit=fittingUsage(frame.id,build,loadout);
+    s.maxSpeed*=.78+.22*fit.handling;
+    s.accel*=fit.handling;
+    s.turn*=.70+.30*fit.handling;
+    s.fitHandling=fit.handling;
+    s.fitUsage=fit;
+    return s;
+  }
+
+  function fitWeaponMetrics(
+    stats,
+    frame=currentFrame(),
+    build=currentFrameBuild()
+  ){
+    let dps=0,volley=0,shotsPerSecond=0,weaponCapPerSecond=0,totalTurrets=0;
+    let weightedOptimal=0;
+
+    for(const bankId of frame.activeBanks){
+      const weapon=TURRET_CATALOG[build?.[bankId]||'autocannon']||TURRET_CATALOG.autocannon;
+      const sockets=Math.max(1,bankHardpointRecords(bankId,frame).length);
+      const rof=(stats.turretRate||1)*(weapon.rate||1)/.62;
+      const hit=21*(weapon.damage||1)*(stats.turretDamage||1);
+      const bankDps=hit*rof*sockets;
+
+      dps+=bankDps;
+      volley+=hit*sockets;
+      shotsPerSecond+=rof*sockets;
+      weaponCapPerSecond+=(weapon.cap||0)*(stats.weaponCapUse||1)*rof*sockets;
+      weightedOptimal+=(weapon.optimal||0)*sockets;
+      totalTurrets+=sockets;
+    }
+
+    return {
+      dps,volley,shotsPerSecond,weaponCapPerSecond,totalTurrets,
+      averageOptimal:totalTurrets?weightedOptimal/totalTurrets:0
+    };
+  }
+
+  function activeTankMetrics(loadout,stats){
+    const runtime=moduleRuntime(loadout?.defense);
+    if(!runtime||!moduleAutomationEnabled('defense')){
+      return {hps:0,capPerSecond:0,label:'PASSIVE'};
+    }
+
+    return {
+      hps:(runtime.amount||0)/Math.max(.1,runtime.cycle||1),
+      capPerSecond:(runtime.cap||0)/Math.max(.1,runtime.cycle||1),
+      label:runtime.kind==='shield_boost'?'SHIELD BOOST':'ARMOUR REPAIR'
+    };
+  }
+
+  function fitDerivedMetrics(
+    stats,
+    loadout=settings.loadout,
+    frame=currentFrame(),
+    build=currentFrameBuild()
+  ){
+    const weapons=fitWeaponMetrics(stats,frame,build);
+    const tank=activeTankMetrics(loadout,stats);
+
+    // Capacitor profile needs candidate loadout when evaluating market swaps.
+    const cap=capacitorStabilityProfile(stats,loadout);
+
+    return {
+      ...weapons,
+      activeTankHps:tank.hps,
+      activeTankCapPerSecond:tank.capPerSecond,
+      activeTankLabel:tank.label,
+      shield:Math.round(1000*stats.shield),
+      armor:Math.round(850*stats.armor),
+      structure:Math.round(700*stats.hull),
+      speed:63*stats.maxSpeed,
+      handling:stats.fitHandling||1,
+      capCapacity:cap.capacity,
+      capPeak:cap.peakRegen,
+      capSustained:cap.sustained,
+      capStable:cap.stable,
+      capDrySeconds:cap.drySeconds,
+      fit:stats.fitUsage||fittingUsage(frame.id,build,loadout)
+    };
+  }
+
+  function moduleMarketAnalytics(mod){
+    const frame=currentFrame();
+    const build=currentFrameBuild();
+    const currentLoadout={...currentFrameLoadout()};
+    const candidateLoadout={...currentLoadout,[mod.slot]:mod.id};
+
+    const currentStats=computeModuleStatsForLoadout(frame,currentLoadout,build);
+    const candidateStats=computeModuleStatsForLoadout(frame,candidateLoadout,build);
+
+    const current=fitDerivedMetrics(currentStats,currentLoadout,frame,build);
+    const candidate=fitDerivedMetrics(candidateStats,candidateLoadout,frame,build);
+
+    return {current,candidate,candidateStats,candidateLoadout};
+  }
+
+  function metricDelta(value,base,digits=0,suffix=''){
+    const delta=value-base;
+    const pct=Math.abs(base)>1e-6?delta/base*100:0;
+    const cls=delta>1e-6?'marketMetricUp':delta<-1e-6?'marketMetricDown':'marketMetricNeutral';
+    const val=digits?Number(value).toFixed(digits):Math.round(value);
+    const deltaText=Math.abs(delta)<1e-6
+      ?'—'
+      :(delta>0?'+':'')+pct.toFixed(1)+'%';
+    return '<b class="'+cls+'">'+val+suffix+'</b><small>'+deltaText+'</small>';
+  }
+
+  function capAnalyticsLabel(metrics){
+    if(metrics.capStable)return 'STABLE';
+    if(metrics.capDrySeconds>45)return Math.round(metrics.capDrySeconds)+'S';
+    return 'DRY '+Math.round(metrics.capDrySeconds)+'S';
+  }
+
+  function computeModuleStats(){
+    return computeModuleStatsForLoadout(
+      currentFrame(),
+      currentFrameLoadout(),
+      currentFrameBuild()
+    );
+  }
+
+  function applyModuleStats(restore=false){
+    moduleStats=computeModuleStats();
+    const sr=player.maxShield?player.shield/player.maxShield:1;
+    const ar=player.maxArmor?player.armor/player.maxArmor:1;
+    const hr=player.maxHull?player.hull/player.maxHull:1;
+    const cr=player.maxCapacitor?player.capacitor/player.maxCapacitor:1;
+
+    player.maxShield=Math.round(1000*moduleStats.shield);
+    player.maxArmor=Math.round(850*moduleStats.armor);
+    player.maxHull=Math.round(700*moduleStats.hull);
+
+    const cp=capacitorProfile();
+    player.maxCapacitor=Math.round(cp.max*moduleStats.capacitor);
+    player.baseCapRegen=cp.regen*moduleStats.capRegen;
+    player.capRegenNow=capacitorRegenRateAt(clamp(cr,0,1),moduleStats,reactorIntegrity());
+
+    if(restore){
+      player.shield=player.maxShield;
+      player.armor=player.maxArmor;
+      player.hull=player.maxHull;
+      player.capacitor=player.maxCapacitor;
+    }else{
+      player.shield=player.maxShield*clamp(sr,0,1);
+      player.armor=player.maxArmor*clamp(ar,0,1);
+      player.hull=player.maxHull*clamp(hr,0,1);
+      player.capacitor=player.maxCapacitor*clamp(cr,0,1);
+    }
+    ensureCombatAnatomy(player,restore);
+    renderModules();
+    rebuildPlayerDrones();
+  }
+
+  function moduleOwned(id){
+    return settings.ownedModules.includes(id);
+  }
+
+  function installModule(id){
+    const mod=MODULE_CATALOG[id];if(!mod)return;
+    currentFrameLoadout();
+    if(!canFitModule(id)){
+      const next={...settings.loadout,[mod.slot]:id};
+      const fit=fittingUsage(settings.selectedShip,currentFrameBuild(),next);
+      flashMission('POWERGRID EXCEEDED',Math.round(fit.totalPG)+' / '+fit.capacity+' PG',.9);
+      return;
+    }
+    if(!moduleOwned(id)){
+      const researchReq=moduleResearchRequirement(id);
+      if(researchReq&&!researchUnlocked(researchReq)){
+        flashMission('BLUEPRINT RESEARCH REQUIRED',(RESEARCH_PROJECTS[researchReq]?.name||researchReq).toUpperCase(),.9);
+        return;
+      }
+    }
+    if(mod.sectorReq && settings.currentSector!==mod.sectorReq && !moduleOwned(id)){
+      flashMission('MODULE ORIGIN UNKNOWN','DISCOVER '+mod.sectorReq.toUpperCase()+' TO ACCESS THIS TECHNOLOGY',.9);
+      return;
+    }
+    if(!moduleOwned(id)){
+      const cost=mod.cost||0;
+      if((settings.salvage||0)<cost){
+        flashMission('INSUFFICIENT SALVAGE',mod.name+' // '+cost+' REQUIRED',.8);
+        return;
+      }
+      settings.salvage-=cost;
+      settings.ownedModules.push(id);
+      flashMission('MODULE ACQUIRED',mod.name+' ADDED TO SOVEREIGN INVENTORY',.9);
+    }
+    settings.loadout[mod.slot]=id;
+    saveCurrentFrameLoadout();
+    saveSettings();
+    applyModuleStats(false);
+    rebuildVisualModules();
+    renderModules();
+    renderStation();
+    updateFittingBudgetUI();
+  }
+
+  function renderModules(){
+    currentFrameLoadout();
+
+    const slots=document.getElementById('moduleSlotGrid');
+    const catalog=document.getElementById('moduleCatalog');
+    const stats=document.getElementById('moduleStats');
+
+    if(!slots||!catalog||!stats)return;
+
+    slots.innerHTML='';
+
+    for(const slot of ['weapon','defense','drive','utility']){
+      const mod=MODULE_CATALOG[settings.loadout[slot]];
+      const el=document.createElement('div');
+      el.className='moduleSlot';
+
+      const runtime=mod?moduleRuntime(mod.id):null;
+      el.innerHTML=
+        '<div class="slotType">'+SLOT_LABELS[slot]+'</div>'+
+        '<div class="slotName">'+(mod?mod.name:'EMPTY')+'</div>'+
+        '<div class="slotDesc">'+(mod?mod.effect:'No module installed')+'</div>'+
+        (mod?'<div class="moduleRuntimeTag '+(runtime?'':'passive')+'">'+moduleRuntimeLabel(mod)+'</div>':'')+
+        (runtime&&slot==='defense'
+          ?'<button class="moduleAutoBtn '+(moduleAutomationEnabled(slot)?'on':'')+'" data-module-auto="'+slot+'">'+
+           (moduleAutomationEnabled(slot)?'AUTO CYCLE // ARMED':'AUTO CYCLE // HOLD')+'</button>'
+          :'');
+      const autoBtn=el.querySelector('[data-module-auto]');
+      if(autoBtn){
+        autoBtn.onclick=e=>{
+          e.stopPropagation();
+          toggleModuleAutomation(autoBtn.dataset.moduleAuto,true);
+        };
+      }
+
+      slots.appendChild(el);
+    }
+
+    const s=computeModuleStats();
+    const rows=[
+      ['Shield',Math.round(1000*s.shield)],
+      ['Armour',Math.round(850*s.armor)],
+      ['Hull',Math.round(700*s.hull)],
+      ['Top Speed',Math.round(100*s.maxSpeed)+'%'],
+      ['Turret Damage',Math.round(100*s.turretDamage)+'%'],
+      ['Turret Cadence',Math.round(100*s.turretRate)+'%'],
+      ['Shield Regen',Math.round(100*s.shieldRegen)+'%'],
+      ['Ability Output',Math.round(100*s.abilityDamage)+'%'],
+      ['Capacitor',Math.round(capacitorProfile().max*s.capacitor)],
+      ['Base Cap Recharge',Math.round(capacitorProfile().regen*s.capRegen)+'/s'],
+      ['Weapon Cap Cost',Math.round(100*s.weaponCapUse)+'%'],
+      ['Boost Cap Cost',Math.round(100*s.boostCapUse)+'%'],
+      ['Damage Ctrl',Math.round(100*(s.damageControlRate||1))+'%'],
+      ['Mass Handling',Math.round(100*(s.fitHandling||1))+'%']
+    ];
+
+    stats.innerHTML=rows
+      .map(([a,b])=>'<div class="moduleStat"><span>'+a+'</span><b>'+b+'</b></div>')
+      .join('');
+
+    const allModules=Object.values(MODULE_CATALOG);
+
+    const filtered=allModules.filter(mod=>{
+      const owned=moduleOwned(mod.id);
+      const q=moduleSearch.trim().toLowerCase();
+
+      const searchOk=!q || (
+        mod.name+' '+mod.desc+' '+mod.effect+' '+mod.slot
+      ).toLowerCase().includes(q);
+
+      const slotOk=moduleSlotFilter==='all'||mod.slot===moduleSlotFilter;
+
+      const ownershipOk=
+        moduleOwnershipFilter==='all' ||
+        (moduleOwnershipFilter==='owned'&&owned) ||
+        (moduleOwnershipFilter==='market'&&!owned);
+
+      return searchOk&&slotOk&&ownershipOk;
+    });
+
+    catalog.innerHTML='';
+
+    for(const mod of filtered){
+      const installed=settings.loadout[mod.slot]===mod.id;
+      const owned=moduleOwned(mod.id);
+      const recommended=moduleRecommendedForRace(mod.id,currentFrame());
+      const sectorLocked=!!(
+        mod.sectorReq &&
+        settings.currentSector!==mod.sectorReq &&
+        !owned
+      );
+      const gridBlocked=!installed&&!canFitModule(mod.id);
+
+      const el=document.createElement('div');
+
+      el.className=
+        'moduleCard'+
+        (installed?' installed':'')+
+        (!owned?' lockedModule':'')+
+        (sectorLocked?' sectorLocked':'')+
+        (gridBlocked?' gridBlocked':'')+
+        (recommended?' recommended':'');
+
+      const aiMutation=mod.aiCore?resolveAICoreMutation(mod,currentFrame()):null;
+      const effectText=aiMutation
+        ?(installed?aiMutation.benefitText+' · '+aiMutation.costText+' · '+aiMutation.strain+' STRAIN':'UNKNOWN UNTIL PAIRED // '+aiMutation.strain+' POTENTIAL')
+        :mod.effect;
+
+      el.innerHTML=
+        (installed?'<div class="installedTag">FITTED</div>':'')+
+        '<div class="cat">'+(mod.aiCore?'AI CORE':SLOT_LABELS[mod.slot])+'</div>'+
+        '<h4>'+mod.name+'</h4>'+
+        '<p>'+mod.desc+'</p>'+
+        '<div class="effect">'+effectText+'</div>'+
+        '<div class="moduleRuntimeTag '+(moduleRuntime(mod.id)?'':'passive')+'">'+moduleRuntimeLabel(mod)+'</div>'+
+        '<div class="fitCost">'+
+          Math.round(mod.pg*(currentFrame().architecturePGScale||1))+' PG · '+
+          Math.round(mod.mass*(currentFrame().architectureMassScale||1))+' MASS'+
+          (gridBlocked?' · GRID BLOCKED':'')+
+        '</div>'+
+        (recommended?'<div class="doctrineBadge">DOCTRINE MATCH</div>':'')+
+        (
+          sectorLocked
+            ?'<div class="sectorReq">DISCOVER // '+mod.sectorReq.toUpperCase()+'</div>'
+            :owned
+              ?'<div class="owned">'+(installed?'ACTIVE SYSTEM':'OWNED // CLICK TO FIT')+'</div>'
+              :'<div class="cost">BUY // '+(mod.cost||0)+' SALVAGE</div>'
+        );
+
+      el.onclick=()=>installModule(mod.id);
+      catalog.appendChild(el);
+    }
+
+    const visible=document.getElementById('moduleVisibleCount');
+    if(visible)visible.textContent=filtered.length+' ITEMS';
+
+    const ownedCount=document.getElementById('moduleOwnedCount');
+    if(ownedCount){
+      ownedCount.textContent=allModules.filter(m=>moduleOwned(m.id)).length+' OWNED';
+    }
+
+    const marketValue=document.getElementById('moduleMarketValue');
+    if(marketValue){
+      const value=filtered
+        .filter(m=>!moduleOwned(m.id))
+        .reduce((sum,m)=>sum+Number(m.cost||0),0);
+      marketValue.textContent=value+' SALVAGE MARKET';
+    }
+
+    const sal=document.getElementById('moduleSalvage');
+    if(sal)sal.textContent=Math.floor(settings.salvage||0);
+
+    const sc=document.getElementById('salvageCount');
+    if(sc)sc.textContent=Math.floor(settings.salvage||0);
+
+    const fs=document.getElementById('fitSummary');
+    if(fs){
+      const capProfile=capacitorStabilityProfile(s);
+      fs.textContent=
+        'ACTIVE FIT // '+
+        Object.values(settings.loadout)
+          .map(id=>MODULE_CATALOG[id]?.name||id)
+          .join(' · ')+
+        ' // '+capacitorFitStateText(capProfile);
+    }
+
+    const doctrine=document.getElementById('tankDoctrineReadout');
+    if(doctrine){
+      const defense=MODULE_CATALOG[settings.loadout.defense];
+      const mut=defense?.aiCore?resolveAICoreMutation(defense,currentFrame()):null;
+      doctrine.innerHTML='<b>ACTIVE</b><span>'+tankDoctrineName()+(mut?'<br>'+mut.benefitText+' // '+mut.costText:'')+'</span>';
+    }
+
+    moduleStats=s;
+    renderCapacitorFitting(s);
+    renderSystemIntegrity(true);
+    updateFittingBudgetUI();
+    renderModuleMarket();
+    renderDroneBay();
+    renderIndustry();
+  }
+
+  // ============================================================
+  // FORGE 0.4 — SECTOR WORLD
+  // ============================================================
+  const worldGroup=new THREE.Group();scene.add(worldGroup);
+  const worldLandmarks=[];
+  const salvageItems=[];
+  const worldAssetGroups=[];
+  const worldColliders=[];
+  const worldInteractables=[];
+  const worldServiceCooldowns={};
+  let nearWorldInteractable=null;
+  let lastWorldCollision=-99;
+  let encounterActive=false;
+  let encounterComplete=false;
+  let nearStation=false;
+  let dockLockUntil=0;
+  let dockKeyArmed=true;
+  const DOCK_RANGE=82;
+  const UNDOCK_DOCK_IMMUNITY=4.0;
+
+  function sectorWorld(id=settings.currentSector){
+    return ZONE_WORLD[id]||WORLD;
+  }
+  function sectorMeta(id=settings.currentSector){
+    return SECTOR_META[id]||SECTOR_META.naraka;
+  }
+  function currentStationPosition(){
+    return sectorWorld().station;
+  }
+
+  let worldObjectiveTarget=sectorWorld().station.clone();
+
+  function addLandmark(name,sub,pos,kind='',sector='naraka',microZone=null){
+    const label=document.createElement('div');
+    label.className='worldLabel '+kind;
+    label.innerHTML='<b>'+name+'</b><span>'+sub+'</span>';
+    document.getElementById('worldLabels').appendChild(label);
+    worldLandmarks.push({
+      name,sub,pos:pos.clone(),label,kind,sector,microZone
+    });
+  }
+
+  function registerWorldCollider(sector,pos,radius,label,damageScale=1,microZone=null){
+    worldColliders.push({
+      sector,pos:pos.clone(),radius,label,damageScale,microZone
+    });
+  }
+
+  function registerWorldInteractable(data){
+    worldInteractables.push({
+      ...data,
+      pos:data.pos.clone(),
+      microZone:data.microZone||null
+    });
+  }
+
+  function createNavBeacon(root,pos,color=0x67efff,scale=1){
+    const g=new THREE.Group();g.position.copy(pos);root.add(g);worldAssetGroups.push(g);
+    const accent=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.85,toneMapped:false});
+    box(1.2*scale,18*scale,1.2*scale,matArmorDark,[0,0,0],[0,0,0],g);
+    for(let i=0;i<3;i++){
+      const r=addMesh(new THREE.TorusGeometry((4+i*2)*scale,.12*scale,8,32),accent,[0,(i-1)*2.3*scale,0],[Math.PI/2,i*.2,0],[1,1,1],g);
+      r.userData.spin=(i%2?-.34:.25);
+    }
+    addMesh(new THREE.SphereGeometry(.8*scale,10,7),accent,[0,9.5*scale,0],[0,0,0],[1,1,1],g);
+    const light=new THREE.PointLight(color,16*scale,55*scale,2);light.position.set(0,8*scale,0);g.add(light);
+    return g;
+  }
+
+  function createIndustrialPlatform(root,pos,color=0xffc463,scale=1){
+    const g=new THREE.Group();g.position.copy(pos);root.add(g);worldAssetGroups.push(g);
+    const accent=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.78,toneMapped:false});
+    box(46*scale,3*scale,22*scale,matArmorDark,[0,0,0],[0,0,0],g);
+    box(9*scale,16*scale,9*scale,matArmor,[0,8*scale,0],[0,0,0],g);
+    for(const side of [-1,1]){
+      box(14*scale,2*scale,34*scale,matHullDark,[side*24*scale,-1*scale,0],[0,0,side*.05],g);
+      for(let i=0;i<3;i++)cyl(1.6*scale,2.1*scale,4.2*scale,12,accent,[side*(18+i*6)*scale,2*scale,(i-1)*8*scale],[Math.PI/2,0,0],g);
+    }
+    addMesh(new THREE.TorusGeometry(9*scale,.24*scale,10,42),accent,[0,7*scale,0],[Math.PI/2,0,0],[1,1,1],g);
+    return g;
+  }
+
+  function createWreckCluster(root,pos,color=0xff774d,scale=1){
+    const g=new THREE.Group();g.position.copy(pos);root.add(g);worldAssetGroups.push(g);
+    const accent=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.72,toneMapped:false});
+    for(let i=0;i<7;i++){
+      const side=i%2?1:-1;
+      const part=wedge((18+i*3)*scale,(4+i*.6)*scale,(3+i*.35)*scale,i%3?matArmorDark:matHullDark,
+        [side*(8+i*3)*scale,(i%3-1)*4*scale,(i-3)*7*scale],g,.04,.82,.45);
+      part.rotation.set(rand(-.8,.8),rand(-.8,.8),rand(-.8,.8));
+    }
+    tube([[-15*scale,2*scale,-18*scale],[0,6*scale,0],[17*scale,1*scale,16*scale]],color,.10*scale,g,.62);
+    addBillboardGlow(color,34*scale,.045,g);
+    return g;
+  }
+
+  function createLycheetahReliquary(root,pos,scale=1,primary=0xffcb70,secondary=0x76ecff){
+    const g=new THREE.Group();g.position.copy(pos);root.add(g);worldAssetGroups.push(g);
+
+    const primaryMat=new THREE.MeshBasicMaterial({color:primary,transparent:true,opacity:.88,toneMapped:false});
+    const secondaryMat=new THREE.MeshBasicMaterial({color:secondary,transparent:true,opacity:.82,toneMapped:false});
+
+    addMesh(new THREE.TorusGeometry(13.5*scale,.52*scale,12,72),secondaryMat,[0,0,0],[Math.PI/2,0,0],[1,1,1],g).userData.spin=.08;
+    addMesh(new THREE.TorusGeometry(20.5*scale,.28*scale,12,72),primaryMat,[0,0,0],[Math.PI/2,0,0],[1,1,1],g).userData.spin=-.05;
+
+    const eye=addMesh(new THREE.SphereGeometry(2.1*scale,18,12),primaryMat,[0,3.5*scale,0],[0,0,0],[1,1,1],g);
+    eye.userData.spin=.12;
+
+    for(const side of [-1,1]){
+      const ear=wedge(14*scale,5.2*scale,2.8*scale,matGold,[side*8.8*scale,9.6*scale,-1.2*scale],g,.08,.72,side*.18);
+      ear.rotation.z=side*-.18;
+      const cheek=wedge(18*scale,4.2*scale,2.6*scale,matArmorDark,[side*11.5*scale,-2.2*scale,0],g,.04,.86,-side*.10);
+      cheek.rotation.z=side*.10;
+      const whisker=addMesh(new THREE.TorusGeometry(8.4*scale,.12*scale,8,44),secondaryMat,[side*10.5*scale,1.4*scale,0],[0,0,Math.PI/2+side*.22],[1,1,1],g);
+      whisker.userData.spin=side*.04;
+    }
+
+    box(4.4*scale,20*scale,4.4*scale,matArmor,[0,-8*scale,0],[0,0,0],g);
+    const lightA=new THREE.PointLight(primary,28*scale,88*scale,2);lightA.position.set(0,6*scale,0);g.add(lightA);
+    const lightB=new THREE.PointLight(secondary,18*scale,72*scale,2);lightB.position.set(0,-2*scale,0);g.add(lightB);
+    addBillboardGlow(primary,34*scale,.05,g);
+    return g;
+  }
+
+  function createSpectralBlackSun(root,pos,scale=1){
+    const g=new THREE.Group();g.position.copy(pos);root.add(g);worldAssetGroups.push(g);
+
+    addMesh(
+      new THREE.SphereGeometry(42*scale,36,24),
+      new THREE.MeshBasicMaterial({color:0x000000}),
+      [0,0,0],[0,0,0],[1,1,1],g
+    );
+
+    const lensA=new THREE.MeshBasicMaterial({color:0x8ce9ff,transparent:true,opacity:.16,toneMapped:false});
+    const lensB=new THREE.MeshBasicMaterial({color:0xffb95a,transparent:true,opacity:.12,toneMapped:false});
+    const lensC=new THREE.MeshBasicMaterial({color:0xb06bff,transparent:true,opacity:.10,toneMapped:false});
+
+    for(let i=0;i<7;i++){
+      const r=addMesh(
+        new THREE.TorusGeometry((56+i*9)*scale,(.95+i*.14)*scale,12,96),
+        i%3===0?lensA:i%3===1?lensB:lensC,
+        [0,0,0],
+        [Math.PI/2.45,.08*i,.14*i],
+        [1,1,1],g
+      );
+      r.userData.spin=(i%2?-.010:.007)*(1+i*.2);
+    }
+
+    addMesh(
+      new THREE.RingGeometry(48*scale,104*scale,132),
+      new THREE.MeshBasicMaterial({
+        color:0x71e7ff,transparent:true,opacity:.06,
+        side:THREE.DoubleSide,toneMapped:false
+      }),
+      [0,0,0],[Math.PI/2.55,.14,.03],[1,1,1],g
+    );
+
+    addMesh(
+      new THREE.RingGeometry(52*scale,112*scale,132),
+      new THREE.MeshBasicMaterial({
+        color:0xffc86e,transparent:true,opacity:.045,
+        side:THREE.DoubleSide,toneMapped:false
+      }),
+      [0,0,0],[Math.PI/2.15,-.12,.05],[1,1,1],g
+    );
+
+    for(let i=0;i<22;i++){
+      const a=i/22*Math.PI*2;
+      const spoke=addMesh(
+        new THREE.CylinderGeometry(.28*scale,.08*scale,(140+Math.sin(i)*28)*scale,6,1,true),
+        new THREE.MeshBasicMaterial({
+          color:i%2?0x76eaff:0xffcb71,
+          transparent:true,opacity:.055,toneMapped:false
+        }),
+        [Math.cos(a)*4*scale,0,Math.sin(a)*4*scale],
+        [Math.PI/2,a,.06*Math.sin(i)],
+        [1,1,1],g
+      );
+      spoke.userData.spin=(i%2?-.004:.003);
+    }
+
+    const haloA=new THREE.PointLight(0x6fe9ff,72*scale,540*scale,2);
+    haloA.position.set(-20*scale,24*scale,-18*scale);g.add(haloA);
+    const haloB=new THREE.PointLight(0xffcb73,54*scale,480*scale,2);
+    haloB.position.set(26*scale,-12*scale,10*scale);g.add(haloB);
+
+    addBillboardGlow(0x7cecff,240*scale,.034,g);
+    addBillboardGlow(0xffcb72,190*scale,.024,g);
+    return g;
+  }
+
+  function createServiceLane(root,points,color=0x76ecff,glow=0xffcb72,labelScale=1){
+    const g=new THREE.Group();root.add(g);worldAssetGroups.push(g);
+
+    tube(points,color,.12*labelScale,g,.56);
+
+    for(let i=0;i<points.length;i++){
+      const p=points[i];
+      const mat=i%2?glowCyan:glowGold;
+      addMesh(new THREE.SphereGeometry(.65*labelScale,10,8),mat,[p[0],p[1],p[2]],[0,0,0],[1,1,1],g);
+      if(i<points.length-1){
+        const p2=points[i+1];
+        const mid=[(p[0]+p2[0])/2,(p[1]+p2[1])/2,(p[2]+p2[2])/2];
+        addMesh(new THREE.SphereGeometry(.36*labelScale,8,6),i%2?glowGold:glowCyan,mid,[0,0,0],[1,1,1],g);
+      }
+    }
+
+    addBillboardGlow(glow,22*labelScale,.032,g);
+    return g;
+  }
+
+  function createCelestialVeil(root,pos,scale=1,colorA=0x84edff,colorB=0xffcb74){
+    const g=new THREE.Group();g.position.copy(pos);root.add(g);worldAssetGroups.push(g);
+
+    const matA=new THREE.MeshBasicMaterial({
+      color:colorA,transparent:true,opacity:.11,side:THREE.DoubleSide,toneMapped:false
+    });
+    const matB=new THREE.MeshBasicMaterial({
+      color:colorB,transparent:true,opacity:.08,side:THREE.DoubleSide,toneMapped:false
+    });
+
+    for(let i=0;i<4;i++){
+      const r=addMesh(
+        new THREE.TorusGeometry((20+i*7)*scale,(.52+i*.06)*scale,10,92),
+        i%2?matA:matB,
+        [0,0,0],
+        [Math.PI/2.7,.14*i,.26*i],
+        [1,1,1],
+        g
+      );
+      r.userData.spin=(i%2?-.018:.013)*(1+i*.2);
+    }
+
+    for(let i=0;i<3;i++){
+      addMesh(
+        new THREE.RingGeometry((28+i*14)*scale,(44+i*18)*scale,100),
+        i%2?matB:matA,
+        [0,0,0],
+        [Math.PI/2.2,.08*i,.04*i],
+        [1,1,1],
+        g
+      );
+    }
+
+    const lA=new THREE.PointLight(colorA,24*scale,135*scale,2);lA.position.set(-12*scale,8*scale,-6*scale);g.add(lA);
+    const lB=new THREE.PointLight(colorB,18*scale,120*scale,2);lB.position.set(11*scale,-5*scale,9*scale);g.add(lB);
+    addBillboardGlow(colorA,62*scale,.028,g);
+    addBillboardGlow(colorB,48*scale,.021,g);
+    return g;
+  }
+
+  function createPillarWarpGate(root,pos,scale=1){
+    const g=new THREE.Group();g.position.copy(pos);root.add(g);worldAssetGroups.push(g);
+
+    const pillarMat=new THREE.MeshStandardMaterial({
+      color:0x435260,metalness:.98,roughness:.14,emissive:0x0e1721,emissiveIntensity:.55
+    });
+    const trimMat=new THREE.MeshStandardMaterial({
+      color:0xd6b773,metalness:.95,roughness:.12,emissive:0x4f3b14,emissiveIntensity:.24
+    });
+    const cyanGlow=new THREE.MeshBasicMaterial({
+      color:0x7aefff,transparent:true,opacity:.68,toneMapped:false
+    });
+    const goldGlow=new THREE.MeshBasicMaterial({
+      color:0xffca73,transparent:true,opacity:.56,toneMapped:false
+    });
+
+    const core=box(8*scale,84*scale,8*scale,pillarMat,[0,0,0],[0,0,0],g);
+    const spine=box(3.2*scale,112*scale,3.2*scale,trimMat,[0,3*scale,0],[0,0,0],g);
+
+    for(const side of [-1,1]){
+      const finA=wedge(34*scale,5.0*scale,8.5*scale,pillarMat,[side*10*scale,16*scale,0],g,.06,.88,side*.12);
+      finA.rotation.z=side*.16;
+      const finB=wedge(26*scale,3.5*scale,6.8*scale,trimMat,[side*12*scale,-18*scale,0],g,.05,.82,-side*.10);
+      finB.rotation.z=-side*.14;
+      box(3.6*scale,36*scale,3.6*scale,pillarMat,[side*18.5*scale,0,0],[0,0,side*.08],g);
+      addMesh(new THREE.SphereGeometry(1.2*scale,12,10),side>0?glowCyan:glowGold,[side*18.5*scale,20*scale,0],[0,0,0],[1,1,1],g);
+    }
+
+    const crown=addMesh(new THREE.TorusGeometry(18*scale,1.4*scale,12,84),trimMat,[0,36*scale,0],[Math.PI/2,0,0],[1,1,1],g);
+    crown.userData.spin=.028;
+    const gateRing=addMesh(new THREE.TorusGeometry(24*scale,1.05*scale,12,96),cyanGlow,[0,8*scale,0],[Math.PI/2,0,0],[1,1,1],g);
+    gateRing.userData.spin=-.044;
+    const gateRing2=addMesh(new THREE.TorusGeometry(31*scale,.62*scale,12,96),goldGlow,[0,8*scale,0],[Math.PI/2,.18,.06],[1,1,1],g);
+    gateRing2.userData.spin=.022;
+    const upperRing=addMesh(new THREE.TorusGeometry(14*scale,.46*scale,10,72),cyanGlow,[0,34*scale,0],[Math.PI/2,.14,0],[1,1,1],g);
+    upperRing.userData.spin=.040;
+
+    addMesh(
+      new THREE.RingGeometry(7.2*scale,20.4*scale,84),
+      new THREE.MeshBasicMaterial({
+        color:0x7cecff,transparent:true,opacity:.10,side:THREE.DoubleSide,toneMapped:false
+      }),
+      [0,8*scale,0],[0,0,0],[1,1,1],g
+    );
+    addMesh(
+      new THREE.CylinderGeometry(2.1*scale,2.1*scale,64*scale,10,1,true),
+      new THREE.MeshBasicMaterial({
+        color:0x7cecff,transparent:true,opacity:.075,toneMapped:false
+      }),
+      [0,8*scale,0],[0,0,0],[1,1,1],g
+    );
+
+    for(let i=0;i<6;i++){
+      const a=i/6*Math.PI*2;
+      const spoke=addMesh(
+        new THREE.CylinderGeometry(.30*scale,.12*scale,41*scale,6,1,true),
+        i%2?cyanGlow:goldGlow,
+        [Math.cos(a)*2*scale,8*scale,Math.sin(a)*2*scale],
+        [Math.PI/2,a,.04*Math.sin(i)],
+        [1,1,1],g
+      );
+      spoke.userData.spin=(i%2?-.008:.006);
+    }
+
+    const veil=createCelestialVeil(g,new THREE.Vector3(0,12*scale,0),1.18,0x8deeff,0xffcb74);
+    const topHalo=createCelestialVeil(g,new THREE.Vector3(0,50*scale,0),.62,0x79e7ff,0xe7c177);
+
+    const l1=new THREE.PointLight(0x7eeeff,58*scale,220*scale,2);l1.position.set(0,10*scale,-8*scale);g.add(l1);
+    const l2=new THREE.PointLight(0xffcb73,36*scale,200*scale,2);l2.position.set(0,32*scale,6*scale);g.add(l2);
+    addBillboardGlow(0x86efff,94*scale,.032,g);
+    addBillboardGlow(0xffcb74,76*scale,.024,g);
+    return g;
+  }
+
+  function createWarpMonolithChoir(root,center,scale=1){
+    const g=new THREE.Group();
+    g.position.copy(center);
+    root.add(g);
+    worldAssetGroups.push(g);
+
+    const cyan=new THREE.MeshBasicMaterial({
+      color:0x82efff,transparent:true,opacity:.64,toneMapped:false
+    });
+    const gold=new THREE.MeshBasicMaterial({
+      color:0xffcf7c,transparent:true,opacity:.52,toneMapped:false
+    });
+
+    for(let i=0;i<10;i++){
+      const a=i/10*Math.PI*2;
+      const radius=(49+(i%2)*12)*scale;
+      const height=(18+(i%3)*5)*scale;
+
+      const monolith=new THREE.Group();
+      monolith.position.set(
+        Math.cos(a)*radius,
+        (i%2?7:-2)*scale,
+        Math.sin(a)*radius
+      );
+      monolith.rotation.y=-a;
+      g.add(monolith);
+
+      box(
+        (2.7+(i%3)*.45)*scale,
+        height,
+        (2.7+(i%2)*.35)*scale,
+        i%2?matArmorDark:matHullDark,
+        [0,0,0],[0,0,0],monolith
+      );
+
+      const crown=wedge(
+        8.5*scale,2.5*scale,3.0*scale,
+        i%2?matGold:matArmor,
+        [0,height*.58,0],monolith,.05,.72,.12
+      );
+      crown.rotation.z=(i%2?1:-1)*.12;
+
+      addMesh(
+        new THREE.TorusGeometry((2.2+(i%2)*.6)*scale,.15*scale,8,32),
+        i%2?cyan:gold,
+        [0,height*.30,0],
+        [Math.PI/2,a*.10,0],
+        [1,1,1],monolith
+      ).userData.spin=(i%2?-.06:.045);
+
+      addMesh(
+        new THREE.SphereGeometry(.44*scale,8,6),
+        i%2?glowCyan:glowGold,
+        [0,height*.16,0],
+        [0,0,0],[1,1,1],monolith
+      );
+    }
+
+    const outer=addMesh(
+      new THREE.TorusGeometry(64*scale,.16*scale,10,100),
+      cyan,[0,0,0],[Math.PI/2,0,0],[1,1,1],g
+    );
+    outer.userData.spin=.012;
+
+    const inner=addMesh(
+      new THREE.TorusGeometry(46*scale,.12*scale,10,90),
+      gold,[0,0,0],[Math.PI/2,.08,0],[1,1,1],g
+    );
+    inner.userData.spin=-.017;
+
+    return g;
+  }
+
+  function createVeilChoir(root,center,count=140,spread=260,color=0x88efff){
+    const g=new THREE.Group();
+    g.position.copy(center);
+    root.add(g);
+    worldAssetGroups.push(g);
+
+    const positions=new Float32Array(count*3);
+    for(let i=0;i<count;i++){
+      const a=Math.random()*Math.PI*2;
+      const r=Math.pow(Math.random(),.58)*spread;
+      positions[i*3]=Math.cos(a)*r;
+      positions[i*3+1]=(Math.random()-.5)*spread*.42;
+      positions[i*3+2]=Math.sin(a)*r;
+    }
+
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
+
+    const mat=new THREE.PointsMaterial({
+      color,
+      size:1.15,
+      transparent:true,
+      opacity:.44,
+      depthWrite:false,
+      blending:THREE.AdditiveBlending,
+      sizeAttenuation:true
+    });
+
+    const points=new THREE.Points(geo,mat);
+    points.userData.spin=.006;
+    g.add(points);
+
+    const echoGeo=new THREE.BufferGeometry();
+    const echoPos=new Float32Array(Math.floor(count*.45)*3);
+    for(let i=0;i<echoPos.length/3;i++){
+      const a=Math.random()*Math.PI*2;
+      const r=(.35+Math.random()*.65)*spread*.82;
+      echoPos[i*3]=Math.cos(a)*r;
+      echoPos[i*3+1]=(Math.random()-.5)*spread*.56;
+      echoPos[i*3+2]=Math.sin(a)*r;
+    }
+    echoGeo.setAttribute('position',new THREE.BufferAttribute(echoPos,3));
+    const echo=new THREE.Points(
+      echoGeo,
+      new THREE.PointsMaterial({
+        color:0xffcf79,
+        size:.85,
+        transparent:true,
+        opacity:.22,
+        depthWrite:false,
+        blending:THREE.AdditiveBlending,
+        sizeAttenuation:true
+      })
+    );
+    echo.userData.spin=-.004;
+    g.add(echo);
+
+    return g;
+  }
+
+  function createBlackSunCrown(root,center,scale=1){
+    const g=new THREE.Group();
+    g.position.copy(center);
+    root.add(g);
+    worldAssetGroups.push(g);
+
+    const pale=new THREE.MeshBasicMaterial({
+      color:0xb7f7ff,transparent:true,opacity:.10,toneMapped:false
+    });
+    const amber=new THREE.MeshBasicMaterial({
+      color:0xffcf81,transparent:true,opacity:.075,toneMapped:false
+    });
+    const violet=new THREE.MeshBasicMaterial({
+      color:0xbf86ff,transparent:true,opacity:.065,toneMapped:false
+    });
+
+    for(let i=0;i<5;i++){
+      const r=addMesh(
+        new THREE.TorusGeometry((126+i*17)*scale,(.42+i*.08)*scale,10,120),
+        i%3===0?pale:i%3===1?amber:violet,
+        [0,0,0],
+        [Math.PI/2.35,.04*i,.12*i],
+        [1,1,1],g
+      );
+      r.userData.spin=(i%2?-.0032:.0026)*(1+i*.25);
+    }
+
+    for(let i=0;i<14;i++){
+      const a=i/14*Math.PI*2;
+      const flare=addMesh(
+        new THREE.ConeGeometry((4+(i%3))*scale,(48+(i%4)*13)*scale,6,1,true),
+        i%2?pale:amber,
+        [
+          Math.cos(a)*103*scale,
+          Math.sin(i*.8)*9*scale,
+          Math.sin(a)*103*scale
+        ],
+        [Math.PI/2,a,.15*Math.sin(i)],
+        [1,1,1],g
+      );
+      flare.userData.spin=(i%2?-.002:.0015);
+    }
+
+    addBillboardGlow(0xb9f6ff,330*scale,.018,g);
+    return g;
+  }
+
+  function createAsterionSkyline(root,center,scale=1){
+    const g=new THREE.Group();
+    g.position.copy(center);
+    root.add(g);
+    worldAssetGroups.push(g);
+
+    for(let i=0;i<8;i++){
+      const a=i/8*Math.PI*2;
+      const radius=(66+(i%2)*10)*scale;
+      const tower=new THREE.Group();
+      tower.position.set(
+        Math.cos(a)*radius,
+        (i%2?10:4)*scale,
+        Math.sin(a)*radius
+      );
+      tower.rotation.y=-a;
+      g.add(tower);
+
+      box(5*scale,(26+(i%3)*7)*scale,5*scale,matArmorDark,[0,0,0],[0,0,0],tower);
+      box(2.2*scale,(32+(i%3)*8)*scale,2.2*scale,matGold,[0,3*scale,0],[0,0,0],tower);
+
+      for(let j=0;j<3;j++){
+        addMesh(
+          new THREE.SphereGeometry(.45*scale,8,6),
+          (i+j)%2?glowCyan:glowGold,
+          [0,(-7+j*8)*scale,2.8*scale],
+          [0,0,0],[1,1,1],tower
+        );
+      }
+    }
+
+    const ring=addMesh(
+      new THREE.TorusGeometry(74*scale,.28*scale,10,100),
+      matGold,[0,8*scale,0],[Math.PI/2,0,0],[1,1,1],g
+    );
+    ring.userData.spin=.009;
+
+    return g;
+  }
+
+
+  function createWorldRockField(root,sector,centre,count=18,radius=90,color=0x20252a,microZone=null){
+    const geo=new THREE.IcosahedronGeometry(1,0);
+    const mat=new THREE.MeshStandardMaterial({color,metalness:.35,roughness:.78});
+    const inst=new THREE.InstancedMesh(geo,mat,count);
+    const dummy=new THREE.Object3D();
+    for(let i=0;i<count;i++){
+      const a=i/count*Math.PI*2+rand(-.18,.18);
+      const rad=radius*rand(.55,1.0);
+      const size=rand(2.8,7.5);
+      const pos=new THREE.Vector3(
+        centre.x+Math.cos(a)*rad,
+        centre.y+rand(-28,28),
+        centre.z+Math.sin(a)*rad
+      );
+      dummy.position.copy(pos);
+      dummy.scale.set(size*rand(.65,1.2),size*rand(.55,1.0),size*rand(.7,1.35));
+      dummy.rotation.set(rand(0,6),rand(0,6),rand(0,6));dummy.updateMatrix();inst.setMatrixAt(i,dummy.matrix);
+      registerWorldCollider(sector,pos,size*1.15,'ASTEROID',.55,microZone);
+    }
+    inst.instanceMatrix.needsUpdate=true;root.add(inst);worldAssetGroups.push(inst);
+    return inst;
+  }
+
+  function updateWorldAssetAnimations(dt){
+    for(const g of worldAssetGroups){
+      if(!g?.visible)continue;
+
+      for(const child of g.children||[]){
+        if(child.userData?.spin){
+          if(child.isPoints){
+            child.rotation.y+=child.userData.spin*dt;
+          }else{
+            child.rotation.z+=child.userData.spin*dt;
+          }
+        }
+
+        // Nested ornamental groups can carry their own rotating children.
+        for(const nested of child.children||[]){
+          if(!nested.userData?.spin)continue;
+          if(nested.isPoints)nested.rotation.y+=nested.userData.spin*dt;
+          else nested.rotation.z+=nested.userData.spin*dt;
+        }
+      }
+    }
+  }
+
+  function resolveWorldCollisions(){
+    if(appMode!=='combat')return;
+    const radius=currentFrame().radius||8;
+    for(const c of worldColliders){
+      if(c.sector!==settings.currentSector)continue;
+      const activeMicro=microZJBattle?.active?microZJBattle.zoneId:null;
+      if((c.microZone||null)!==activeMicro)continue;
+      const delta=player.group.position.clone().sub(c.pos);
+      const dist=Math.max(.001,delta.length());
+      const minDist=radius+c.radius;
+      if(dist>=minDist)continue;
+
+      const normal=delta.multiplyScalar(1/dist);
+      player.group.position.copy(c.pos).addScaledVector(normal,minDist+.5);
+
+      const inward=player.velocity.dot(normal);
+      if(inward<0)player.velocity.addScaledVector(normal,-inward*1.55);
+      player.velocity.multiplyScalar(.72);
+
+      if(ui.collisionWarning){
+        ui.collisionWarning.style.opacity='1';
+        clearTimeout(resolveWorldCollisions._hide);
+        resolveWorldCollisions._hide=setTimeout(()=>{if(ui.collisionWarning)ui.collisionWarning.style.opacity='0';},220);
+      }
+
+      if(gameTime-lastWorldCollision>.65){
+        lastWorldCollision=gameTime;
+        const impact=clamp(player.velocity.length()*1.8,7,42)*(c.damageScale||1);
+        applyDamage(player,impact,player.group.position.clone(),'world_collision','kinetic');
+        cameraShake=Math.max(Number.isFinite(cameraShake)?cameraShake:0,.24);
+        synthBoom(.035);
+      }
+    }
+  }
+
+  function nearestWorldInteractable(){
+    let best=null,bestD=Infinity;
+    for(const item of worldInteractables){
+      if(item.sector!==settings.currentSector)continue;
+      const activeMicro=microZJBattle?.active?microZJBattle.zoneId:null;
+      if((item.microZone||null)!==activeMicro)continue;
+      if(item.once && settings.worldRecoveries[item.id])continue;
+      const d=player.group.position.distanceTo(item.pos);
+      if(d<(item.radius||60) && d<bestD){best=item;bestD=d;}
+    }
+    return best;
+  }
+
+  function spawnWorldAmbush(item){
+    if(encounterActive)return;
+    const racePool=item.ambushRaces||(
+      settings.currentSector==='aion'
+        ?['seraphim','prism','abyssal']
+        :settings.currentSector==='erebos'
+          ?['abyssal','vanta','ossuary']
+          :['ferric','mycelium','ossuary']
+    );
+    const difficulty=item.ambush||0;
+    if(difficulty<=0)return;
+    const specs=difficulty===1?{fighter:3,frigate:1}:difficulty===2?{frigate:2,destroyer:1}:{destroyer:2,cruiser:1};
+    let idx=0;
+    for(const [cls,count] of Object.entries(specs)){
+      for(let i=0;i<count;i++){
+        const a=(idx++/6)*Math.PI*2;
+        const p=player.group.position.clone().add(new THREE.Vector3(Math.cos(a)*150,rand(-25,25),Math.sin(a)*150));
+        createEnemy(cls,p,racePool[(idx+i)%racePool.length],idx);
+      }
+    }
+    flashMission('AMBUSH SIGNATURE','RECOVERY SITE HOSTILES INBOUND',1.0);
+  }
+
+  function activateWorldInteractable(item){
+    if(!item)return;
+    const now=gameTime;
+
+    if(item.kind==='service'){
+      const next=worldServiceCooldowns[item.id]||0;
+      if(now<next){
+        flashMission(item.name,'SERVICE MATRIX RECHARGING // '+Math.ceil(next-now)+'s',.65);
+        return;
+      }
+      worldServiceCooldowns[item.id]=now+30;
+      player.capacitor=effectiveCapMax();
+      player.shield=Math.min(player.maxShield,player.shield+player.maxShield*.12);
+
+      // Industrial service sites can also stabilise one damaged subsystem.
+      const damaged=mostDamagedPlayerSystem?.();
+      if(damaged)repairPlayerSystemNode(damaged,damaged.maxHp*.16);
+
+      flashMission(
+        item.name,
+        'CAPACITOR FULL // +12% SHIELD'+(damaged?' // '+damaged.name.toUpperCase()+' STABILISED':''),
+        .8
+      );
+      synthShot(420,.12,.035,'sine');
+      return;
+    }
+
+    if(item.once && settings.worldRecoveries[item.id])return;
+    if(item.once)settings.worldRecoveries[item.id]=true;
+    settings.worldDiscoveries[item.id]=true;
+
+    if(item.kind==='cache'){
+      const total=item.reward||40;
+      const pieces=3;
+      for(let i=0;i<pieces;i++){
+        spawnSalvage(item.pos.clone().add(new THREE.Vector3(rand(-8,8),rand(-5,5),rand(-8,8))),Math.round(total/pieces),item.rarity||'common');
+      }
+      flashMission(item.name,'SALVAGE CACHE BREACHED // '+total+' MATERIAL IN FIELD',1.0);
+      spawnWorldAmbush(item);
+    }else if(item.kind==='beacon'){
+      settings.salvage=(settings.salvage||0)+(item.reward||20);
+      flashMission(item.name,'NAV DATA RECOVERED // +'+(item.reward||20)+' SALVAGE',.9);
+      if(item.objective) setWorldObjective(item.objective.label,item.objective.pos);
+    }else if(item.kind==='sanctuary'){
+      player.armor=Math.min(player.maxArmor,player.armor+player.maxArmor*.16);
+      player.hull=Math.min(player.maxHull,player.hull+player.maxHull*.08);
+      flashMission(item.name,'ANCIENT REPAIR LATTICE // ARMOUR +16% // HULL +8%',.9);
+    }
+
+    if(item.once&&(item.kind==='beacon'||item.kind==='sanctuary'||String(item.id||'').includes('archive')||String(item.id||'').includes('signal'))){
+      const researchId='interactable:'+item.id;
+      if(!settings.researchDiscoveries[researchId]){
+        settings.researchDiscoveries[researchId]=true;
+        awardResearchData(item.kind==='beacon'?12:8,item.name+' // ARCHIVE EXTRACTION',false);
+      }
+    }
+
+    if(item.materials){
+      settings.materials=settings.materials||{};
+      const gained=[];
+      for(const [id,qty] of Object.entries(item.materials)){
+        settings.materials[id]=(settings.materials[id]||0)+Number(qty||0);
+        gained.push((MATERIAL_CATALOG[id]?.name||id)+' ×'+qty);
+      }
+      if(gained.length){
+        setTimeout(()=>flashMission(item.name,'RECOVERED // '+gained.join(' · '),.85),180);
+      }
+    }
+
+    saveSettings();
+  }
+
+  function createStation(){
+    const g=new THREE.Group();g.position.copy(WORLD.station);worldGroup.add(g);
+    const ringMat=new THREE.MeshStandardMaterial({color:0x304047,metalness:1,roughness:.24,emissive:0x06131a,emissiveIntensity:.25});
+    const gold=new THREE.MeshStandardMaterial({color:0xbd8428,metalness:1,roughness:.16,emissive:0x351600,emissiveIntensity:.5});
+    for(let i=0;i<3;i++){
+      const r=addMesh(new THREE.TorusGeometry(28+i*8,1.2+i*.3,12,64),i===1?gold:ringMat,[0,0,0],[Math.PI/2,0,i*.22],[1,1,1],g);
+      r.userData.spin=(i%2?-.05:.035);
+    }
+    box(7,7,70,matHullDark,[0,0,0],[0,0,0],g);
+    box(42,3,9,matArmor,[0,0,0],[0,0,0],g);
+    box(9,3,42,matArmor,[0,0,0],[0,0,0],g);
+    for(const side of [-1,1])box(17,2.2,6,matGold,[side*20,0,0],[0,0,0],g);
+    addMesh(new THREE.SphereGeometry(3,18,10),glowCyan,[0,0,-8],[0,0,0],[1,1,1],g);
+    const light=new THREE.PointLight(0x65eaff,28,100,2);light.position.set(0,0,-8);g.add(light);
+    return g;
+  }
+
+  function createGate(){
+    const g=new THREE.Group();g.position.copy(WORLD.gate);worldGroup.add(g);
+    for(let i=0;i<3;i++){
+      const r=addMesh(new THREE.TorusGeometry(24+i*3.3,.9,12,80),i===1?matGold:matArmor,[0,0,0],[0,0,i*.32],[1,1,1],g);
+      r.userData.spin=(i%2?-.04:.03);
+    }
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      box(2.4,2.4,18,matArmorDark,[Math.cos(a)*30,Math.sin(a)*30,0],[0,0,a],g);
+    }
+    addMesh(new THREE.RingGeometry(15,22,80),new THREE.MeshBasicMaterial({color:0x9565ff,transparent:true,opacity:.045,side:THREE.DoubleSide,toneMapped:false}),[0,0,0],[0,0,0],[1,1,1],g);
+    return g;
+  }
+
+  function createBreach(){
+    const g=new THREE.Group();g.position.copy(WORLD.breach);worldGroup.add(g);
+    addMesh(new THREE.SphereGeometry(8,24,14),new THREE.MeshBasicMaterial({color:0x000000}),[0,0,0],[0,0,0],[1,1,1],g);
+    for(let i=0;i<5;i++){
+      const r=addMesh(new THREE.TorusGeometry(12+i*3,.22,10,70),i<2?glowGold:glowPurple,[0,0,0],[Math.PI/2.2,.1*i,.24*i],[1,1,1],g);
+      r.userData.spin=(i%2?-.12:.08);
+    }
+    addBillboardGlow(0xb15cff,50,.10,g);
+    return g;
+  }
+
+  function createWreck(){
+    const g=new THREE.Group();g.position.copy(WORLD.wreck);worldGroup.add(g);
+    const body=wedge(48,13,5,matHullDark,[0,0,0],g,.10,.9,.2);body.rotation.z=.45;body.rotation.x=.25;
+    wedge(22,19,2.5,matArmorDark,[8,0,2],g,.16,.70,.1).rotation.z=-.4;
+    tube([[-10,2,-18],[-4,4,-3],[5,3,12]],0xff7d42,.09,g,.55);
+    return g;
+  }
+
+  const stationGroup=createStation();
+  // Asterion Forge drydock arms make the service hub read as a real capital station.
+  for(const side of [-1,1]){
+    const arm=new THREE.Group();arm.position.set(side*42,0,8);stationGroup.add(arm);
+    box(10,3,72,matArmorDark,[0,0,0],[0,0,side*.03],arm);
+    for(let i=0;i<5;i++){
+      box(18,1.2,3.2,matArmor,[side*-5,0,-28+i*14],[0,0,side*.06],arm);
+      addMesh(new THREE.SphereGeometry(.45,8,6),i%2?glowGold:glowCyan,[side*-13,1,-28+i*14],[0,0,0],[1,1,1],arm);
+    }
+  }
+
+  // 0.25.4: station district expansion — habitat crown, logistics spars and reliquary assets.
+  const habitatCrown=new THREE.Group();habitatCrown.position.set(0,18,0);stationGroup.add(habitatCrown);
+  for(let i=0;i<10;i++){
+    const a=i/10*Math.PI*2;
+    box(8,4,18,matArmor,[Math.cos(a)*44,0,Math.sin(a)*44],[0,-a,0],habitatCrown);
+    box(4,8,4,matGold,[Math.cos(a)*31,7,Math.sin(a)*31],[0,0,0],habitatCrown);
+    addMesh(new THREE.SphereGeometry(.55,8,6),i%2?glowCyan:glowGold,[Math.cos(a)*44,2,Math.sin(a)*44],[0,0,0],[1,1,1],habitatCrown);
+  }
+  const crownRing=addMesh(new THREE.TorusGeometry(43,.85,12,72),matArmor,[0,0,0],[Math.PI/2,0,0],[1,1,1],habitatCrown);
+  crownRing.userData.spin=.018;
+
+  const logisticsYard=createIndustrialPlatform(worldGroup,new THREE.Vector3(WORLD.station.x-104,WORLD.station.y-3,WORLD.station.z+66),0x89efff,1.18);
+  const reliquaryYard=createLycheetahReliquary(worldGroup,new THREE.Vector3(WORLD.station.x+96,WORLD.station.y+6,WORLD.station.z-72),1.16,0xffce78,0x6fe9ff);
+  const outspireYard=createNavBeacon(worldGroup,new THREE.Vector3(WORLD.station.x+18,WORLD.station.y+4,WORLD.station.z+118),0xffd17c,1.34);
+
+  // 0.25.6: Naraka becomes a true first world with a living skyline and a defining black-sun horizon.
+  const narakaBlackSun=createSpectralBlackSun(worldGroup,WORLD.blackSun,1.9);
+  const dockSpine=createIndustrialPlatform(worldGroup,WORLD.dockSpine,0x8beeff,1.34);
+  const haloYard=createIndustrialPlatform(worldGroup,WORLD.haloYard,0xffc972,.94);
+  const nurseryField=createWreckCluster(worldGroup,WORLD.nursery,0x7de9ff,1.05);
+  const pilgrimArch=createLycheetahReliquary(worldGroup,WORLD.pilgrimArch,1.38,0xffd987,0x85f0ff);
+  const veilSanctum=createCelestialVeil(worldGroup,WORLD.veilSanctum,1.48,0x8aeeff,0xffcc7a);
+  const centralPillarGate=createPillarWarpGate(worldGroup,WORLD.pillarGate,1.28);
+
+  // 0.25.8 final Naraka beauty layer.
+  const pillarChoir=createWarpMonolithChoir(worldGroup,WORLD.pillarGate,1.12);
+  const narakaVeilMotes=createVeilChoir(
+    worldGroup,
+    new THREE.Vector3(70,72,-220),
+    190,330,0x8defff
+  );
+  const narakaBlackSunCrown=createBlackSunCrown(worldGroup,WORLD.blackSun,1.55);
+  const asterionSkyline=createAsterionSkyline(worldGroup,WORLD.station,1.0);
+
+  // 0.25.9 authored combat pockets: visually distinct but still part of Naraka.
+  const crucibleArena=createCelestialVeil(worldGroup,WORLD.microCrucible,.92,0xffc96f,0x78efff);
+  const crucibleMarker=createNavBeacon(worldGroup,WORLD.microCrucible,0xffc96f,1.18);
+
+  const blackSunArena=createCelestialVeil(worldGroup,WORLD.microBlackSun,1.18,0xa87cff,0x7cecff);
+  const blackSunMarker=createNavBeacon(worldGroup,WORLD.microBlackSun,0xb37cff,1.28);
+
+  const graveChoirArena=createWreckCluster(worldGroup,WORLD.microGraveChoir,0xb56cff,1.46);
+  const graveChoirMarker=createLycheetahReliquary(worldGroup,WORLD.microGraveChoir,.86,0xb76cff,0xff9a69);
+
+  const microWorldGroups={
+    aether_crucible:new THREE.Group(),
+    black_sun_march:new THREE.Group(),
+    grave_choir:new THREE.Group(),
+    pilgrim_halo:new THREE.Group(),
+    cinder_relay:new THREE.Group(),
+    cold_cathedral:new THREE.Group(),
+    orison_vault:new THREE.Group(),
+    chaos_carnival:new THREE.Group(),
+    laughing_maw:new THREE.Group()
+  };
+
+  for(const [id,group] of Object.entries(microWorldGroups)){
+    group.name='MICRO_ZJ_WORLD__'+id.toUpperCase();
+    group.visible=false;
+    scene.add(group);
+  }
+
+  // Reparent the earlier pocket markers so the base world no longer renders them.
+  for(const [group,objects] of [
+    [microWorldGroups.aether_crucible,[crucibleArena,crucibleMarker]],
+    [microWorldGroups.black_sun_march,[blackSunArena,blackSunMarker]],
+    [microWorldGroups.grave_choir,[graveChoirArena,graveChoirMarker]]
+  ]){
+    for(const obj of objects){
+      obj.parent?.remove(obj);
+      group.add(obj);
+    }
+  }
+
+  buildAetherCrucibleWorld();
+  buildBlackSunMarchWorld();
+  buildGraveChoirWorld();
+  loadZone('pilgrim_halo', zoneBuildCtx());
+  loadZone('cinder_relay', zoneBuildCtx());
+  loadZone('cold_cathedral', zoneBuildCtx());
+  loadZone('orison_vault', zoneBuildCtx());
+  loadZone('chaos_carnival', zoneBuildCtx());
+  loadZone('laughing_maw', zoneBuildCtx());
+
+  function syncMicroWorldVisibility(){
+    const active=
+      settings.currentSector==='naraka' &&
+      microZJBattle?.active
+        ?microZJBattle.zoneId
+        :null;
+
+    worldGroup.visible=settings.currentSector==='naraka'&&!active;
+
+    for(const [id,group] of Object.entries(microWorldGroups)){
+      group.visible=settings.currentSector==='naraka'&&active===id;
+    }
+  }
+
+
+  const laneA=createServiceLane(worldGroup,[
+    [WORLD.station.x,WORLD.station.y+10,WORLD.station.z+6],
+    [WORLD.station.x+18, WORLD.station.y+4, WORLD.station.z+118],
+    [WORLD.pilgrimArch.x,WORLD.pilgrimArch.y,WORLD.pilgrimArch.z]
+  ],0x74ecff,0xffcb71,1.18);
+
+  const laneB=createServiceLane(worldGroup,[
+    [WORLD.station.x-8,WORLD.station.y-2,WORLD.station.z-6],
+    [WORLD.dockSpine.x,WORLD.dockSpine.y,WORLD.dockSpine.z],
+    [WORLD.haloYard.x,WORLD.haloYard.y,WORLD.haloYard.z]
+  ],0xffc971,0x7cecff,1.05);
+
+  const laneC=createServiceLane(worldGroup,[
+    [WORLD.station.x-6,WORLD.station.y+2,WORLD.station.z+8],
+    [WORLD.cinderRelay.x,WORLD.cinderRelay.y,WORLD.cinderRelay.z],
+    [WORLD.nursery.x,WORLD.nursery.y,WORLD.nursery.z]
+  ],0x7ee9ff,0xffb968,.96);
+
+  const laneD=createServiceLane(worldGroup,[
+    [WORLD.station.x+6,WORLD.station.y+6,WORLD.station.z-4],
+    [WORLD.pillarGate.x,WORLD.pillarGate.y,WORLD.pillarGate.z],
+    [WORLD.blackSun.x*.18,WORLD.blackSun.y*.38,WORLD.blackSun.z*.18]
+  ],0x88eeff,0xffc66e,1.08);
+
+  const gateGroup=createGate();
+  const breachGroup=createBreach();
+  const wreckGroup=createWreck();
+
+  const riftGroup=new THREE.Group();
+  riftGroup.position.copy(WORLD.rift);
+  worldGroup.add(riftGroup);
+  addMesh(new THREE.SphereGeometry(10,24,14),new THREE.MeshBasicMaterial({color:0x030006}),[0,0,0],[0,0,0],[1,1,1],riftGroup);
+  for(let i=0;i<6;i++){
+    const rr=14+i*3.2;
+    const r=addMesh(new THREE.TorusGeometry(rr,.24,10,72),i%2?glowPurple:glowRed,[0,0,0],[Math.PI/2.1,.15*i,.18*i],[1,1,1],riftGroup);
+    r.userData.spin=(i%2?-.15:.11);
+  }
+  addBillboardGlow(0xff405f,58,.11,riftGroup);
+
+  {
+    const count=185;
+    const geo=new THREE.IcosahedronGeometry(1.8,0);
+    const mat=new THREE.MeshStandardMaterial({color:0x1b2024,metalness:.42,roughness:.72});
+    const inst=new THREE.InstancedMesh(geo,mat,count);
+    const dummy=new THREE.Object3D();
+    for(let i=0;i<count;i++){
+      const centre=i<100?WORLD.wreck:WORLD.breach;
+      const rad=i<100?rand(35,135):rand(75,175);
+      const a=Math.random()*Math.PI*2;
+      dummy.position.set(centre.x+Math.cos(a)*rad+rand(-20,20),centre.y+rand(-55,55),centre.z+Math.sin(a)*rad+rand(-20,20));
+      dummy.scale.set(rand(.25,2.5),rand(.3,2.0),rand(.4,2.2));
+      dummy.rotation.set(rand(0,6),rand(0,6),rand(0,6));
+      dummy.updateMatrix();inst.setMatrixAt(i,dummy.matrix);
+    }
+    inst.instanceMatrix.needsUpdate=true;worldGroup.add(inst);
+  }
+
+  addLandmark('ASTERION FORGE','DOCK / MODULE SERVICE',WORLD.station,'station');
+  addLandmark('LOGISTICS YARD','OUTER SERVICE PLATFORM',new THREE.Vector3(WORLD.station.x-104,WORLD.station.y-3,WORLD.station.z+66),'service');
+  addLandmark('LYCHEETAH RELIQUARY','ANCIENT LIGHT STRUCTURE',new THREE.Vector3(WORLD.station.x+96,WORLD.station.y+6,WORLD.station.z-72),'asset');
+  addLandmark('OUTSPIRE BEACON','DOCKING TRAFFIC GUIDE',new THREE.Vector3(WORLD.station.x+18,WORLD.station.y+4,WORLD.station.z+118),'asset');
+  addLandmark('DOCK SPINE','CAPITAL DRYDOCK ARMATURE',WORLD.dockSpine,'service');
+  addLandmark('HALO YARD','CIVILIAN HABITAT / MARKET HALO',WORLD.haloYard,'service');
+  addLandmark('STARTER NURSERY','SAFE SALVAGE FRINGE',WORLD.nursery,'salvage');
+  addLandmark('PILGRIM ARCH','LYCHEETAH PROCESSIONAL GATE',WORLD.pilgrimArch,'asset');
+  addLandmark('AETHER PILLAR GATE','CENTRAL WARP SPIRE / MONOLITH CHOIR',WORLD.pillarGate,'gate');
+  addLandmark('VEIL SANCTUM','MYSTIC ORBITAL VEIL / PILGRIM SIGNAL',WORLD.veilSanctum,'asset');
+  addLandmark('SPECTRAL BLACK SUN','SYSTEM HORIZON / SINGULARITY LIGHT',WORLD.blackSun,'hot');
+  addLandmark('BLACK CURRENT BREACH','HOSTILE ANOMALY',WORLD.breach,'hot');
+  addLandmark('DERELICT TITAN','SALVAGE FIELD',WORLD.wreck,'');
+  addLandmark('ANCIENT GATE','INACTIVE / FUTURE SECTOR',WORLD.gate,'gate');
+  addLandmark('SCARLET RIFT','CAPITAL THREAT ZONE',WORLD.rift,'hot');
+
+  registerWorldCollider('naraka',WORLD.station,46,'ASTERION FORGE',.45);
+  registerWorldCollider('naraka',new THREE.Vector3(WORLD.station.x-104,WORLD.station.y-3,WORLD.station.z+66),28,'LOGISTICS YARD',.38);
+  registerWorldCollider('naraka',new THREE.Vector3(WORLD.station.x+96,WORLD.station.y+6,WORLD.station.z-72),20,'LYCHEETAH RELIQUARY',.34);
+  registerWorldCollider('naraka',new THREE.Vector3(WORLD.station.x+18,WORLD.station.y+4,WORLD.station.z+118),14,'OUTSPIRE BEACON',.28);
+  registerWorldCollider('naraka',WORLD.dockSpine,32,'DOCK SPINE',.42);
+  registerWorldCollider('naraka',WORLD.haloYard,26,'HALO YARD',.36);
+  registerWorldCollider('naraka',WORLD.nursery,22,'STARTER NURSERY',.56);
+  registerWorldCollider('naraka',WORLD.pilgrimArch,24,'PILGRIM ARCH',.34);
+  registerWorldCollider('naraka',WORLD.pillarGate,34,'AETHER PILLAR GATE',.40);
+  registerWorldCollider('naraka',WORLD.veilSanctum,24,'VEIL SANCTUM',.30);
+  registerWorldCollider('naraka',WORLD.wreck,24,'DERELICT TITAN',.65);
+
+  // Micro ZJ World I // Aether Crucible
+  addLandmark('CRUCIBLE HEART','BROKEN STELLAR KILN',WORLD.microCrucible,'hot','naraka','aether_crucible');
+  addLandmark('FERRIC DRYDOCK','WAR-REPAIR PLATFORM',WORLD.microCrucible.clone().add(new THREE.Vector3(150,-16,70)),'service','naraka','aether_crucible');
+  addLandmark('ROOT FOUNDRY','MYCELIUM INDUSTRIAL BLOOM',WORLD.microCrucible.clone().add(new THREE.Vector3(-110,44,155)),'asset','naraka','aether_crucible');
+  addLandmark('INTAKE GANTRY','CUSTOMS / KILL GATE',WORLD.microCrucible.clone().add(new THREE.Vector3(20,5,155)),'service','naraka','aether_crucible');
+  addLandmark('SLAG PROCESSION','FERRIC WAR-REPAIR COLUMN',WORLD.microCrucible.clone().add(new THREE.Vector3(155,-18,-70)),'hot','naraka','aether_crucible');
+  addLandmark('SEVERED CROWN','DREADNOUGHT FOUNDRY THRONE',WORLD.microCrucible.clone().add(new THREE.Vector3(0,38,-190)),'hot','naraka','aether_crucible');
+
+  registerWorldCollider('naraka',WORLD.microCrucible,38,'CRUCIBLE HEART',.52,'aether_crucible');
+  registerWorldCollider('naraka',WORLD.microCrucible.clone().add(new THREE.Vector3(150,-16,70)),30,'FERRIC DRYDOCK',.38,'aether_crucible');
+  registerWorldCollider('naraka',WORLD.microCrucible.clone().add(new THREE.Vector3(20,5,155)),24,'INTAKE GANTRY',.34,'aether_crucible');
+  registerWorldCollider('naraka',WORLD.microCrucible.clone().add(new THREE.Vector3(155,-18,-70)),30,'SLAG PROCESSION',.42,'aether_crucible');
+  registerWorldCollider('naraka',WORLD.microCrucible.clone().add(new THREE.Vector3(0,38,-190)),34,'SEVERED CROWN',.50,'aether_crucible');
+
+  registerWorldInteractable({
+    id:'micro_crucible_ferric_cache',
+    name:'FERRIC DRYDOCK CACHE',
+    sector:'naraka',
+    microZone:'aether_crucible',
+    pos:WORLD.microCrucible.clone().add(new THREE.Vector3(150,-16,70)),
+    radius:70,kind:'cache',once:true,reward:72,rarity:'rare',
+    prompt:'G // CUT OPEN FERRIC WAR CACHE'
+  });
+  registerWorldInteractable({
+    id:'micro_crucible_root_signal',
+    name:'ROOT FOUNDRY',
+    sector:'naraka',
+    microZone:'aether_crucible',
+    pos:WORLD.microCrucible.clone().add(new THREE.Vector3(-110,44,155)),
+    radius:72,kind:'beacon',once:true,reward:48,
+    prompt:'G // SYNCHRONISE ROOT FOUNDRY SIGNAL'
+  });
+  registerWorldInteractable({
+    id:'micro_crucible_coolant_manifold',
+    name:'COOLANT MANIFOLD',
+    sector:'naraka',
+    microZone:'aether_crucible',
+    pos:WORLD.microCrucible.clone().add(new THREE.Vector3(62,8,82)),
+    radius:68,kind:'service',once:false,
+    prompt:'G // VENT COOLANT INTO SOVEREIGN SYSTEMS'
+  });
+  registerWorldInteractable({
+    id:'micro_crucible_kiln_archive',
+    name:'KILN MEMORY ARCHIVE',
+    sector:'naraka',
+    microZone:'aether_crucible',
+    pos:WORLD.microCrucible.clone().add(new THREE.Vector3(-72,24,-18)),
+    radius:66,kind:'beacon',once:true,reward:58,
+    materials:{ferrite:8,ai_lattice:1},
+    prompt:'G // EXTRACT KILN MEMORY'
+  });
+  registerWorldInteractable({
+    id:'micro_crucible_slag_reliquary',
+    name:'SLAG RELIQUARY',
+    sector:'naraka',
+    microZone:'aether_crucible',
+    pos:WORLD.microCrucible.clone().add(new THREE.Vector3(118,-10,-118)),
+    radius:68,kind:'sanctuary',once:true,
+    materials:{ferrite:10,biofiber:4},
+    prompt:'G // OPEN THE SLAG RELIQUARY'
+  });
+
+
+  // Micro ZJ World II // Black Sun March
+  addLandmark('BLACK SUN PROCESSIONAL','SINGULARITY WAR CORRIDOR',WORLD.microBlackSun,'hot','naraka','black_sun_march');
+  addLandmark('VANTA SHADOW LINE','LONG-RANGE KILL CORRIDOR',WORLD.microBlackSun.clone().add(new THREE.Vector3(0,0,55)),'hot','naraka','black_sun_march');
+  addLandmark('PRISM LENS RUINS','REFRACTION ARRAY',WORLD.microBlackSun.clone().add(new THREE.Vector3(155,38,-45)),'asset','naraka','black_sun_march');
+
+  registerWorldCollider('naraka',WORLD.microBlackSun.clone().add(new THREE.Vector3(155,38,-45)),26,'PRISM LENS RUINS',.34,'black_sun_march');
+
+  registerWorldInteractable({
+    id:'micro_black_sun_lens',
+    name:'PRISM LENS RUINS',
+    sector:'naraka',
+    microZone:'black_sun_march',
+    pos:WORLD.microBlackSun.clone().add(new THREE.Vector3(155,38,-45)),
+    radius:74,kind:'beacon',once:true,reward:86,
+    prompt:'G // ALIGN THE FRACTURED PRISM LENS'
+  });
+  registerWorldInteractable({
+    id:'micro_black_sun_wreck',
+    name:'MARCH WRECK',
+    sector:'naraka',
+    microZone:'black_sun_march',
+    pos:WORLD.microBlackSun.clone().add(new THREE.Vector3(105,-35,170)),
+    radius:70,kind:'cache',once:true,reward:92,rarity:'rare',
+    prompt:'G // SALVAGE THE MARCH WRECK'
+  });
+
+  // Micro ZJ World III // Grave Choir
+  addLandmark('GRAVE CHOIR','OSSUARY WAR CATHEDRAL',WORLD.microGraveChoir,'hot','naraka','grave_choir');
+  addLandmark('DEAD PROCESSION','CAPITAL WRECK CHANCEL',WORLD.microGraveChoir.clone().add(new THREE.Vector3(0,0,150)),'salvage','naraka','grave_choir');
+  addLandmark('LAST CHOIR VEIL','TITAN-SCALE SANCTUM',WORLD.microGraveChoir.clone().add(new THREE.Vector3(0,82,-175)),'asset','naraka','grave_choir');
+
+  registerWorldCollider('naraka',WORLD.microGraveChoir,42,'GRAVE CHOIR',.62,'grave_choir');
+
+  registerWorldInteractable({
+    id:'micro_grave_archive',
+    name:'DEAD PROCESSION ARCHIVE',
+    sector:'naraka',
+    microZone:'grave_choir',
+    pos:WORLD.microGraveChoir.clone().add(new THREE.Vector3(-118,24,172)),
+    radius:72,kind:'cache',once:true,reward:120,rarity:'epic',
+    prompt:'G // EXTRACT OSSUARY DEATH-ARCHIVE'
+  });
+  registerWorldInteractable({
+    id:'micro_grave_veil',
+    name:'LAST CHOIR VEIL',
+    sector:'naraka',
+    microZone:'grave_choir',
+    pos:WORLD.microGraveChoir.clone().add(new THREE.Vector3(0,82,-175)),
+    radius:76,kind:'beacon',once:true,reward:105,
+    prompt:'G // LISTEN TO THE LAST CHOIR'
+  });
+
+
+  // ------------------------------------------------------------
+  // EREBOS REACH — SECOND PERSISTENT SECTOR
+  // ------------------------------------------------------------
+  const erebosGroup=new THREE.Group();
+  scene.add(erebosGroup);
+
+  const aionGroup=new THREE.Group();
+  aionGroup.visible=false;
+  scene.add(aionGroup);
+
+  const chaosGroup=new THREE.Group();
+  chaosGroup.visible=false;
+  scene.add(chaosGroup);
+
+  function createErebosStation(){
+    const g=new THREE.Group();g.position.copy(EREBOS.station);erebosGroup.add(g);
+    const violet=new THREE.MeshStandardMaterial({color:0x42325c,metalness:1,roughness:.18,emissive:0x170d25,emissiveIntensity:.5});
+    const pale=new THREE.MeshStandardMaterial({color:0x7e8793,metalness:.92,roughness:.20});
+    for(let i=0;i<4;i++){
+      const r=addMesh(new THREE.TorusGeometry(24+i*6,.8+i*.18,12,72),i%2?violet:pale,[0,0,0],[Math.PI/2,i*.17,i*.26],[1,1,1],g);
+      r.userData.spin=(i%2?-.055:.038);
+    }
+    box(6,62,6,matArmorDark,[0,0,0],[0,0,0],g);
+    for(const side of [-1,1]){
+      const tower=box(5,34,5,violet,[side*18,0,0],[0,0,side*.12],g);
+      box(28,2.2,5,pale,[side*9,12,0],[0,0,side*.04],g);
+      box(28,2.2,5,matGold,[side*9,-12,0],[0,0,-side*.04],g);
+    }
+    addMesh(new THREE.SphereGeometry(3.4,18,12),glowPurple,[0,0,-10],[0,0,0],[1,1,1],g);
+    const l=new THREE.PointLight(0xb57cff,38,120,2);l.position.set(0,0,-10);g.add(l);
+    return g;
+  }
+
+  function createErebosGate(){
+    const g=new THREE.Group();g.position.copy(EREBOS.gate);erebosGroup.add(g);
+    for(let i=0;i<4;i++){
+      const r=addMesh(new THREE.TorusGeometry(22+i*3,.75,12,76),i%2?matGold:matArmor,[0,0,0],[0,i*.20,i*.35],[1,1,1],g);
+      r.userData.spin=(i%2?-.08:.055);
+    }
+    addMesh(new THREE.RingGeometry(11,20,80),new THREE.MeshBasicMaterial({color:0xa064ff,transparent:true,opacity:.10,side:THREE.DoubleSide,toneMapped:false}),[0,0,0],[0,0,0],[1,1,1],g);
+    return g;
+  }
+
+  function createPortalGate(root,pos,colorA=0xffd36a,colorB=0x78efff,scale=1){
+    const g=new THREE.Group();g.position.copy(pos);root.add(g);
+    const a=new THREE.MeshStandardMaterial({
+      color:colorA,metalness:.92,roughness:.16,
+      emissive:colorA,emissiveIntensity:.16
+    });
+    const b=new THREE.MeshBasicMaterial({
+      color:colorB,transparent:true,opacity:.64,toneMapped:false
+    });
+
+    for(let i=0;i<5;i++){
+      const r=addMesh(
+        new THREE.TorusGeometry((17+i*4.3)*scale,(.52+i*.10)*scale,10,64),
+        i%2?a:b,[0,0,0],
+        [Math.PI/2,i*.16,i*.26],[1,1,1],g
+      );
+      r.userData.spin=(i%2?-.055:.042);
+    }
+
+    for(const side of [-1,1]){
+      box(4.5*scale,48*scale,4.5*scale,matArmorDark,[side*25*scale,0,0],[0,0,side*.10],g);
+      wedge(18*scale,2.2*scale,8*scale,a,[side*20*scale,18*scale,0],g,.04,.85,1).rotation.z=side*.20;
+      wedge(18*scale,2.2*scale,8*scale,a,[side*20*scale,-18*scale,0],g,.04,.85,1).rotation.z=-side*.20;
+    }
+
+    addMesh(
+      new THREE.RingGeometry(7*scale,15*scale,72),
+      new THREE.MeshBasicMaterial({
+        color:colorB,transparent:true,opacity:.085,
+        side:THREE.DoubleSide,toneMapped:false
+      }),
+      [0,0,0],[0,0,0],[1,1,1],g
+    );
+
+    const light=new THREE.PointLight(colorB,35*scale,135*scale,2);
+    light.position.set(0,0,-8*scale);g.add(light);
+    worldAssetGroups.push(g);
+    return g;
+  }
+
+
+  function createColdCathedral(){
+    const g=new THREE.Group();g.position.copy(EREBOS.cathedral);erebosGroup.add(g);
+    for(const side of [-1,1]){
+      for(let i=0;i<6;i++){
+        const h=28+i*8;
+        const x=side*(8+i*6);
+        const spire=wedge(h,3.0,6+i*1.4,matArmorDark,[x,0,i*5],g,.03,.92,.8);
+        spire.rotation.x=Math.PI/2;
+        spire.rotation.z=side*(.08+i*.025);
+      }
+    }
+    const core=addMesh(new THREE.SphereGeometry(7,24,16),new THREE.MeshBasicMaterial({color:0x000000}),[0,2,-8],[0,0,0],[1,1,1],g);
+    for(let i=0;i<5;i++){
+      const r=addMesh(new THREE.TorusGeometry(11+i*3,.18,10,64),glowCyan,[0,2,-8],[Math.PI/2,.12*i,.2*i],[1,1,1],g);
+      r.userData.spin=(i%2?-.14:.10);
+    }
+    return g;
+  }
+
+  function createMirrorWell(){
+    const g=new THREE.Group();g.position.copy(EREBOS.well);erebosGroup.add(g);
+    addMesh(new THREE.CylinderGeometry(30,30,1.0,72),new THREE.MeshBasicMaterial({color:0x151b2a,transparent:true,opacity:.72}),[0,0,0],[0,0,0],[1,1,1],g);
+    for(let i=0;i<6;i++){
+      const r=addMesh(new THREE.TorusGeometry(12+i*3.5,.16,9,60),i%2?glowPurple:glowCyan,[0,i*.65,0],[Math.PI/2,0,i*.16],[1,1,1],g);
+      r.userData.spin=(i%2?-.12:.09);
+    }
+    addBillboardGlow(0x7acfff,68,.08,g);
+    return g;
+  }
+
+
+  const heliosGroup=createErebosStation();
+  // Helios Bastion gains asymmetrical far-side shipyard pylons.
+  for(const side of [-1,1]){
+    const pylon=new THREE.Group();pylon.position.set(side*38,0,4);heliosGroup.add(pylon);
+    box(7,54,7,matArmorDark,[0,0,0],[0,0,side*.08],pylon);
+    for(let i=0;i<4;i++){
+      addMesh(new THREE.TorusGeometry(5+i*.8,.15,8,32),i%2?glowPurple:glowCyan,[0,-18+i*12,0],[Math.PI/2,0,i*.18],[1,1,1],pylon);
+    }
+  }
+  const erebosGateGroup=createErebosGate();
+  const cathedralGroup=createColdCathedral();
+  const mirrorGroup=createMirrorWell();
+
+  // Bone Ring is constructed with neutral ship materials here because enemy materials
+  // are declared later in the module.
+  const boneGroup=new THREE.Group();boneGroup.position.copy(EREBOS.bone);erebosGroup.add(boneGroup);
+  for(let i=0;i<18;i++){
+    const a=i/18*Math.PI*2;
+    const shard=wedge(16,2.3,5.5,matArmor,[Math.cos(a)*38,Math.sin(a)*38,0],boneGroup,.05,.82,.6);
+    shard.rotation.z=a+Math.PI/2;
+  }
+  addMesh(new THREE.TorusGeometry(31,.45,10,80),glowPurple,[0,0,0],[0,0,0],[1,1,1],boneGroup);
+
+  // One instanced far-side debris belt.
+  {
+    const count=170;
+    const geo=new THREE.DodecahedronGeometry(1.7,0);
+    const mat=new THREE.MeshStandardMaterial({color:0x252234,metalness:.50,roughness:.62});
+    const inst=new THREE.InstancedMesh(geo,mat,count);
+    const dummy=new THREE.Object3D();
+    for(let i=0;i<count;i++){
+      const centres=[EREBOS.cathedral,EREBOS.well,EREBOS.bone];
+      const centre=centres[i%centres.length];
+      const rad=rand(55,170),a=Math.random()*Math.PI*2;
+      dummy.position.set(centre.x+Math.cos(a)*rad+rand(-18,18),centre.y+rand(-65,65),centre.z+Math.sin(a)*rad+rand(-18,18));
+      dummy.scale.set(rand(.25,2.1),rand(.3,1.8),rand(.4,2.0));
+      dummy.rotation.set(rand(0,6),rand(0,6),rand(0,6));dummy.updateMatrix();
+      inst.setMatrixAt(i,dummy.matrix);
+    }
+    inst.instanceMatrix.needsUpdate=true;erebosGroup.add(inst);
+  }
+
+  // Distant white singularity: different visual identity from Naraka's black sun.
+  const whiteSingularity=new THREE.Group();
+  whiteSingularity.position.set(0,125,-900);
+  erebosGroup.add(whiteSingularity);
+  addMesh(new THREE.SphereGeometry(40,36,24),new THREE.MeshBasicMaterial({color:0xd9ecff,transparent:true,opacity:.12,toneMapped:false}),[0,0,0],[0,0,0],[1,1,1],whiteSingularity);
+  for(let i=0;i<6;i++){
+    const r=addMesh(new THREE.RingGeometry(48+i*7,49+i*7,120),new THREE.MeshBasicMaterial({color:i%2?0xbd8cff:0x76e8ff,transparent:true,opacity:.08-i*.008,side:THREE.DoubleSide,toneMapped:false}),[0,0,0],[Math.PI/2.4,.08*i,.02*i],[1,1,1],whiteSingularity);
+    r.userData.spin=(i%2?-.008:.006);
+  }
+
+  addLandmark('HELIOS BASTION','DOCK / FAR-SIDE FORGE',EREBOS.station,'station','erebos');
+  addLandmark('RETURN GATE','ANCIENT LINK // NARAKA VEIL',EREBOS.gate,'gate','erebos');
+  addLandmark('COLD CATHEDRAL','UNKNOWN TRANSMISSION',EREBOS.cathedral,'hot','erebos');
+  addLandmark('MIRROR WELL','RECOVERY ANOMALY',EREBOS.well,'gate','erebos');
+  addLandmark('BONE RING','CAPITAL KILL-ZONE',EREBOS.bone,'hot','erebos');
+
+  registerWorldCollider('erebos',EREBOS.station,46,'HELIOS BASTION',.48);
+  registerWorldCollider('erebos',EREBOS.cathedral,34,'COLD CATHEDRAL',.72);
+  registerWorldCollider('erebos',EREBOS.bone,34,'BONE RING',.76);
+
+  // ============================================================
+  // FORGE 0.15 — FUNCTIONAL WORLD INFRASTRUCTURE
+  // ============================================================
+  const cinderRelayGroup=createNavBeacon(worldGroup,WORLD.cinderRelay,0x70efff,1.05);
+  addLandmark('CINDER RELAY','NAVIGATION / SIGNAL ARCHIVE',WORLD.cinderRelay,'asset','naraka');
+  registerWorldCollider('naraka',WORLD.cinderRelay,11,'CINDER RELAY',.38);
+  registerWorldInteractable({
+    id:'naraka_cinder_relay',name:'CINDER RELAY',sector:'naraka',pos:WORLD.cinderRelay,radius:62,
+    kind:'beacon',once:true,reward:28,prompt:'G // DOWNLOAD CINDER RELAY NAV ARCHIVE',
+    objective:{label:'NAV ARCHIVE // DERELICT CONVOY',pos:WORLD.convoy}
+  });
+
+  const convoyGroup=createWreckCluster(worldGroup,WORLD.convoy,0xff7952,1.0);
+  addLandmark('BROKEN CONVOY','RECOVERABLE SALVAGE',WORLD.convoy,'salvage','naraka');
+  registerWorldCollider('naraka',WORLD.convoy,24,'BROKEN CONVOY',.72);
+  registerWorldInteractable({
+    id:'naraka_broken_convoy',name:'BROKEN CONVOY',sector:'naraka',pos:WORLD.convoy,radius:62,
+    kind:'cache',once:true,reward:72,rarity:'rare',ambush:2,
+    prompt:'G // BREACH BROKEN CONVOY CARGO'
+  });
+
+  const observatoryGroup=createNavBeacon(worldGroup,WORLD.observatory,0xffc96c,.86);
+  addLandmark('CURRENT OBSERVATORY','BLACK CURRENT TELEMETRY',WORLD.observatory,'asset','naraka');
+  registerWorldCollider('naraka',WORLD.observatory,10,'CURRENT OBSERVATORY',.40);
+  registerWorldInteractable({
+    id:'naraka_current_observatory',name:'CURRENT OBSERVATORY',sector:'naraka',pos:WORLD.observatory,radius:58,
+    kind:'beacon',once:true,reward:36,prompt:'G // SCAN CURRENT OBSERVATORY',
+    objective:{label:'OBSERVATORY VECTOR // BLACK CURRENT BREACH',pos:WORLD.breach}
+  });
+
+  const refineryGroup=createIndustrialPlatform(worldGroup,WORLD.refinery,0xffb95a,.72);
+  addLandmark('REFINERY SEVEN','REACTOR SERVICE PLATFORM',WORLD.refinery,'service','naraka');
+  registerWorldCollider('naraka',WORLD.refinery,30,'REFINERY SEVEN',.55);
+  registerWorldInteractable({
+    id:'naraka_refinery_service',name:'REFINERY SEVEN',sector:'naraka',pos:WORLD.refinery,radius:72,
+    kind:'service',prompt:'G // COUPLE TO REACTOR SERVICE MATRIX'
+  });
+
+  registerWorldInteractable({
+    id:'naraka_halo_market',name:'HALO YARD',sector:'naraka',pos:WORLD.haloYard,radius:72,
+    kind:'service',once:true,reward:24,prompt:'G // REGISTER HALO YARD MARKET NODES',
+    objective:{label:'HALO ROUTE // ASTERION FORGE',pos:WORLD.station}
+  });
+
+  registerWorldInteractable({
+    id:'naraka_starter_nursery',name:'STARTER NURSERY',sector:'naraka',pos:WORLD.nursery,radius:66,
+    kind:'cache',once:true,reward:52,rarity:'uncommon',ambush:1,
+    prompt:'G // OPEN STARTER NURSERY SALVAGE CACHE'
+  });
+
+  registerWorldInteractable({
+    id:'naraka_pilgrim_arch',name:'PILGRIM ARCH',sector:'naraka',pos:WORLD.pilgrimArch,radius:70,
+    kind:'beacon',once:true,reward:34,prompt:'G // ALIGN PILGRIM ARCH SIGNAL',
+    objective:{label:'PILGRIM VECTOR // BLACK SUN',pos:WORLD.blackSun}
+  });
+
+  registerWorldInteractable({
+    id:'naraka_pillar_gate',name:'AETHER PILLAR GATE',sector:'naraka',pos:WORLD.pillarGate,radius:76,
+    kind:'gate',once:true,reward:46,prompt:'G // STABILISE AETHER PILLAR GATE',
+    objective:{label:'PILLAR VECTOR // BLACK SUN CORRIDOR',pos:WORLD.blackSun}
+  });
+
+  registerWorldInteractable({
+    id:'naraka_veil_sanctum',name:'VEIL SANCTUM',sector:'naraka',pos:WORLD.veilSanctum,radius:72,
+    kind:'beacon',once:true,reward:28,prompt:'G // HARMONISE VEIL SANCTUM LATTICE'
+  });
+
+  const graveyardGroup=createWreckCluster(worldGroup,WORLD.graveyard,0xa95cff,1.18);
+  addLandmark('GRAVEYARD ARRAY','CAPITAL WRECK FIELD',WORLD.graveyard,'salvage','naraka');
+  registerWorldCollider('naraka',WORLD.graveyard,29,'GRAVEYARD ARRAY',.80);
+  registerWorldInteractable({
+    id:'naraka_graveyard_array',name:'GRAVEYARD ARRAY',sector:'naraka',pos:WORLD.graveyard,radius:68,
+    kind:'cache',once:true,reward:105,rarity:'epic',ambush:3,
+    prompt:'G // CUT INTO GRAVEYARD ARRAY VAULT'
+  });
+
+  createWorldRockField(worldGroup,'naraka',WORLD.convoy,16,82,0x1d2327);
+  createWorldRockField(worldGroup,'naraka',WORLD.refinery,12,68,0x25241f);
+  createWorldRockField(worldGroup,'naraka',WORLD.pillarGate,14,74,0x1c2028);
+
+  const violetObservatoryGroup=createNavBeacon(erebosGroup,EREBOS.violetObservatory,0xc073ff,1.10);
+  addLandmark('VIOLET OBSERVATORY','FAR-SIDE TELEMETRY',EREBOS.violetObservatory,'asset','erebos');
+  registerWorldCollider('erebos',EREBOS.violetObservatory,12,'VIOLET OBSERVATORY',.44);
+  registerWorldInteractable({
+    id:'erebos_violet_observatory',name:'VIOLET OBSERVATORY',sector:'erebos',pos:EREBOS.violetObservatory,radius:62,
+    kind:'beacon',once:true,reward:55,prompt:'G // SYNCHRONISE VIOLET OBSERVATORY',
+    objective:{label:'OBSERVATORY VECTOR // COLD CATHEDRAL',pos:EREBOS.cathedral}
+  });
+
+  const processionGroup=createWreckCluster(erebosGroup,EREBOS.procession,0xb768ff,1.32);
+  addLandmark('SHATTERED PROCESSION','ANCIENT CONVOY REMAINS',EREBOS.procession,'salvage','erebos');
+  registerWorldCollider('erebos',EREBOS.procession,32,'SHATTERED PROCESSION',.86);
+  registerWorldInteractable({
+    id:'erebos_shattered_procession',name:'SHATTERED PROCESSION',sector:'erebos',pos:EREBOS.procession,radius:74,
+    kind:'cache',once:true,reward:138,rarity:'epic',ambush:3,
+    ambushRaces:['abyssal','vanta'],prompt:'G // EXTRACT PROCESSION RELIQUARY'
+  });
+
+  const phaseBeaconGroup=createNavBeacon(erebosGroup,EREBOS.phaseBeacon,0x80eaff,1.08);
+  addLandmark('PHASE BEACON','CAPACITOR / SHIELD SERVICE',EREBOS.phaseBeacon,'service','erebos');
+  registerWorldCollider('erebos',EREBOS.phaseBeacon,12,'PHASE BEACON',.42);
+  registerWorldInteractable({
+    id:'erebos_phase_beacon',name:'PHASE BEACON',sector:'erebos',pos:EREBOS.phaseBeacon,radius:64,
+    kind:'service',prompt:'G // ALIGN WITH PHASE SERVICE FIELD'
+  });
+
+  const sanctuaryGroup=createIndustrialPlatform(erebosGroup,EREBOS.sanctuary,0x7adfff,.58);
+  sanctuaryGroup.rotation.z=.22;sanctuaryGroup.rotation.x=.12;
+  addLandmark('SANCTUARY RUIN','ANCIENT REPAIR LATTICE',EREBOS.sanctuary,'service','erebos');
+  registerWorldCollider('erebos',EREBOS.sanctuary,26,'SANCTUARY RUIN',.54);
+  registerWorldInteractable({
+    id:'erebos_sanctuary_ruin',name:'SANCTUARY RUIN',sector:'erebos',pos:EREBOS.sanctuary,radius:68,
+    kind:'sanctuary',once:true,prompt:'G // ACTIVATE SANCTUARY REPAIR LATTICE'
+  });
+
+  const nullFoundryGroup=createIndustrialPlatform(erebosGroup,EREBOS.nullFoundry,0xc46cff,.88);
+  addLandmark('NULL FOUNDRY','ABANDONED FAR-SIDE INDUSTRY',EREBOS.nullFoundry,'salvage','erebos');
+  registerWorldCollider('erebos',EREBOS.nullFoundry,34,'NULL FOUNDRY',.70);
+  registerWorldInteractable({
+    id:'erebos_null_foundry',name:'NULL FOUNDRY',sector:'erebos',pos:EREBOS.nullFoundry,radius:76,
+    kind:'cache',once:true,reward:165,rarity:'epic',ambush:3,
+    ambushRaces:['prism','abyssal','ossuary'],prompt:'G // OPEN NULL FOUNDRY SEALED BAY'
+  });
+
+  createWorldRockField(erebosGroup,'erebos',EREBOS.procession,18,92,0x282333);
+  createWorldRockField(erebosGroup,'erebos',EREBOS.nullFoundry,14,76,0x211c29);
+
+  // ============================================================
+  // FORGE 0.16 — MODULAR ZONE / PORTAL ARCHITECTURE
+  // ============================================================
+  const erebosAionPortal=createPortalGate(
+    erebosGroup,EREBOS.aionGate,0xffd36b,0x8beeff,1.04
+  );
+
+  const aionReturnPortal=createPortalGate(
+    aionGroup,AION.gate,0xffd36b,0xc689ff,1.10
+  );
+
+  const aionFuturePortal=createPortalGate(
+    aionGroup,AION.futureGate,0x7f8792,0x37404a,.92
+  );
+
+  // Orison Vault — Aion's persistent service anchor.
+  const orisonVault=createIndustrialPlatform(aionGroup,AION.station,0xffd46d,1.02);
+  for(const side of [-1,1]){
+    const arm=new THREE.Group();
+    arm.position.set(side*31,7,0);orisonVault.add(arm);
+    box(6,38,6,matArmorDark,[0,0,0],[0,0,side*.08],arm);
+    for(let i=0;i<3;i++){
+      addMesh(
+        new THREE.TorusGeometry(4+i*1.2,.14,8,34),
+        i%2?glowGold:glowCyan,
+        [0,-10+i*10,0],[Math.PI/2,0,i*.22],[1,1,1],arm
+      );
+    }
+  }
+
+  const aionArchive=createNavBeacon(aionGroup,AION.archive,0xffdc80,1.16);
+  const aionCrown=createWreckCluster(aionGroup,AION.crown,0xffc35c,1.42);
+  const aionFoundry=createIndustrialPlatform(aionGroup,AION.foundry,0x78edff,.84);
+  const aionBeacon=createNavBeacon(aionGroup,AION.beacon,0x8cf7ff,.96);
+  const aionDrift=createWreckCluster(aionGroup,AION.drift,0xc57cff,1.08);
+
+  createWorldRockField(aionGroup,'aion',AION.crown,20,102,0x322a1f);
+  createWorldRockField(aionGroup,'aion',AION.drift,18,96,0x242330);
+  createWorldRockField(aionGroup,'aion',AION.foundry,12,70,0x1f292d);
+
+  // Wounded gold star gives Aion a radically different horizon.
+  const aionStar=new THREE.Group();
+  aionStar.position.set(0,148,-920);
+  aionGroup.add(aionStar);
+  worldAssetGroups.push(aionStar);
+  addMesh(
+    new THREE.SphereGeometry(48,34,22),
+    new THREE.MeshBasicMaterial({
+      color:0xffcc68,transparent:true,opacity:.18,toneMapped:false
+    }),
+    [0,0,0],[0,0,0],[1,1,1],aionStar
+  );
+  for(let i=0;i<7;i++){
+    const ring=addMesh(
+      new THREE.RingGeometry(58+i*7.5,59.2+i*7.5,100),
+      new THREE.MeshBasicMaterial({
+        color:i%2?0xffdc83:0x8defff,
+        transparent:true,opacity:.065-i*.005,
+        side:THREE.DoubleSide,toneMapped:false
+      }),
+      [0,0,0],[Math.PI/2.25,i*.035,i*.08],[1,1,1],aionStar
+    );
+    ring.userData.spin=(i%2?-.0055:.004);
+  }
+
+  addLandmark('ORISON VAULT','DOCK / AION ANCHORAGE',AION.station,'station','aion');
+  addLandmark('EREBOS FRACTURE','PORTAL // EREBOS REACH',AION.gate,'gate','aion');
+  addLandmark('THE SUNDERED ARCHIVE','ANCIENT NAVIGATION VAULT',AION.archive,'asset','aion');
+  addLandmark('GILDED CROWN','CAPITAL WRECK FIELD',AION.crown,'salvage','aion');
+  addLandmark('LUMEN FOUNDRY','REACTOR SERVICE PLATFORM',AION.foundry,'service','aion');
+  addLandmark('WARDEN BEACON','DEEP-ZONE TELEMETRY',AION.beacon,'asset','aion');
+  addLandmark('VIOLET DRIFT','RECOVERY FIELD',AION.drift,'salvage','aion');
+  addLandmark('DORMANT PORTAL','UNMAPPED DESTINATION // FUTURE ZONE',AION.futureGate,'gate','aion');
+
+  addLandmark('GILDED FRACTURE','PORTAL // AION SCAR',EREBOS.aionGate,'gate','erebos');
+
+  registerWorldCollider('aion',AION.station,38,'ORISON VAULT',.48);
+  registerWorldCollider('aion',AION.archive,12,'SUNDERED ARCHIVE',.42);
+  registerWorldCollider('aion',AION.crown,34,'GILDED CROWN',.82);
+  registerWorldCollider('aion',AION.foundry,30,'LUMEN FOUNDRY',.52);
+  registerWorldCollider('aion',AION.beacon,11,'WARDEN BEACON',.40);
+  registerWorldCollider('aion',AION.drift,27,'VIOLET DRIFT',.72);
+
+  registerWorldInteractable({
+    id:'aion_sundered_archive',name:'THE SUNDERED ARCHIVE',
+    sector:'aion',pos:AION.archive,radius:68,kind:'beacon',once:true,reward:78,
+    prompt:'G // DECRYPT THE SUNDERED ARCHIVE',
+    objective:{label:'ARCHIVE VECTOR // GILDED CROWN',pos:AION.crown}
+  });
+  registerWorldInteractable({
+    id:'aion_gilded_crown',name:'GILDED CROWN',
+    sector:'aion',pos:AION.crown,radius:78,kind:'cache',once:true,
+    reward:190,rarity:'epic',ambush:3,
+    ambushRaces:['seraphim','prism','abyssal'],
+    prompt:'G // CUT INTO GILDED CROWN FLAGSHIP VAULT'
+  });
+  registerWorldInteractable({
+    id:'aion_lumen_foundry',name:'LUMEN FOUNDRY',
+    sector:'aion',pos:AION.foundry,radius:74,kind:'service',
+    prompt:'G // COUPLE TO LUMEN REACTOR FIELD'
+  });
+  registerWorldInteractable({
+    id:'aion_warden_beacon',name:'WARDEN BEACON',
+    sector:'aion',pos:AION.beacon,radius:64,kind:'beacon',once:true,reward:92,
+    prompt:'G // DOWNLOAD WARDEN TELEMETRY',
+    objective:{label:'WARDEN VECTOR // VIOLET DRIFT',pos:AION.drift}
+  });
+  registerWorldInteractable({
+    id:'aion_violet_drift',name:'VIOLET DRIFT',
+    sector:'aion',pos:AION.drift,radius:72,kind:'cache',once:true,
+    reward:145,rarity:'rare',ambush:2,
+    ambushRaces:['vanta','prism'],
+    prompt:'G // RECOVER VIOLET DRIFT BLACK BOXES'
+  });
+
+
+  function portalEndpoint(link,sector=settings.currentSector){
+    if(link.a.sector===sector)return {here:link.a,there:link.b};
+    if(link.b.sector===sector)return {here:link.b,there:link.a};
+    return null;
+  }
+
+  function nearestPortalEndpoint(){
+    let best=null,bestD=Infinity;
+    for(const link of PORTAL_LINKS){
+      const ep=portalEndpoint(link);
+      if(!ep)continue;
+      const d=player.group.position.distanceTo(ep.here.pos);
+      if(d<82 && d<bestD){
+        bestD=d;
+        best={
+          link,
+          linkId:link.id,
+          pos:ep.here.pos,
+          name:ep.here.name,
+          targetSector:ep.there.sector,
+          targetName:sectorMeta(ep.there.sector).name,
+          unlocked:link.unlocked(),
+          lockedMessage:link.lockedMessage
+        };
+      }
+    }
+    return best;
+  }
+
+  function portalArrival(targetSector,linkId){
+    const link=PORTAL_LINKS.find(x=>x.id===linkId);
+    if(!link)return sectorWorld(targetSector).gate||sectorWorld(targetSector).station;
+    const ep=portalEndpoint(link,targetSector);
+    return ep?.here.pos||sectorWorld(targetSector).station;
+  }
+
+
+  function assertWorldVector(label,v){
+    if(!v || !Number.isFinite(v.x) || !Number.isFinite(v.y) || !Number.isFinite(v.z)){
+      throw new Error('INVALID WORLD VECTOR // '+label);
+    }
+    return v;
+  }
+
+  function createTeleportStation(root,pos,scale=1,color=0xff8d68){
+    const g=new THREE.Group();g.position.copy(pos);root.add(g);
+    const base=addMesh(
+      new THREE.CylinderGeometry(17*scale,22*scale,10*scale,8),
+      matArmorDark,[0,0,0],[0,Math.PI/8,0],[1,1,1],g
+    );
+    base.userData.spin=.04;
+    for(let i=0;i<3;i++){
+      const ring=addMesh(
+        new THREE.TorusGeometry((12+i*4.8)*scale,(.48+i*.06)*scale,10,52),
+        i===1?glowPurple:glowGold,
+        [0,5+i*6.5,0],[Math.PI/2,i*.24,0],[1,1,1],g
+      );
+      ring.userData.spin=(i%2?-.9:.75)/(i+1);
+    }
+    for(let i=0;i<6;i++){
+      const a=i/6*Math.PI*2;
+      box(3.1*scale,18*scale,3.1*scale,matArmor,[Math.cos(a)*16*scale,10,Math.sin(a)*16*scale],[0,a,0],g);
+      wedge(12*scale,2.1*scale,5.4*scale,glowCyan,[Math.cos(a)*13*scale,20,Math.sin(a)*13*scale],g,.04,.8,1);
+    }
+    addMesh(
+      new THREE.CylinderGeometry(6*scale,6*scale,28*scale,24,true),
+      new THREE.MeshBasicMaterial({color,transparent:true,opacity:.16,toneMapped:false}),
+      [0,20,0],[0,0,0],[1,1,1],g
+    );
+    const light=new THREE.PointLight(color,42*scale,138*scale,2);
+    light.position.set(0,20,0);g.add(light);
+    worldAssetGroups.push(g);
+    return g;
+  }
+
+  const narakaTeleportStation=createTeleportStation(worldGroup,assertWorldVector('WORLD.teleport',WORLD.teleport),.92,0xff9e78);
+
+  const chaosTeleporter=createTeleportStation(chaosGroup,assertWorldVector('CHAOS.station',CHAOS.station),1.04,0xff6fb8);
+  const chaosReturn=createTeleportStation(chaosGroup,assertWorldVector('CHAOS.returnTeleporter',CHAOS.returnTeleporter),1.00,0x6fe6ff);
+
+  const chaosCarnival=createWreckCluster(chaosGroup,CHAOS.carnival,0xff8f6c,1.28);
+  const chaosSpiral=createNavBeacon(chaosGroup,CHAOS.spiral,0xff66dd,1.22);
+  const chaosBreach=createIndustrialPlatform(chaosGroup,CHAOS.breach,0x79f0ff,.88);
+  const chaosShard=createWreckCluster(chaosGroup,CHAOS.shardfield,0x8a6dff,1.12);
+  const chaosRoulette=createNavBeacon(chaosGroup,CHAOS.roulette,0xffd36b,1.05);
+  const chaosMaw=createWreckCluster(chaosGroup,CHAOS.maw,0xff5078,1.5);
+
+  createWorldRockField(chaosGroup,'chaos',CHAOS.carnival,24,112,0x45231f);
+  createWorldRockField(chaosGroup,'chaos',CHAOS.shardfield,22,108,0x2c2148);
+  createWorldRockField(chaosGroup,'chaos',CHAOS.maw,18,96,0x40111c);
+  createWorldRockField(chaosGroup,'chaos',CHAOS.breach,14,80,0x1e3436);
+
+  const chaosSky=new THREE.Group();chaosSky.position.set(0,120,-880);chaosGroup.add(chaosSky);worldAssetGroups.push(chaosSky);
+  for(let i=0;i<9;i++){
+    const ring=addMesh(
+      new THREE.RingGeometry(44+i*11,46.6+i*11,108),
+      new THREE.MeshBasicMaterial({
+        color:[0xff6fb8,0x76ebff,0xffb04f,0xb182ff][i%4],
+        transparent:true,opacity:.085-(i*.006),
+        side:THREE.DoubleSide,toneMapped:false
+      }),
+      [rand(-24,24),rand(-18,18),rand(-20,20)],
+      [Math.PI/(2.0+rand(-.35,.35)),i*.06,i*.17],[1,1,1],chaosSky
+    );
+    ring.userData.spin=(i%2?-.006:.005)*(1+i*.15);
+  }
+  addMesh(
+    new THREE.SphereGeometry(58,34,20),
+    new THREE.MeshBasicMaterial({color:0xff7d66,transparent:true,opacity:.13,toneMapped:false}),
+    [0,0,0],[0,0,0],[1,1,1],chaosSky
+  );
+
+  const chaosReliquary=createLycheetahReliquary(
+    chaosGroup,
+    new THREE.Vector3(CHAOS.spiral.x+56,CHAOS.spiral.y+8,CHAOS.spiral.z-42),
+    1.32,0xff84bb,0x71f1ff
+  );
+
+  addLandmark('TELEPORT STATION','TRANSIT TO CHAOS CRADLE',WORLD.teleport,'station','naraka');
+  addLandmark('WILDGATE SPINDLE','CHAOS CRADLE DOCK',CHAOS.station,'station','chaos');
+  addLandmark('RETURN SPINDLE','TRANSIT TO NARAKA VEIL',CHAOS.returnTeleporter,'station','chaos');
+  addLandmark('CARNIVAL OF WRECKS','DENSE SALVAGE FUNNEL',CHAOS.carnival,'salvage','chaos');
+  addLandmark('SPIRAL BLOOM','COLOURED GRAVITY KNOT',CHAOS.spiral,'asset','chaos');
+  addLandmark('LYCHEETAH BLOOM','CHAOS RELIQUARY',new THREE.Vector3(CHAOS.spiral.x+56,CHAOS.spiral.y+8,CHAOS.spiral.z-42),'asset','chaos');
+  addLandmark('BREACH FOUNDRY','RISK REPAIR PLATFORM',CHAOS.breach,'service','chaos');
+  addLandmark('SHARDFIELD','PRISMATIC DEBRIS RAIN',CHAOS.shardfield,'salvage','chaos');
+  addLandmark('ROULETTE BEACON','HIGH-VARIANCE SIGNAL SITE',CHAOS.roulette,'asset','chaos');
+  addLandmark('LAUGHING MAW','DANGEROUS HOTSPOT',CHAOS.maw,'hot','chaos');
+
+  registerWorldCollider('naraka',WORLD.teleport,24,'TELEPORT STATION',.42);
+  registerWorldCollider('chaos',CHAOS.station,30,'WILDGATE SPINDLE',.45);
+  registerWorldCollider('chaos',CHAOS.returnTeleporter,26,'RETURN SPINDLE',.42);
+  registerWorldCollider('chaos',CHAOS.carnival,28,'CARNIVAL OF WRECKS',.72);
+  registerWorldCollider('chaos',CHAOS.spiral,15,'SPIRAL BLOOM',.56);
+  registerWorldCollider('chaos',new THREE.Vector3(CHAOS.spiral.x+56,CHAOS.spiral.y+8,CHAOS.spiral.z-42),20,'LYCHEETAH BLOOM',.42);
+  registerWorldCollider('chaos',CHAOS.breach,24,'BREACH FOUNDRY',.48);
+  registerWorldCollider('chaos',CHAOS.shardfield,30,'SHARDFIELD',.70);
+  registerWorldCollider('chaos',CHAOS.roulette,14,'ROULETTE BEACON',.50);
+  registerWorldCollider('chaos',CHAOS.maw,34,'LAUGHING MAW',.88);
+
+  registerWorldInteractable({
+    id:'chaos_carnival',name:'CARNIVAL OF WRECKS',
+    sector:'chaos',pos:CHAOS.carnival,radius:76,kind:'cache',once:true,
+    reward:124,rarity:'rare',ambush:3,ambushRaces:['abyssal','prism','seraphim'],
+    prompt:'G // TEAR OPEN THE CARNIVAL WRECK TUBE'
+  });
+  registerWorldInteractable({
+    id:'chaos_spiral',name:'SPIRAL BLOOM',
+    sector:'chaos',pos:CHAOS.spiral,radius:68,kind:'beacon',once:true,reward:84,
+    prompt:'G // RESONATE WITH THE SPIRAL BLOOM',
+    objective:{label:'SPIRAL VECTOR // LAUGHING MAW',pos:CHAOS.maw}
+  });
+  registerWorldInteractable({
+    id:'chaos_breach',name:'BREACH FOUNDRY',
+    sector:'chaos',pos:CHAOS.breach,radius:72,kind:'service',
+    prompt:'G // COUPLE TO BREACH FOUNDRY'
+  });
+  registerWorldInteractable({
+    id:'chaos_roulette',name:'ROULETTE BEACON',
+    sector:'chaos',pos:CHAOS.roulette,radius:66,kind:'cache',once:true,
+    reward:96,rarity:'rare',ambush:2,ambushRaces:['prism','seraphim','abyssal'],
+    prompt:'G // ROLL THE ROULETTE BEACON'
+  });
+
+  function validateWorldFoundation(){
+    const issues=[];
+    for(const item of worldInteractables){
+      if(!item.id||!item.name||!item.sector||!item.pos||!Number.isFinite(item.pos.x))issues.push('INTERACTABLE:'+item.id);
+    }
+    for(const c of worldColliders){
+      if(!c.sector||!Number.isFinite(c.radius)||c.radius<=0||!Number.isFinite(c.pos.x))issues.push('COLLIDER:'+c.label);
+    }
+    for(const link of PORTAL_LINKS){
+      if(!link.id||!link.a?.sector||!link.b?.sector||!link.a?.pos||!link.b?.pos)issues.push('PORTAL:'+link.id);
+    }
+    if(issues.length)console.error('World foundation validation:',issues);
+    return issues;
+  }
+  const WORLD_FOUNDATION_ISSUES=validateWorldFoundation();
+
+  function applySectorPresentation(){
+    const id=settings.currentSector;
+    const micro=
+      id==='naraka' &&
+      microZJBattle?.active
+        ?currentMicroZone()
+        :null;
+
+    worldGroup.visible=id==='naraka'&&!micro;
+    erebosGroup.visible=id==='erebos';
+    aionGroup.visible=id==='aion';
+    chaosGroup.visible=id==='chaos';
+
+    for(const [zoneId,group] of Object.entries(microWorldGroups)){
+      group.visible=!!micro&&zoneId===micro.id;
+    }
+
+    // Base Naraka eclipse is reserved for the home world.
+    eclipse.visible=id==='naraka'&&!micro;
+
+    const meta=sectorMeta();
+    const sectorEl=document.getElementById('sectorHudName');
+
+    if(sectorEl){
+      sectorEl.textContent=micro
+        ?'MICRO ZJ WORLD // '+micro.name
+        :'SECTOR // '+meta.name;
+    }
+
+    if(micro){
+      renderer.setClearColor(micro.clearColor,1);
+      scene.fog.color.setHex(micro.fogColor);
+      scene.fog.density=micro.fogDensity;
+      key.color.setHex(micro.key);
+      key.intensity=8.9;
+      rim.color.setHex(micro.rim);
+      rim.intensity=9.2;
+      renderer.toneMappingExposure=1.43;
+      return;
+    }
+
+    if(id==='erebos'){
+      renderer.setClearColor(0x08050d,1);
+      scene.fog.color.setHex(0x0a0711);
+      scene.fog.density=.00155;
+      key.color.setHex(0xd9e7ff);key.intensity=8.6;
+      rim.color.setHex(0xc787ff);rim.intensity=8.9;
+    }else if(id==='aion'){
+      renderer.setClearColor(0x0d0a05,1);
+      scene.fog.color.setHex(0x120d06);
+      scene.fog.density=.00142;
+      key.color.setHex(0xffe4a2);key.intensity=9.0;
+      rim.color.setHex(0x86f2ff);rim.intensity=8.4;
+    }else if(id==='chaos'){
+      renderer.setClearColor(0x14060b,1);
+      scene.fog.color.setHex(0x1a0911);
+      scene.fog.density=.00128;
+      key.color.setHex(0xffb578);key.intensity=9.2;
+      rim.color.setHex(0xff73d3);rim.intensity=9.0;
+    }else{
+      renderer.setClearColor(0x05090e,1);
+      scene.fog.color.setHex(0x05080d);
+      scene.fog.density=.00147;
+      key.color.setHex(0xffe2a6);key.intensity=8.5;
+      rim.color.setHex(0x7ef5ff);rim.intensity=8.8;
+    }
+
+    renderer.toneMappingExposure=1.40;
+  }
+
+  function jumpSector(targetSector,linkId=null){
+    if(!ZONE_WORLD[targetSector]||!SECTOR_META[targetSector]){
+      flashMission('PORTAL DESTINATION INVALID','ZONE REGISTRY HAS NO '+String(targetSector).toUpperCase(),1.0);
+      return;
+    }
+
+    const link=linkId?PORTAL_LINKS.find(x=>x.id===linkId):null;
+    if(link && !link.unlocked()){
+      flashMission('PORTAL LOCKED',link.lockedMessage||'TRANSIT CONDITION NOT MET',1.0);
+      return;
+    }
+
+    if(targetSector===settings.currentSector)return;
+
+    const transition=document.getElementById('sectorTransition');
+    transition?.classList.add('on');
+
+    clearAmbientEvent(true);
+    clearEncounterObjects();
+    encounterActive=false;
+    encounterComplete=false;
+    selected=null;
+    fireHeld=false;
+
+    settings.currentSector=targetSector;
+    settings.activeContract=null;
+
+    if(targetSector==='erebos'){
+      settings.erebosDiscovered=true;
+      settings.campaignTier=Math.max(2,settings.campaignTier||1);
+    }
+    if(targetSector==='aion'){
+      settings.aionDiscovered=true;
+      settings.campaignTier=Math.max(3,settings.campaignTier||1);
+    }
+    if(targetSector==='chaos'){
+      settings.chaosDiscovered=true;
+      settings.campaignTier=Math.max(1,settings.campaignTier||1);
+    }
+
+    saveSettings();
+    currentContract=null;
+    applySectorPresentation();
+
+    const arrival=portalArrival(targetSector,linkId);
+    const w=sectorWorld();
+    player.group.position.copy(arrival).add(new THREE.Vector3(-82,10,42));
+    player.velocity.set(0,0,0);
+    player.group.quaternion.identity();
+    resetCombatCamera(false);
+
+    setWorldObjective('NAVIGATE TO '+sectorMeta().stationName,w.station);
+
+    setTimeout(()=>{
+      transition?.classList.remove('on');
+      flashMission(
+        'PORTAL TRANSIT COMPLETE',
+        sectorMeta().name+' // '+sectorMeta().stationName,
+        1.8
+      );
+    },360);
+
+    renderStation();
+    renderModules();
+  }
+
+
+  function updateWorldLabels(){
+    const visible=appMode==='combat'||appMode==='pause';
+    for(const l of worldLandmarks){
+      const activeMicro=microZJBattle?.active?microZJBattle.zoneId:null;
+      if(
+        !visible ||
+        l.sector!==settings.currentSector ||
+        (l.microZone||null)!==activeMicro
+      ){
+        l.label.style.display='none';
+        continue;
+      }
+      const p=l.pos.clone().project(camera);
+      if(p.z>1||Math.abs(p.x)>1.15||Math.abs(p.y)>1.15){l.label.style.display='none';continue}
+      l.label.style.display='block';
+      l.label.style.left=((p.x*.5+.5)*innerWidth)+'px';
+      l.label.style.top=((-p.y*.5+.5)*innerHeight)+'px';
+      let sub=l.sub;
+      if(l.name==='ANCIENT GATE')sub=settings.gateUnlocked?'STABLE // EREBOS LINK READY':'LOCKED // CLEAR SCARLET LEVIATHAN';
+      if(l.name==='GILDED FRACTURE')sub=settings.erebosDiscovered?'STABLE // AION LINK READY':'DORMANT // EREBOS SYNCHRONISATION REQUIRED';
+      if(l.name==='DORMANT PORTAL')sub='UNMAPPED // PORTAL NODE RESERVED FOR FUTURE ZONE';
+      if(l.name==='TELEPORT STATION')sub='STABLE // CHAOS CRADLE TRANSIT READY';
+      if(l.name==='RETURN SPINDLE')sub='STABLE // NARAKA TELEPORT RETURN';
+      const linked=worldInteractables.find(x=>x.name===l.name&&x.sector===l.sector);
+      if(linked?.once && settings.worldRecoveries[linked.id])sub='RECOVERED // '+sub;
+      l.label.querySelector('span').textContent=sub+' // '+Math.round(player.group.position.distanceTo(l.pos))+'U';
+    }
+  }
+
+  function setWorldObjective(label,target=null){
+    const el=document.getElementById('worldObjective');if(el)el.textContent=label;
+    worldObjectiveTarget=target?target.clone():null;
+  }
+
+  function spawnSalvage(pos,value=12,rarity='common',materialId=null){
+    if(salvageItems.length>28)return;
+    const g=new THREE.Group();g.position.copy(pos);scene.add(g);
+    const rarityMat=rarity==='epic'?glowPurple:rarity==='rare'?glowCyan:matGold;
+    box(2.3,1.1,3.2,rarityMat,[0,0,0],[rand(0,2),rand(0,2),rand(0,2)],g);
+    box(.7,.72,3.5,matHullDark,[0,0,0],[0,0,0],g);
+    box(4.2,.16,.55,glowGold,[0,0,0],[0,0,.4],g);
+    box(4.2,.16,.55,glowGold,[0,0,0],[0,0,-.4],g);
+    const item={group:g,value,rarity,materialId,phase:rand(0,6.28),eventId:null};
+    salvageItems.push(item);return item;
+  }
+
+  function clearSalvage(){
+    for(const s of salvageItems){
+      if(s.group.parent)s.group.parent.remove(s.group);
+      disposeGeneratedTree(s.group);
+    }
+    salvageItems.length=0;
+  }
+
+  function updateSalvage(dt){
+    const collectRange=settings.activeDroneWing==='salvage_swarm'?48:22;
+    for(let i=salvageItems.length-1;i>=0;i--){
+      const s=salvageItems[i];
+      s.group.rotation.y+=dt*.8;s.group.rotation.x=Math.sin(gameTime*.8+s.phase)*.18;
+      const d=s.group.position.distanceTo(player.group.position);
+      if(d<collectRange){
+        settings.salvage=(settings.salvage||0)+s.value;
+        let matText='';
+        if(s.materialId&&MATERIAL_CATALOG[s.materialId]){
+          const qty=s.rarity==='epic'?3:s.rarity==='rare'?2:1;
+          settings.materials[s.materialId]=(settings.materials[s.materialId]||0)+qty;
+          matText=' · +'+qty+' '+MATERIAL_CATALOG[s.materialId].name.toUpperCase();
+        }
+        saveSettings();
+        if(s.group.parent)s.group.parent.remove(s.group);
+        disposeGeneratedTree(s.group);salvageItems.splice(i,1);
+        renderModules();renderIndustry();
+        flashMission((s.rarity||'COMMON').toUpperCase()+' SALVAGE','+'+s.value+' SALVAGE'+matText,.75);
+      }
+    }
+  }
+
+
+  // ============================================================
+  // FORGE 0.6 — CONTRACTS / STATION / REPAIRS
+  // ============================================================
+
+
+  const microZJBattle={
+    active:false,
+    zoneId:null,
+    waveIndex:0,
+    waveActive:false,
+    timer:0,
+    complete:false,
+    startedAt:0,
+    awaitingAdvance:false,
+    lastSiteIndex:-1,
+    hazardClock:0,
+    furnaceWarningAt:-99,
+    furnacePulseAt:-99
+  };
+
+  let microZJOverlayOpen=false;
+  let microZJCooldownUntil=0;
+  const MICRO_ZJ_COOLDOWN=7.5;
+
+  function microZoneCompletionCount(id){
+    settings.microZJCompletions=settings.microZJCompletions||{};
+    return Number(settings.microZJCompletions[id]||0);
+  }
+
+  function currentMicroZone(){
+    return MICRO_ZJ_BATTLE_ZONES[microZJBattle.zoneId]||null;
+  }
+
+  let currentContract=null;
+  let contractWaveIndex=0;
+  let contractWaveSpawned=false;
+  let nearDerelict=false;
+  let nearGate=false;
+  let nearPortal=null;
+  let nearInteractionTarget=false;
+
+  function activeContract(){
+    const c=CONTRACTS[settings.activeContract]||null;
+    return c && c.sector===settings.currentSector ? c : null;
+  }
+
+  function contractTargetPosition(contract=activeContract()){
+    if(!contract)return currentStationPosition();
+    const w=sectorWorld(contract.sector);
+    return w[contract.target]||w.station;
+  }
+
+  function acceptContract(id){
+    const c=CONTRACTS[id];if(!c)return;
+    if(c.sector!==settings.currentSector){
+      flashMission('CONTRACT OUT OF SECTOR','TRAVEL TO '+sectorMeta(c.sector).name,.8);return;
+    }
+    settings.activeContract=id;
+    saveSettings();
+    currentContract=c;
+    encounterActive=false;encounterComplete=false;
+    contractWaveIndex=0;contractWaveSpawned=false;bossSpawned=false;victoryQueued=false;
+    updateBriefing();
+    renderStation();
+    returnScreen='station';
+    setAppMode('briefing');
+  }
+
+  function updateBriefing(){
+    const c=activeContract()||CONTRACTS.breach_purge;
+    const title=document.getElementById('briefTitle');
+    const body=document.getElementById('briefText');
+    if(title)title.textContent=c.name;
+    if(body)body.textContent=c.desc+' Reward: '+c.reward+' salvage. Threat rating: '+c.difficulty+'.';
+  }
+
+  function contractCompletionCount(id){
+    return Number(settings.contractCompletions[id]||0);
+  }
+
+  function applyStationToolView(view=stationToolView){
+    stationToolView=view==='repairs'?'repairs':'operations';
+
+    const operations=document.getElementById('stationToolOperations');
+    const repairs=document.getElementById('stationToolRepairs');
+
+    operations?.classList.toggle('active',stationToolView==='operations');
+    repairs?.classList.toggle('active',stationToolView==='repairs');
+
+    if(operations)operations.setAttribute('aria-hidden',stationToolView==='operations'?'false':'true');
+    if(repairs)repairs.setAttribute('aria-hidden',stationToolView==='repairs'?'false':'true');
+
+    for(const btn of document.querySelectorAll('[data-station-tool]')){
+      const active=btn.dataset.stationTool===stationToolView;
+      btn.classList.toggle('active',active);
+      btn.setAttribute('aria-selected',active?'true':'false');
+      btn.dataset.controlReady='1';
+    }
+  }
+
+  function renderStation(){
+    const contracts=Object.values(CONTRACTS).filter(c=>c.sector===settings.currentSector);
+    const cgrid=document.getElementById('contractGrid');
+
+    if(cgrid){
+      cgrid.innerHTML='';
+
+      for(const c of contracts){
+        const active=settings.activeContract===c.id;
+        const clears=contractCompletionCount(c.id);
+        const done=clears>0;
+
+        const el=document.createElement('div');
+        el.className='contractCard'+
+          (active?' active':'')+
+          (done?' completed':'')+
+          (c.sector!=='naraka'?' tier2':'');
+
+        el.innerHTML=
+          '<div class="ctop">'+
+            '<div><div class="ctype">'+c.type+'</div><h4>'+c.name+'</h4></div>'+
+            '<div class="contractBadge '+(done?'done':'')+'">'+
+              (active?'ACTIVE':done?'CLEARED ×'+clears:c.difficulty)+
+            '</div>'+
+          '</div>'+
+          '<p>'+c.desc+'</p>'+
+          '<div class="contractMeta">'+
+            '<span>Reward <b>'+c.reward+'</b></span>'+
+            '<span>Threat <b>'+c.difficulty+'</b></span>'+
+          '</div>'+
+          '<button class="miniBtn">'+
+            (active?'OPEN BRIEF / DEPLOY':done?'RUN AGAIN':'ACCEPT OPERATION')+
+          '</button>';
+
+        el.querySelector('button').onclick=()=>acceptContract(c.id);
+        cgrid.appendChild(el);
+      }
+    }
+
+    const available=contracts.filter(c=>settings.activeContract!==c.id).length;
+    const opSummary=document.getElementById('stationOperationSummary');
+    if(opSummary){
+      opSummary.textContent=
+        (settings.activeContract?'1 ACTIVE // ':'')+
+        available+' AVAILABLE';
+    }
+
+    const meta=sectorMeta();
+    const st=document.getElementById('stationTitle');
+    if(st)st.textContent=meta.stationName;
+
+    const ss=document.getElementById('stationSubtitle');
+    if(ss)ss.textContent=meta.stationDesc||meta.desc;
+
+    const se=document.getElementById('stationEyebrow');
+    if(se)se.textContent=meta.eyebrow;
+
+    const sn=document.getElementById('stationIdentityName');
+    if(sn)sn.textContent=meta.stationName;
+
+    const sd=document.getElementById('stationIdentityDesc');
+    if(sd)sd.textContent=meta.desc;
+
+    const su=document.getElementById('stationUndockText');
+    if(su)su.textContent='Undock // '+meta.name;
+
+    const undock=document.getElementById('btnStationUndock');
+    if(undock){
+      undock.disabled=false;
+      undock.dataset.ready='1';
+      undock.title='Launch '+currentFrame().name+' into '+meta.name;
+    }
+
+    const salvage=document.getElementById('stationSalvage');
+    if(salvage)salvage.textContent=Math.floor(settings.salvage||0);
+
+    const victories=document.getElementById('stationVictories');
+    if(victories){
+      victories.textContent=Object.values(settings.contractCompletions||{})
+        .reduce((a,b)=>a+Number(b||0),0);
+    }
+
+    const tier=document.getElementById('stationTier');
+    if(tier){
+      const t=settings.campaignTier||1;
+      tier.textContent=t>=4?'IV':t>=3?'III':t>=2?'II':'I';
+    }
+
+    renderRepairs();
+
+    const repairSummary=document.getElementById('stationRepairSummary');
+    if(repairSummary){
+      const total=fullRepairCost();
+      repairSummary.textContent=total>0
+        ?total+' SALVAGE DAMAGE'
+        :'ALL SYSTEMS READY';
+    }
+
+    renderModules();
+    updateContractHud();
+    applyStationToolView();
+    refreshForgeNav();
+    markReleaseControls();
+  }
+
+  function systemRepairCost(node){
+    if(!node||node.frameDisabled)return 0;
+    return Math.ceil((node.maxHp-node.hp)*.20);
+  }
+
+  function hullRepairCost(){
+    const shieldMissing=Math.max(0,player.maxShield-player.shield);
+    const armorMissing=Math.max(0,player.maxArmor-player.armor);
+    const hullMissing=Math.max(0,player.maxHull-player.hull);
+    return Math.ceil(shieldMissing*.025+armorMissing*.07+hullMissing*.12);
+  }
+
+  function repairSystemNode(id){
+    const n=systemNode(id);if(!n)return;
+    const cost=systemRepairCost(n);
+    if(cost<=0)return;
+    if((settings.salvage||0)<cost){
+      flashMission('INSUFFICIENT SALVAGE',n.name+' REPAIR COST // '+cost,.75);return;
+    }
+    settings.salvage-=cost;
+    n.hp=n.maxHp;n.disabled=false;
+    n.ring.material.color.setHex(n.type==='critical'?0xffc85d:0x67f2ff);
+    n.core.material.color.setHex(n.type==='critical'?0xffd171:0xa5fbff);
+    for(const idx of n.turretIndices){const t=player.turrets[idx];if(t)t.group.visible=!n.frameDisabled;}
+    saveSettings();renderSystemIntegrity(true);renderStation();
+  }
+
+  function fullRepairCost(){
+    let cost=hullRepairCost();
+    for(const n of player.systemNodes)cost+=systemRepairCost(n);
+    return cost;
+  }
+
+  function repairAll(){
+    const cost=fullRepairCost();
+    if(cost<=0)return;
+    if((settings.salvage||0)<cost){
+      flashMission('INSUFFICIENT SALVAGE','FULL RESTORATION // '+cost+' REQUIRED',.8);return;
+    }
+    settings.salvage-=cost;
+    player.shield=player.maxShield;player.armor=player.maxArmor;player.hull=player.maxHull;
+    resetSystemNodes();
+    saveSettings();renderStation();renderModules();
+    flashMission('ASTERION RESTORATION','ALL SOVEREIGN SYSTEMS NOMINAL',.8);
+  }
+
+  function renderRepairs(){
+    const grid=document.getElementById('repairGrid');
+    if(!grid)return;
+
+    const rows=[];
+
+    for(const n of player.systemNodes){
+      if(n.frameDisabled)continue;
+
+      const cost=systemRepairCost(n);
+      const condition=Math.round(nodeRatio(n)*100);
+
+      rows.push(
+        '<div class="repairRow">'+
+          '<div class="rname">'+n.name+'</div>'+
+          '<div class="rstate">'+condition+'% // '+(cost?cost+' SALVAGE':'READY')+'</div>'+
+          '<button class="miniBtn" data-repair="'+n.id+'" '+(cost<=0?'disabled':'')+'>'+
+            (cost>0?'REPAIR':'READY')+
+          '</button>'+
+          '<div class="repairCondition"><i style="width:'+condition+'%"></i></div>'+
+        '</div>'
+      );
+    }
+
+    const hcost=hullRepairCost();
+    const hullCondition=Math.round(
+      (
+        player.shield/player.maxShield+
+        player.armor/player.maxArmor+
+        player.hull/player.maxHull
+      )/3*100
+    );
+
+    rows.push(
+      '<div class="repairRow">'+
+        '<div class="rname">Shield / Armour / Hull</div>'+
+        '<div class="rstate">'+hullCondition+'% // '+(hcost?hcost+' SALVAGE':'READY')+'</div>'+
+        '<button class="miniBtn" id="btnRepairCore" '+(hcost<=0?'disabled':'')+'>'+
+          (hcost>0?'REPAIR':'READY')+
+        '</button>'+
+        '<div class="repairCondition"><i style="width:'+hullCondition+'%"></i></div>'+
+      '</div>'
+    );
+
+    grid.innerHTML=rows.join('');
+
+    grid.querySelectorAll('[data-repair]').forEach(
+      b=>b.onclick=()=>repairSystemNode(b.dataset.repair)
+    );
+
+    const core=document.getElementById('btnRepairCore');
+    if(core){
+      core.onclick=()=>{
+        const cost=hullRepairCost();
+        if(cost<=0)return;
+
+        if((settings.salvage||0)<cost){
+          flashMission(
+            'INSUFFICIENT SALVAGE',
+            'CORE RESTORATION // '+cost+' REQUIRED',
+            .8
+          );
+          return;
+        }
+
+        settings.salvage-=cost;
+        player.shield=player.maxShield;
+        player.armor=player.maxArmor;
+        player.hull=player.maxHull;
+        saveSettings();
+        renderStation();
+      };
+    }
+
+    const total=fullRepairCost();
+    const label=document.getElementById('repairAllCost');
+    if(label){
+      label.textContent=total>0
+        ?'Full restoration // '+total+' salvage'
+        :'Full restoration // ship ready';
+    }
+
+    const all=document.getElementById('btnRepairAll');
+    if(all)all.disabled=total<=0;
+  }
+
+  function dockAtStation(){
+    if(appMode!=='combat' && appMode!=='pause')return false;
+
+    const station=sectorWorld()?.station;
+    if(!station)return false;
+
+    const distance=player.group.position.distanceTo(station);
+
+    if(gameTime<dockLockUntil){
+      flashMission(
+        'DOCKING INTERLOCK',
+        'CLEARING LAUNCH CORRIDOR // '+Math.max(1,Math.ceil(dockLockUntil-gameTime))+'s',
+        .45
+      );
+      return false;
+    }
+
+    if(distance>DOCK_RANGE){
+      flashMission(
+        'DOCKING DENIED',
+        'MOVE WITHIN '+DOCK_RANGE+'U // CURRENT '+Math.round(distance)+'U',
+        .55
+      );
+      return false;
+    }
+
+    clearAmbientEvent(true);
+    resetMicroZJBattleState(true);
+    setMicroZJOverlay(false);
+    fireHeld=false;
+    player.velocity.multiplyScalar(0);
+    player.capacitor=effectiveCapMax();
+    setAppMode('station');
+    renderStation();
+    renderModules();
+    return true;
+  }
+
+  function deploymentPreflight(){
+    const f=currentFrame();
+    const loadout=currentFrameLoadout();
+    const build=currentFrameBuild();
+    const stats=computeModuleStats();
+    const fit=fittingUsage(f.id,build,loadout);
+
+    const finiteKeys=['shield','armor','hull','maxSpeed','accel','turn','capacitor','capRegen','turretDamage'];
+    const invalid=finiteKeys.filter(k=>!Number.isFinite(stats[k]));
+    if(invalid.length)throw new Error('Invalid combat stats: '+invalid.join(', '));
+    if(fit.overGrid)throw new Error('Powergrid overload: '+Math.round(fit.totalPG)+' / '+fit.capacity+' PG');
+    if(typeof updatePlayer!=='function')throw new Error('Flight controller unavailable');
+    if(typeof updateCombatCamera!=='function'||typeof updateWorld!=='function')throw new Error('Combat runtime incomplete');
+
+    player.velocity.set(0,0,0);
+    player.yawVel=player.pitchVel=player.rollVel=0;
+    player.manualCooldown=0;
+    player.capacitor=clamp(player.capacitor,0,effectiveCapMax());
+    player.group.quaternion.normalize();
+    return {frame:f,fit,stats};
+  }
+
+  function showDeploymentFault(error){
+    console.error('Deployment/runtime fault:',error);
+
+    const panel=ui.deploymentFault;
+    if(panel){
+      panel.style.display='block';
+      const span=panel.querySelector('span');
+
+      if(span){
+        span.textContent=
+          (appMode==='combat'?'FLIGHT ACTIVE // ':'')+
+          String(error?.message||error);
+      }
+
+      setTimeout(()=>{
+        if(panel)panel.style.display='none';
+      },4200);
+    }
+
+    // CRITICAL 0.25.2 RULE:
+    // Runtime recovery may NEVER change appMode or simulate docking.
+    // Flight remains active so the failing subsystem can be diagnosed
+    // without corrupting camera/state testing.
+    fireHeld=false;
+  }
+
+  function enterCombatModeFailOpen(){
+    // Minimal fail-open transition, but UI visibility is owned by the same
+    // authority used by the normal state machine.
+    appMode='combat';
+
+    try{applyUIAuthority('combat');}catch(error){
+      console.warn('UI AUTHORITY FAIL-OPEN',error);
+
+      // Last-resort direct visibility. Deployment must never be cancelled.
+      try{
+        document.body.classList.remove('menuMode');
+        document.body.classList.add('combatMode');
+        gameUI.classList.remove('shellHidden','pausedDim');
+        gameUI.style.opacity='1';
+        gameUI.style.visibility='visible';
+        if(ui20?.root){
+          ui20.root.style.setProperty('display','block','important');
+          ui20.root.style.setProperty('visibility','visible','important');
+          ui20.root.style.setProperty('opacity','1','important');
+        }
+      }catch(_){}
+    }
+
+    try{
+      shell.classList.remove('open');
+      shell.setAttribute('aria-hidden','true');
+    }catch(_){}
+
+    try{closeShellScreens();}catch(_){}
+    try{oldGameOver.style.display='none';}catch(_){}
+    try{renderUnifiedHUD();}catch(error){
+      console.warn('HUD FIRST RENDER FAIL-OPEN',error);
+    }
+    try{renderCameraStatus();}catch(_){}
+  }
+
+  function reportPostUndockFault(label,error){
+    console.warn('Post-undock subsystem fault ['+label+']:',error);
+    try{
+      const panel=ui?.deploymentFault;
+      if(panel){
+        panel.style.display='block';
+        const span=panel.querySelector('span');
+        if(span)span.textContent='FLIGHT ACTIVE // '+label+' // '+String(error?.message||error);
+        setTimeout(()=>{if(panel)panel.style.display='none';},4200);
+      }
+    }catch(_){}
+  }
+
+  function postUndockSafe(label,fn){
+    try{return fn();}
+    catch(error){
+      reportPostUndockFault(label,error);
+      return null;
+    }
+  }
+
+  let undockInProgress=false;
+
+  function undockFromStation(){
+    if(undockInProgress)return false;
+    if(appMode!=='station'){
+      console.warn('Rejected undock outside station mode:',appMode);
+      return false;
+    }
+
+    undockInProgress=true;
+    setTimeout(()=>{undockInProgress=false;},600);
+
+    // -------------------------------------------------------------
+    // FORGE 0.21.6 FAIL-OPEN UNDOCK
+    // Nothing below the CORE DEPLOY boundary is allowed to return the
+    // player to station. Optional systems may fail independently.
+    // -------------------------------------------------------------
+    if(!hullOwned(settings.selectedShip) && !sandboxHullAllowed(settings.selectedShip)){
+      const preview=currentFrame();
+      const starterId=preview.raceId+'_starter';
+
+      settings.selectedShip=hullOwned(starterId)
+        ?starterId
+        :'savanah_starter';
+
+      sandboxHullId=null;
+      currentFrameLoadout();
+      applySelectedFrame(true);
+
+      flashMission(
+        'PREVIEW CLOSED',
+        'DEPLOYING OWNED STARTER FRIGATE',
+        .55
+      );
+    }else if(sandboxHullAllowed(settings.selectedShip)){
+      flashMission(
+        'SANDBOX CAPITAL DEPLOYMENT',
+        currentFrame().name.toUpperCase()+' // NO PROGRESSION OWNERSHIP',
+        .75
+      );
+    }
+
+    let f;
+    try{
+      f=currentFrame();
+    }catch(error){
+      console.error('Frame resolution failed during undock:',error);
+      f=FRAME_CATALOG?.savanah_starter;
+    }
+
+    if(!f){
+      reportPostUndockFault('FRAME RESOLUTION',new Error('No deployable frame'));
+      return;
+    }
+
+    // CORE DEPLOY: deliberately bypass deploymentPreflight.
+    // An over-budget prototype fit must not make the game untestable.
+    const station=sectorWorld()?.station || new THREE.Vector3(0,0,0);
+
+    // Spawn well outside docking range, collision envelope and prompt radius.
+    const clearance=Math.max(
+      DOCK_RANGE+90,
+      145+(Number(f.radius)||8)*1.8
+    );
+
+    player.group.position.copy(station).add(
+      new THREE.Vector3(-clearance,18,-54)
+    );
+
+    dockLockUntil=gameTime+UNDOCK_DOCK_IMMUNITY;
+    dockKeyArmed=false;
+    player.velocity.set(0,0,0);
+    player.yawVel=0;
+    player.pitchVel=0;
+    player.rollVel=0;
+    player.group.quaternion.identity();
+    player.group.visible=true;
+    player.destroyed=false;
+    gameOver=false;
+    fireHeld=false;
+    selected=null;
+    encounterActive=false;
+    encounterComplete=false;
+    resetMicroZJBattleState(true);
+    setMicroZJOverlay(false);
+
+    // Switch the shell FIRST. From this point onward the player is flying.
+    enterCombatModeFailOpen();
+
+    // CAMERA CORE. Even if the rebuilt camera throws, install a simple
+    // emergency camera directly rather than cancelling deployment.
+    try{
+      resetCombatCamera(true);
+      updateCombatCamera(0);
+    }catch(error){
+      reportPostUndockFault('CAMERA',error);
+      const dist=Number(f.cameraDist)||70;
+      const height=Number(f.cameraHeight)||24;
+      camera.position.copy(player.group.position).add(
+        new THREE.Vector3(0,height,dist)
+      );
+      camera.up.set(0,1,0);
+      camera.lookAt(player.group.position);
+    }
+
+    // Everything after this point is optional / independently guarded.
+    currentContract=postUndockSafe('CONTRACT',()=>activeContract());
+
+    postUndockSafe('SECTOR PRESENTATION',()=>applySectorPresentation());
+    postUndockSafe('LIVING TRAFFIC RESET',()=>{
+      livingTrafficSector=null;
+      livingTrafficCooldown=0;
+    });
+
+    postUndockSafe('CAPACITOR',()=>{
+      player.capacitor=effectiveCapMax();
+    });
+
+    postUndockSafe('OBJECTIVE',()=>{
+      const target=currentContract
+        ?contractTargetPosition(currentContract)
+        :station;
+      setWorldObjective(
+        currentContract
+          ?'CONTRACT // '+currentContract.name
+          :'EXPLORE '+sectorMeta().name,
+        target
+      );
+    });
+
+    postUndockSafe('HUD',()=>renderUnifiedHUD());
+
+    postUndockSafe('UNDOCK MESSAGE',()=>{
+      const race=String(f.raceName||'SOVEREIGN').toUpperCase();
+      const cls=String(f.className||f.classId||'SHIP').toUpperCase();
+      flashMission(
+        sectorMeta().stationName+' // UNDOCKED',
+        race+' '+cls+' // '+(currentContract?currentContract.name:'FREE FLIGHT'),
+        1.1
+      );
+    });
+
+    // Docking is now explicit/manual only. A stale H key cannot immediately
+    // re-enter the station because dockKeyArmed remains false until keyup.
+    console.log('UNDOCK DOCK INTERLOCK', {
+      immunityUntil:dockLockUntil,
+      dockRange:DOCK_RANGE,
+      launchDistance:player.group.position.distanceTo(station)
+    });
+
+    console.log('UNDOCK CORE COMPLETE', {
+      sector:settings.currentSector,
+      frame:f.id,
+      position:player.group.position.toArray(),
+      mode:appMode
+    });
+
+    return true;
+  }
+
+  function updateContractHud(){
+    const hud=document.getElementById('contractHud');
+    if(!hud)return;
+
+    hud.style.display=(appMode==='combat'||appMode==='pause')?'block':'none';
+
+    const name=document.getElementById('contractHudName');
+    const state=document.getElementById('contractHudState');
+
+    if(microZJBattle.active){
+      const zone=currentMicroZone();
+      if(!zone)return;
+
+      const alive=enemies.filter(
+        e=>!e.dead&&e.microZoneId===zone.id
+      ).length;
+
+      if(name)name.textContent='MICRO ZJ // '+zone.name;
+
+      if(state){
+        state.textContent=microZJBattle.complete
+          ?'CLEARED // PRESS M TO SELECT NEXT BATTLE POCKET'
+          :'AUTHORED WAR ROUTE // '+zone.threat+' // '+zone.estimated;
+      }
+
+      if(ui.waveProgress){
+        ui.waveProgress.textContent=microZJBattle.complete
+          ?'WAR POCKET COMPLETE // +'+zone.reward+' SALVAGE'
+          :'WAVE '+Math.max(1,microZJBattle.waveIndex)+' / '+
+           zone.waves.length+' · '+alive+' HOSTILES';
+      }
+      return;
+    }
+
+    const c=activeContract();
+
+    if(!c){
+      if(name)name.textContent='NO CONTRACT';
+      if(state)state.textContent='Dock at '+sectorMeta().stationName+' to accept an operation.';
+      if(ui.waveProgress)ui.waveProgress.textContent='NO ACTIVE ENGAGEMENT';
+      return;
+    }
+
+    if(name)name.textContent=c.name;
+
+    if(state){
+      state.textContent=
+        encounterComplete
+          ?'COMPLETE // RETURN TO '+sectorMeta().stationName.toUpperCase()
+          :encounterActive
+            ?'ENGAGED // HOSTILES ACTIVE'
+            :'NAVIGATE // '+c.target.toUpperCase();
+    }
+
+    if(ui.waveProgress){
+      if(encounterComplete){
+        ui.waveProgress.textContent='OPERATION COMPLETE';
+      }else if(encounterActive){
+        const total=c.waves.length+(c.boss?1:0);
+        const stage=Math.min(total,contractWaveIndex+(bossSpawned?1:0));
+        const threat=enemyFleetThreat();
+
+        ui.waveProgress.textContent=
+          'STAGE '+Math.max(1,stage)+' / '+total+
+          ' · '+threat.count+' HOSTILES'+
+          (threat.capitals?' · '+threat.capitals+' CAPITAL':'');
+      }else{
+        ui.waveProgress.textContent=
+          'AWAITING CONTACT · '+c.waves.length+' FLEET WAVES'+
+          (c.boss?' + FLAGSHIP':'');
+      }
+    }
+  }
+
+  function completeContract(){
+    const c=activeContract();if(!c)return;
+    encounterComplete=true;encounterActive=false;
+    settings.salvage=(settings.salvage||0)+c.reward;
+    settings.contractCompletions[c.id]=contractCompletionCount(c.id)+1;
+    settings.victories=(settings.victories||0)+1;
+    if(c.id==='leviathan_hunt' && contractCompletionCount(c.id)>=1){
+      settings.gateUnlocked=true;
+      settings.campaignTier=Math.max(2,settings.campaignTier||1);
+    }
+    if(c.id==='bone_ring_siege' && contractCompletionCount(c.id)>=1){
+      settings.campaignTier=Math.max(3,settings.campaignTier||1);
+    }
+    if(c.id==='aion_crown_breaker' && contractCompletionCount(c.id)>=1){
+      settings.campaignTier=Math.max(4,settings.campaignTier||1);
+    }
+    saveSettings();
+    renderStation();renderModules();
+    flashMission('CONTRACT COMPLETE',c.name+' // +'+c.reward+' SALVAGE',2.5);
+    if(!victoryQueued){
+      victoryQueued=true;
+      setTimeout(()=>showVictory(),2200);
+    }
+  }
+
+  function startContractEncounter(){
+    const c=activeContract();if(!c || encounterActive || encounterComplete)return;
+    clearAmbientEvent(true);
+    encounterActive=true;currentContract=c;contractWaveIndex=0;contractWaveSpawned=false;stageTimer=0;bossSpawned=false;victoryQueued=false;
+    setWorldObjective('CONTRACT ENGAGED // '+c.name,contractTargetPosition(c));
+    flashMission('CONTACT','CONTRACT HOSTILES RESOLVING',1.2);
+    synthBoom(.07);
+  }
+
+  function interactWorld(){
+    if(nearGate && nearPortal){
+      if(!nearPortal.unlocked){
+        flashMission('PORTAL LOCKED',nearPortal.lockedMessage||'TRANSIT CONDITION NOT MET',1.0);
+        return;
+      }
+      jumpSector(nearPortal.targetSector,nearPortal.linkId);
+      return;
+    }
+
+    const c=activeContract();
+    if(nearInteractionTarget && c?.interaction && !encounterActive && !encounterComplete){
+      if(c.id==='derelict_recovery'){
+        settings.derelictRecovered=true;
+        flashMission('SOVEREIGN CORE EXTRACTED','SCAVENGER SIGNATURES INBOUND',1.5);
+      }else if(c.id==='mirror_extraction'){
+        settings.mirrorRecovered=true;
+        flashMission('PHASE LATTICE EXTRACTED','EREBOS HUNTERS CONVERGING',1.5);
+      }
+      saveSettings();
+      startContractEncounter();
+      return;
+    }
+
+    if(nearWorldInteractable){
+      activateWorldInteractable(nearWorldInteractable);
+      return;
+    }
+  }
+
+  // ============================================================
+  // FORGE 0.17 — LIVING ZONE ECOLOGY
+  // ============================================================
+  const ZONE_ECOLOGY={
+    naraka:{
+      races:['ferric','mycelium','ossuary','abyssal'],
+      patrol:['fighter','frigate','destroyer'],
+      elite:['cruiser','battleship'],
+      interval:[20,34],
+      danger:1.0
+    },
+    erebos:{
+      races:['vanta','abyssal','prism','ossuary'],
+      patrol:['frigate','destroyer','cruiser'],
+      elite:['battleship','dreadnought'],
+      interval:[17,29],
+      danger:1.25
+    },
+    aion:{
+      races:['seraphim','prism','vanta','abyssal'],
+      patrol:['destroyer','cruiser','battleship'],
+      elite:['battleship','dreadnought'],
+      interval:[15,26],
+      danger:1.45
+    },
+    chaos:{
+      races:['abyssal','prism','seraphim','vanta'],
+      patrol:['fighter','frigate','destroyer'],
+      elite:['cruiser','battleship'],
+      interval:[10,18],
+      danger:1.08
+    }
+  };
+
+  let ambientEvent=null;
+  let ambientEventCooldown=16;
+  let ambientEventCounter=1;
+
+  function zoneEcology(){
+    return ZONE_ECOLOGY[settings.currentSector]||ZONE_ECOLOGY.naraka;
+  }
+
+  function randomZoneEventPosition(minD=165,maxD=270){
+    const station=sectorWorld().station;
+    for(let attempt=0;attempt<12;attempt++){
+      const a=Math.random()*Math.PI*2;
+      const d=rand(minD,maxD);
+      const p=player.group.position.clone().add(new THREE.Vector3(
+        Math.cos(a)*d,
+        rand(-55,55),
+        Math.sin(a)*d
+      ));
+      p.x=clamp(p.x,-425,425);
+      p.y=clamp(p.y,-110,110);
+      p.z=clamp(p.z,-425,425);
+      if(p.distanceTo(station)>145)return p;
+    }
+    return player.group.position.clone().add(new THREE.Vector3(180,25,-190));
+  }
+
+  function createAmbientSignal(pos,color=0x78efff,scale=1){
+    const g=new THREE.Group();g.position.copy(pos);scene.add(g);
+    const mat=new THREE.MeshBasicMaterial({color,transparent:true,opacity:.55,toneMapped:false});
+    for(let i=0;i<3;i++){
+      const r=addMesh(
+        new THREE.TorusGeometry((5+i*2.5)*scale,.12*scale,8,36),
+        mat,[0,0,0],[Math.PI/2,i*.25,0],[1,1,1],g
+      );
+      r.userData.spin=(i%2?-.8:.65)*(1/(i+1));
+    }
+    addMesh(
+      new THREE.SphereGeometry(.65*scale,8,6),
+      mat,[0,0,0],[0,0,0],[1,1,1],g
+    );
+    return g;
+  }
+
+  function removeAmbientEnemy(e){
+    if(!e)return;
+    if(e.group?.parent)scene.remove(e.group);
+    disposeGeneratedTree(e.group);
+    const i=enemies.indexOf(e);
+    if(i>=0)enemies.splice(i,1);
+    if(e.worldActor && e.alignment==='hostile'){
+      settings.zoneEventStats=settings.zoneEventStats||{patrols:0,salvage:0,distress:0,elite:0};
+      settings.zoneEventStats.patrols=(settings.zoneEventStats.patrols||0)+1;
+      saveSettings();
+    }
+    if(selected===e)selected=null;
+  }
+
+  function clearAmbientEvent(removeOwned=true){
+    if(!ambientEvent)return;
+    if(removeOwned){
+      for(const e of [...enemies]){
+        if(e.ambientEventId===ambientEvent.id)removeAmbientEnemy(e);
+      }
+      for(let i=salvageItems.length-1;i>=0;i--){
+        const s=salvageItems[i];
+        if(s.eventId!==ambientEvent.id)continue;
+        if(s.group.parent)s.group.parent.remove(s.group);
+        disposeGeneratedTree(s.group);
+        salvageItems.splice(i,1);
+      }
+    }
+    if(ambientEvent.signal){
+      if(ambientEvent.signal.parent)ambientEvent.signal.parent.remove(ambientEvent.signal);
+      disposeGeneratedTree(ambientEvent.signal);
+    }
+    ambientEvent=null;
+    if(ui.zoneActivityHud){
+      ui.zoneActivityHud.className='';
+      ui.zoneActivityHud.innerHTML='<b>ZONE ACTIVITY</b> // QUIET SPACE';
+    }
+  }
+
+  function ambientFleetSpec(kind,ecology){
+    const deeper=settings.currentSector==='aion'?2:settings.currentSector==='erebos'?1:0;
+    if(settings.currentSector==='chaos'){
+      if(kind==='elite')return {destroyer:2,cruiser:1};
+      if(kind==='distress')return {fighter:4,frigate:2};
+      return {fighter:5,frigate:2};
+    }
+    if(kind==='elite'){
+      return deeper>=2
+        ?{battleship:2,dreadnought:1}
+        :deeper===1
+          ?{cruiser:2,battleship:1}
+          :{destroyer:2,cruiser:1};
+    }
+    if(kind==='distress'){
+      return deeper>=2
+        ?{destroyer:2,cruiser:1}
+        :deeper===1
+          ?{frigate:2,destroyer:2}
+          :{fighter:3,frigate:2};
+    }
+    return deeper>=2
+      ?{destroyer:2,cruiser:2}
+      :deeper===1
+        ?{frigate:3,destroyer:2}
+        :{fighter:4,frigate:2};
+  }
+
+  function spawnAmbientEnemies(event,spec){
+    const ecology=zoneEcology();
+    let idx=0;
+    for(const [cls,count] of Object.entries(spec)){
+      for(let i=0;i<count;i++){
+        const a=(idx/Math.max(4,Object.values(spec).reduce((x,y)=>x+y,0)))*Math.PI*2;
+        const p=event.pos.clone().add(new THREE.Vector3(
+          Math.cos(a)*rand(28,58),
+          rand(-18,18),
+          Math.sin(a)*rand(28,58)
+        ));
+        const race=ecology.races[(idx+i+Math.floor(gameTime))%ecology.races.length];
+        const e=createEnemy(cls,p,race,idx);
+        e.ambientEventId=event.id;
+        e.ambient=true;
+        idx++;
+      }
+    }
+  }
+
+  function spawnAmbientSalvage(event,count,value,rarity='common'){
+    for(let i=0;i<count;i++){
+      const s=spawnSalvage(
+        event.pos.clone().add(new THREE.Vector3(rand(-18,18),rand(-9,9),rand(-18,18))),
+        value,rarity
+      );
+      if(s)s.eventId=event.id;
+    }
+  }
+
+  function chooseAmbientKind(){
+    const roll=Math.random();
+    if(settings.currentSector==='chaos'){
+      if(roll<.30)return 'patrol';
+      if(roll<.62)return 'salvage';
+      if(roll<.90)return 'distress';
+      return 'elite';
+    }
+    if(settings.currentSector==='aion'){
+      if(roll<.38)return 'patrol';
+      if(roll<.62)return 'salvage';
+      if(roll<.86)return 'distress';
+      return 'elite';
+    }
+    if(roll<.45)return 'patrol';
+    if(roll<.72)return 'salvage';
+    if(roll<.93)return 'distress';
+    return 'elite';
+  }
+
+  function spawnAmbientEvent(){
+    if(ambientEvent || encounterActive || activeContract() || enemies.some(e=>!e.dead&&!e.worldActor))return false;
+    const w=sectorWorld();
+    if(player.group.position.distanceTo(w.station)<125)return false;
+
+    const ecology=zoneEcology();
+    const kind=chooseAmbientKind();
+    const pos=randomZoneEventPosition();
+    const id='zoneevt_'+(ambientEventCounter++);
+    const colors={
+      patrol:0xff866e,
+      salvage:0xffd36f,
+      distress:0x74efff,
+      elite:0xc56fff
+    };
+    const labels={
+      patrol:'ROAMING HOSTILE PATROL',
+      salvage:'UNCLAIMED SALVAGE SIGNATURE',
+      distress:'DISTRESS SIGNAL // HOSTILES DETECTED',
+      elite:'ELITE CAPITAL SIGNATURE'
+    };
+
+    ambientEvent={
+      id,kind,pos,age:0,completed:false,
+      signal:createAmbientSignal(pos,colors[kind],kind==='elite'?1.35:1),
+      label:labels[kind],
+      sector:settings.currentSector
+    };
+
+    if(kind==='salvage'){
+      const count=settings.currentSector==='aion'?5:settings.currentSector==='erebos'?4:settings.currentSector==='chaos'?5:3;
+      const value=settings.currentSector==='aion'?34:settings.currentSector==='erebos'?25:settings.currentSector==='chaos'?22:18;
+      spawnAmbientSalvage(ambientEvent,count,value,settings.currentSector==='aion'||settings.currentSector==='chaos'?'rare':'common');
+    }else{
+      if(kind==='distress'){
+        spawnAmbientSalvage(
+          ambientEvent,
+          settings.currentSector==='aion'?3:settings.currentSector==='chaos'?3:2,
+          settings.currentSector==='aion'?30:settings.currentSector==='chaos'?24:20,
+          'rare'
+        );
+      }
+      spawnAmbientEnemies(ambientEvent,ambientFleetSpec(kind,ecology));
+    }
+
+    if(ui.zoneActivityHud){
+      ui.zoneActivityHud.className=kind==='elite'?'rare':kind==='salvage'?'rare':'hot';
+      ui.zoneActivityHud.innerHTML='<b>'+labels[kind]+'</b> // '+Math.round(player.group.position.distanceTo(pos))+'U';
+    }
+
+    setWorldObjective(labels[kind],pos);
+    flashMission('ZONE SIGNATURE',labels[kind],1.1);
+    synthShot(kind==='elite'?110:kind==='salvage'?410:180,.08,.025,'sine');
+    return true;
+  }
+
+  function completeAmbientEvent(){
+    if(!ambientEvent||ambientEvent.completed)return;
+    ambientEvent.completed=true;
+
+    const kind=ambientEvent.kind;
+    const bonus=kind==='elite'?85:kind==='distress'?38:kind==='patrol'?22:12;
+    settings.salvage=(settings.salvage||0)+bonus;
+    const statKey=kind==='patrol'?'patrols':kind==='salvage'?'salvage':kind==='distress'?'distress':'elite';
+    settings.zoneEventStats[statKey]=(settings.zoneEventStats[statKey]||0)+1;
+    saveSettings();
+
+    flashMission('ZONE EVENT CLEARED',ambientEvent.label+' // +'+bonus+' BONUS',1.25);
+
+    if(ambientEvent.signal){
+      if(ambientEvent.signal.parent)ambientEvent.signal.parent.remove(ambientEvent.signal);
+      disposeGeneratedTree(ambientEvent.signal);
+      ambientEvent.signal=null;
+    }
+
+    ambientEventCooldown=rand(zoneEcology().interval[0],zoneEcology().interval[1]);
+    const old=ambientEvent;
+    setTimeout(()=>{
+      if(ambientEvent===old)ambientEvent=null;
+    },1400);
+  }
+
+  function updateAmbientWorld(dt){
+    if(appMode!=='combat')return;
+
+    // Contracts and authored Micro ZJ pockets own the combat sandbox.
+    if(microZJBattle.active||activeContract()||encounterActive){
+      if(ambientEvent)clearAmbientEvent(true);
+      return;
+    }
+
+    if(ambientEvent){
+      ambientEvent.age+=dt;
+
+      if(ambientEvent.signal){
+        for(const child of ambientEvent.signal.children){
+          if(child.userData?.spin)child.rotation.z+=child.userData.spin*dt;
+        }
+      }
+
+      const d=player.group.position.distanceTo(ambientEvent.pos);
+      if(ui.zoneActivityHud){
+        ui.zoneActivityHud.innerHTML='<b>'+ambientEvent.label+'</b> // '+Math.round(d)+'U';
+      }
+
+      const ownedEnemies=enemies.filter(e=>!e.dead&&e.ambientEventId===ambientEvent.id);
+      const ownedSalvage=salvageItems.filter(s=>s.eventId===ambientEvent.id);
+
+      if(
+        (ambientEvent.kind==='salvage' && ownedSalvage.length===0) ||
+        (ambientEvent.kind!=='salvage' && ownedEnemies.length===0)
+      ){
+        completeAmbientEvent();
+      }else if(d>620 || ambientEvent.age>150){
+        flashMission('ZONE SIGNATURE LOST',ambientEvent.label,.65);
+        clearAmbientEvent(true);
+        ambientEventCooldown=rand(12,22);
+      }
+      return;
+    }
+
+    ambientEventCooldown-=dt;
+    if(ui.zoneActivityHud){
+      ui.zoneActivityHud.className='';
+      ui.zoneActivityHud.innerHTML='<b>ZONE ACTIVITY</b> // '+(ambientEventCooldown<=4?'SIGNATURE RESOLVING':'SCANNING');
+    }
+
+    if(ambientEventCooldown<=0){
+      if(!spawnAmbientEvent())ambientEventCooldown=4;
+    }
+  }
+
+  function updateWorld(dt){
+    if(settings.currentSector==='naraka'){
+      for(const child of stationGroup.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of gateGroup.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of breachGroup.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of riftGroup.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of narakaTeleportStation.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+    }else if(settings.currentSector==='erebos'){
+      for(const child of heliosGroup.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of erebosGateGroup.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of cathedralGroup.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of mirrorGroup.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of whiteSingularity.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+    }else if(settings.currentSector==='chaos'){
+      for(const child of chaosTeleporter.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of chaosReturn.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of chaosSky.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of chaosSpiral.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+      for(const child of chaosRoulette.children)if(child.userData.spin)child.rotation.z+=child.userData.spin*dt;
+    }
+
+    updateWorldAssetAnimations(dt);
+    updateLivingTraffic(dt);
+    updateAmbientWorld(dt);
+    resolveWorldCollisions();
+    updateSalvage(dt);
+    updateWorldLabels();
+
+    const w=sectorWorld();
+    const meta=sectorMeta();
+    const stationD=player.group.position.distanceTo(w.station);
+    nearStation=stationD<DOCK_RANGE;
+
+    const dock=document.getElementById('dockHint');
+    if(dock){
+      const dockReady=nearStation && gameTime>=dockLockUntil;
+      dock.style.display=nearStation?'block':'none';
+      dock.textContent=dockReady
+        ?'H // DOCK WITH '+meta.stationName
+        :'LAUNCH CORRIDOR // DOCKING INTERLOCK';
+    }
+
+    nearPortal=nearestPortalEndpoint();
+    nearGate=!!nearPortal;
+
+    const c=activeContract();
+    const cTarget=c?contractTargetPosition(c):null;
+    nearInteractionTarget=!!(
+      !microZJBattle.active &&
+      c?.interaction &&
+      cTarget &&
+      player.group.position.distanceTo(cTarget)<72
+    );
+    nearWorldInteractable=nearestWorldInteractable();
+
+    if(ui.worldAssetHud){
+      if(nearWorldInteractable){
+        ui.worldAssetHud.style.display='block';
+        ui.worldAssetHud.classList.toggle('hot',(nearWorldInteractable.ambush||0)>0);
+        const span=ui.worldAssetHud.querySelector('span');
+        const recovered=nearWorldInteractable.once&&settings.worldRecoveries[nearWorldInteractable.id];
+        if(span)span.textContent=(recovered?'RECOVERED // ':nearWorldInteractable.kind.toUpperCase()+' // ')+nearWorldInteractable.name;
+      }else{
+        ui.worldAssetHud.style.display='none';
+        ui.worldAssetHud.classList.remove('hot');
+      }
+    }
+
+    const interact=document.getElementById('interactHint');
+    if(interact){
+      if(nearGate && nearPortal){
+        interact.style.display='block';
+        interact.textContent=nearPortal.unlocked
+          ?('G // '+((nearPortal.name||'').includes('TELEPORT')||(nearPortal.name||'').includes('SPINDLE')?'TELEPORT':'TRANSIT')+' '+nearPortal.name+' TO '+nearPortal.targetName)
+          :('PORTAL LOCKED // '+nearPortal.lockedMessage);
+      }else if(nearInteractionTarget && c?.interaction && !encounterActive&&!encounterComplete){
+        interact.style.display='block';
+        interact.textContent=c.interactionPrompt||(c.id==='derelict_recovery'?'G // EXTRACT SOVEREIGN CORE FROM DERELICT':'G // INTERACT WITH CONTRACT OBJECTIVE');
+      }else if(nearWorldInteractable){
+        interact.style.display='block';
+        interact.textContent=nearWorldInteractable.prompt||('G // INTERACT WITH '+nearWorldInteractable.name);
+      }else{
+        interact.style.display='none';
+      }
+    }
+
+    const gateHud=document.getElementById('gateStatus');
+    if(gateHud){
+      const links=PORTAL_LINKS.map(link=>portalEndpoint(link)).filter(Boolean);
+      if(links.length){
+        gateHud.style.display='block';
+        const open=links.filter((ep,i)=>PORTAL_LINKS.filter(l=>portalEndpoint(l))[i]?.unlocked?.()).length;
+        gateHud.textContent='PORTAL NETWORK // '+links.length+' LOCAL LINK'+(links.length===1?'':'S')+' // '+(open||links.length)+' ROUTE'+((open||links.length)===1?'':'S');
+      }else gateHud.style.display='none';
+    }
+
+    if(microZJBattle.active){
+      const zone=currentMicroZone();
+      if(zone){
+        const nextWaveNumber=microZJBattle.waveActive
+          ?Math.max(1,microZJBattle.waveIndex)
+          :Math.min(zone.waves.length,Math.max(1,microZJBattle.waveIndex+1));
+        const routeTarget=microZoneRouteNode(zone,nextWaveNumber);
+        const site=microZoneSiteName(zone,nextWaveNumber);
+
+        setWorldObjective(
+          microZJBattle.complete
+            ?zone.name+' // CLEARED // M FOR MICRO ZJ'
+            :zone.requiresAdvance&&microZJBattle.awaitingAdvance
+              ?zone.name+' // TRANSIT TO '+site
+              :'MICRO WORLD '+zone.index+' // '+zone.name+' // '+site,
+          microZJBattle.complete?zone.anchor:routeTarget
+        );
+      }
+    }else if(c){
+      const target=contractTargetPosition(c);
+      if(!encounterActive&&!encounterComplete){
+        setWorldObjective('CONTRACT // '+c.name,target);
+        const d=player.group.position.distanceTo(target);
+        if(!c.interaction && d<125)startContractEncounter();
+      }else if(encounterActive){
+        setWorldObjective('ENGAGED // '+c.name,target);
+      }else{
+        setWorldObjective('CONTRACT COMPLETE // RETURN TO '+meta.stationName,w.station);
+      }
+    }else if(ambientEvent && !ambientEvent.completed){
+      setWorldObjective(ambientEvent.label,ambientEvent.pos);
+    }else{
+      setWorldObjective('EXPLORE '+meta.name+' // '+meta.stationName,w.station);
+    }
+
+    const dEl=document.getElementById('worldDistance');
+    if(dEl)dEl.textContent=worldObjectiveTarget?'DISTANCE // '+Math.round(player.group.position.distanceTo(worldObjectiveTarget))+'U':'DISTANCE // —';
+    const wh=document.getElementById('worldHud');if(wh)wh.style.display='block';
+    const rh=document.getElementById('resourceHud');if(rh)rh.style.display='block';
+    const sc=document.getElementById('salvageCount');if(sc)sc.textContent=Math.floor(settings.salvage||0);
+    const sectorEl=document.getElementById('sectorHudName');if(sectorEl)sectorEl.textContent='SECTOR // '+meta.name;
+    updateContractHud();
+  }
+
+  function resumeSectorAfterVictory(){
+    encounterComplete=true;encounterActive=false;setAppMode('combat');
+    setWorldObjective('CONTRACT COMPLETE // RETURN TO '+sectorMeta().stationName,currentStationPosition());
+    flashMission('OPERATION COMPLETE','SALVAGE THE FIELD OR RETURN TO '+sectorMeta().stationName,1.8);
+  }
+
+  // ============================================================
+  // ENEMIES
+  // ============================================================
+  const enemies=[];
+  let enemyId=1;
+
+
+
+  function enemyWeaponFor(raceId,classId){
+    const d=ENEMY_RACE_DOCTRINES[raceId]||ENEMY_RACE_DOCTRINES.blackhole;
+    const heavy=['battleship','dreadnought','titan'].includes(classId);
+    const maxTier=(classId==='fighter'||classId==='frigate')?1:(classId==='destroyer'||classId==='cruiser')?2:classId==='battleship'?3:4;
+    let w=TURRET_CATALOG[heavy?d.alt:d.weapon]||TURRET_CATALOG[d.weapon]||TURRET_CATALOG.autocannon;
+    if((w.tier||1)>maxTier)w=TURRET_CATALOG[d.weapon]||TURRET_CATALOG.autocannon;
+    if((w.tier||1)>maxTier)w=TURRET_CATALOG.autocannon;
+    return w;
+  }
+
+  function enemyFleetThreat(){
+    const alive=enemies.filter(e=>!e.dead&&(!e.worldActor||e.alignment==='hostile')),weights={fighter:1,frigate:2,destroyer:4,cruiser:7,battleship:13,dreadnought:22,titan:40};
+    let score=0,capitals=0;
+    for(const e of alive){score+=weights[e.classId]||2;if(['dreadnought','titan'].includes(e.classId))capitals++;}
+    return {count:alive.length,score,capitals};
+  }
+
+  const enemyMats={
+    organic:new THREE.MeshStandardMaterial({color:0x381a26,metalness:.65,roughness:.40,emissive:0x120309,emissiveIntensity:.3}),
+    dark:new THREE.MeshStandardMaterial({color:0x0c0b11,metalness:.78,roughness:.38}),
+    bone:new THREE.MeshStandardMaterial({color:0x675945,metalness:.45,roughness:.42}),
+    glow:new THREE.MeshBasicMaterial({color:0xff4f73,transparent:true,opacity:.95,toneMapped:false}),
+    purple:new THREE.MeshBasicMaterial({color:0xb65cff,transparent:true,opacity:.95,toneMapped:false})
+  };
+
+  function createEnemy(type='fighter',position=new THREE.Vector3(),raceId='blackhole',formationIndex=0,options={}){
+    const classId=type==='interceptor'?'fighter':type==='boss'?'titan':type;
+    const base=ENEMY_CLASS_CATALOG[classId]||ENEMY_CLASS_CATALOG.fighter;
+    const doctrine=ENEMY_RACE_DOCTRINES[raceId]||ENEMY_RACE_DOCTRINES.blackhole;
+    const race=RACE_CATALOG[raceId]||RACE_CATALOG.blackhole;
+    const weapon=enemyWeaponFor(raceId,classId);
+    const requestedPower=Number(options.powerMult);
+    const contractPower=Number.isFinite(requestedPower)
+      ?requestedPower
+      :options.worldActor
+        ?1
+        :((currentContract||activeContract())?.enemyMult||1);
+
+    const g=new THREE.Group();scene.add(g);g.position.copy(position);
+    const model=new THREE.Group();g.add(model);
+    const accent=new THREE.MeshBasicMaterial({color:doctrine.accent,transparent:true,opacity:.92,toneMapped:false});
+    const hullMat=(raceId==='ferric'||raceId==='ossuary')?enemyMats.bone:raceId==='mycelium'?enemyMats.organic:enemyMats.dark;
+
+    const cfg={
+      name:(classId==='titan'&&raceId==='abyssal')?'NOCTURNAL LEVIATHAN':race.name+' '+base.name,
+      class:race.name.toUpperCase()+' // '+base.name.toUpperCase()+' // '+base.role,
+      scale:base.scale,
+      maxShield:Math.round(base.shield*doctrine.shield*contractPower),
+      maxArmor:Math.round(base.armor*doctrine.armor*contractPower),
+      maxHull:Math.round(base.hull*doctrine.hull*contractPower),
+      speed:base.speed*doctrine.speed*Math.min(1.16,.94+.06*contractPower),
+      range:Math.min(390,Math.max(base.range,weapon.optimal+weapon.falloff*.72)*doctrine.range),
+      damage:base.damage*doctrine.damage*(.84+.16*contractPower),
+      fireRate:base.fireRate,score:Math.round(base.salvage*.25),role:base.role
+    };
+
+    if(classId==='fighter'){
+      wedge(10,5,2.3,hullMat,[0,0,0],model,.05,.95,.2);
+      for(const side of [-1,1])wedge(5.5,1.3,3.3,accent,[side*3,1,1],model,.08,.78,.55).rotation.z=side*.25;
+      cyl(.45,.65,2.2,12,accent,[0,0,4.5],[Math.PI/2,0,0],model);
+    }else if(classId==='frigate'){
+      wedge(18,7,3.5,hullMat,[0,0,0],model,.08,.95,.3);
+      wedge(13,14,1.4,enemyMats.dark,[0,.3,1],model,.18,.72,.2);
+      for(const side of [-1,1])wedge(9,2,4.5,accent,[side*4,2,1],model,.12,.8,.8).rotation.z=side*.2;
+      cyl(.7,1.0,3,16,accent,[0,0,8],[Math.PI/2,0,0],model);
+    }else if(classId==='destroyer'){
+      wedge(28,10,4.8,hullMat,[0,0,0],model,.06,.97,.4);
+      wedge(20,20,1.8,enemyMats.dark,[0,.4,2],model,.15,.74,.3);
+      for(const side of [-1,1]){wedge(13,2.3,6.5,accent,[side*6.2,2,2],model,.08,.82,1).rotation.z=side*.22;cyl(.35,.45,6,10,accent,[side*3.5,2,-10],[Math.PI/2,0,0],model);}
+      cyl(.9,1.2,3.8,18,accent,[0,0,12],[Math.PI/2,0,0],model);
+    }else if(classId==='cruiser'){
+      wedge(38,14,6.2,hullMat,[0,0,0],model,.07,.98,.5);
+      wedge(29,28,2.2,enemyMats.dark,[0,.5,2],model,.18,.76,.4);
+      for(const side of [-1,1])for(let i=0;i<3;i++){const fin=wedge(15,2.5,7.5,accent,[side*(7.5+i*3.5),2,3+i*3],model,.07,.84,1.1);fin.rotation.z=side*(.18+i*.05);}
+      cyl(1.1,1.5,4.6,20,accent,[0,0,17],[Math.PI/2,0,0],model);
+    }else if(classId==='battleship'){
+      wedge(52,18,8,hullMat,[0,0,0],model,.055,.98,.62);
+      wedge(40,35,3,enemyMats.dark,[0,1,3],model,.14,.76,.48);
+      for(const side of [-1,1])for(let i=0;i<4;i++)wedge(19,3.1,9.5+i,accent,[side*(9+i*4.2),3,1+i*6],model,.06,.82,1.3).rotation.z=side*(.13+i*.035);
+      box(2,2.1,42,accent,[0,8,-3],[0,0,0],model);cyl(1.5,2,6,20,accent,[0,0,24],[Math.PI/2,0,0],model);
+    }else if(classId==='dreadnought'){
+      wedge(68,23,10,hullMat,[0,0,0],model,.045,.99,.74);
+      for(const side of [-1,1]){box(10,8,44,enemyMats.dark,[side*15,1,8],[0,0,side*.03],model);for(let i=0;i<5;i++)wedge(22,3.2,10+i*1.7,accent,[side*(10+i*4.2),5,3+i*7],model,.04,.84,1.4).rotation.z=side*(.12+i*.03);}
+      box(2.2,3,74,accent,[0,11,-6],[0,0,0],model);addMesh(new THREE.TorusGeometry(6.2,.28,12,56),accent,[0,9,24],[Math.PI/2,0,0],[1,1,1],model);
+    }else{
+      wedge(84,24,11,hullMat,[0,0,0],model,.04,.98,.8);wedge(64,47,4,enemyMats.dark,[0,.8,5],model,.11,.74,.6);
+      for(const side of [-1,1])for(let i=0;i<6;i++){const fin=wedge(28,3.4,13+i*1.8,accent,[side*(13+i*5.2),4,8+i*5],model,.04,.82,1.7);fin.rotation.z=side*(.14+i*.035);}
+      addMesh(new THREE.SphereGeometry(3.2,24,14),new THREE.MeshBasicMaterial({color:0x000000}),[0,7,-6],[0,0,0],[1,1,1],model);
+      addMesh(new THREE.TorusGeometry(5,.34,14,64),accent,[0,7,-6],[Math.PI/2,0,0],[1,1,1],model);
+      cyl(2.2,3.4,8,22,accent,[0,0,38],[Math.PI/2,0,0],model);
+    }
+
+    if(raceId==='aurelian'){for(let i=0;i<3;i++)addMesh(new THREE.TorusGeometry(2.8+i*1.4,.13,9,38),accent,[0,5,-4+i*7],[Math.PI/2,i*.2,0],[1,1,1],model);}
+    else if(raceId==='vanta')box(1,1.2,34,accent,[0,6,-5],[0,0,0],model);
+    else if(raceId==='mycelium'){for(let i=0;i<5;i++)addMesh(new THREE.SphereGeometry(.7+i*.08,8,6),accent,[Math.sin(i*1.7)*5,4+i*.4,-8+i*6],[0,0,0],[1,1,1],model);}
+    else if(raceId==='seraphim'){for(const side of [-1,1])for(let i=0;i<3;i++)wedge(10,1.2,9+i*2,accent,[side*(7+i*4),5,2+i*8],model,.04,.8,1).rotation.z=side*.26;}
+    else if(raceId==='ossuary'){for(const side of [-1,1])for(let i=0;i<4;i++)wedge(8,1.4,6+i*2,enemyMats.bone,[side*(5+i*3),4,-9+i*8],model,.04,.8,1).rotation.z=side*.34;}
+    else if(raceId==='prism'){for(let i=0;i<4;i++)addMesh(new THREE.TorusGeometry(2.4+i*1.2,.11,7,6),accent,[0,5,-8+i*7],[Math.PI/2,i*.2,0],[1,1,1],model);}
+    else if(raceId==='abyssal'){addMesh(new THREE.SphereGeometry(1.8,14,9),new THREE.MeshBasicMaterial({color:0x000000}),[0,6,-5],[0,0,0],[1,1,1],model);addMesh(new THREE.TorusGeometry(3,.18,10,38),accent,[0,6,-5],[Math.PI/2,0,0],[1,1,1],model);}
+
+    model.scale.setScalar(cfg.scale*(settings.currentSector==='erebos'?1.03:1));
+    const shieldMat=new THREE.MeshBasicMaterial({color:doctrine.accent,transparent:true,opacity:0,side:THREE.BackSide,depthWrite:false,toneMapped:false});
+    const shieldMesh=addMesh(new THREE.SphereGeometry(1,20,12),shieldMat,[0,0,0],[0,0,0],[7.5*cfg.scale,4.8*cfg.scale,10.5*cfg.scale],g);
+
+    const e={id:enemyId++,type:classId,classId,raceId,race,doctrine,weapon,group:g,model,cfg,
+      shield:cfg.maxShield,armor:cfg.maxArmor,hull:cfg.maxHull,maxShield:cfg.maxShield,maxArmor:cfg.maxArmor,maxHull:cfg.maxHull,
+      velocity:new THREE.Vector3(),cooldown:rand(.2,cfg.fireRate),orbitSign:Math.random()<.5?-1:1,orbitPhase:Math.random()*Math.PI*2,
+      shieldMesh,shieldFlash:0,dead:false,deathTimer:0,radius:base.radius,targetOffset:new THREE.Vector3(rand(-8,8),rand(-5,5),rand(-8,8)),
+      formationIndex,formationRole:base.role,
+
+      // Forge 0.21 world-actor state.
+      worldActor:!!options.worldActor,
+      alignment:options.alignment||'hostile',
+      aiRole:options.aiRole||'combat',
+      factionName:options.factionName||race.name,
+      home:(options.home||position).clone(),
+      navTarget:(options.navTarget||position).clone(),
+      routeRadius:options.routeRadius||180,
+      provoked:false,
+      livingGroup:options.livingGroup||null,
+      livingAge:0,
+      lastLivingShot:-99
+    };
+    if(e.worldActor){
+      const tag=e.alignment==='friendly'?'PATROL':e.alignment==='neutral'?'CIVILIAN':'RAIDER';
+      e.cfg.name=(options.callsign||race.name+' '+tag+' '+base.name).toUpperCase();
+      e.cfg.class=(e.factionName+' // '+tag+' // '+base.name).toUpperCase();
+    }
+    resetCombatAnatomy(e);
+    e.damageMarks=[];
+    e.damagePosture='NOSE ON';
+    e.lastAnatomyHit=null;
+    e.lastAnatomyHitAt=-99;
+    enemies.push(e);return e;
+  }
+
+  // ============================================================
+  // GAME INPUT
+  // ============================================================
+  const keys={};
+  let fireHeld=false;
+  let selected=null;
+  let tabIndex=0;
+  let started=false;
+  let gameTime=0;
+  let gameOver=false;
+
+  addEventListener('keydown',e=>{
+    if(
+      appMode==='main' &&
+      e.code==='KeyZ' &&
+      !e.repeat &&
+      !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName||'')
+    ){
+      e.preventDefault();
+      cycleMenuCinematicZoom();
+    }
+  });
+
+  addEventListener('keydown',e=>{
+    ensureAudio();
+    started=true;
+
+    if(e.code==='Escape'){
+      e.preventDefault();
+      if(appMode==='combat')pauseGame();
+      else if(appMode==='pause')resumeGame();
+      else if(['station','hangar','hardpoints','modules','hullforge','codex','lineage','settings','controls','briefing'].includes(appMode))setAppMode('main');
+      return;
+    }
+
+    if(appMode!=='combat')return;
+    keys[e.code]=true;
+
+    if(e.code==='KeyM'){
+      e.preventDefault();
+      toggleMicroZJOverlay();
+      return;
+    }
+
+    if(e.code==='Tab'){
+      e.preventDefault();
+      cycleTarget();
+    }
+    if(e.code==='KeyC'){
+      e.preventDefault();
+      resetCombatCamera(false);
+      updateCombatCamera(0);
+      flashMission('CAMERA','TRACKED ORBIT RESET',.35);
+      return;
+    }
+    if(e.code==='KeyZ'){
+      e.preventDefault();
+      commandApproach();
+      return;
+    }
+    if(e.code==='KeyO'){
+      e.preventDefault();
+      commandOrbit();
+      return;
+    }
+    if(e.code==='KeyX'){
+      e.preventDefault();
+      player.autoFire=!player.autoFire;
+      flashMission('AUTONOMOUS BATTERIES',player.autoFire?'ONLINE':'HOLD FIRE',.55);
+      updateWeaponGroupHUD();
+      return;
+    }
+    if(e.code==='Digit5'){e.preventDefault();selectWeaponGroup('fore');return;}
+    if(e.code==='Digit6'){e.preventDefault();selectWeaponGroup('mid');return;}
+    if(e.code==='Digit7'){e.preventDefault();selectWeaponGroup('aft');return;}
+    if(e.code==='KeyV'){e.preventDefault();toggleSelectedGroupAuto();return;}
+    if(e.code==='KeyB'){e.preventDefault();toggleModuleAutomation('defense',true);return;}
+    if(e.code==='KeyH'){
+      e.preventDefault();
+
+      if(e.repeat)return;
+
+      if(!dockKeyArmed){
+        return;
+      }
+
+      dockKeyArmed=false;
+
+      if(nearStation){
+        dockAtStation();
+      }else{
+        flashMission(
+          'DOCKING',
+          'NO STATION IN '+DOCK_RANGE+'U RANGE',
+          .35
+        );
+      }
+      return;
+    }
+    if(e.code==='KeyG'){
+      e.preventDefault();
+      interactWorld();
+    }
+    if(e.code==='Digit1') ability1();
+    if(e.code==='Digit2') ability2();
+    if(e.code==='Digit3') ability3();
+    if(e.code==='Digit4') ability4();
+  });
+  addEventListener('keyup',e=>{
+    keys[e.code]=false;
+    if(e.code==='KeyH')dockKeyArmed=true;
+  });
+  addEventListener('contextmenu',e=>{
+    // RMB is a camera control throughout the game shell.
+    e.preventDefault();
+  });
+
+  addEventListener('pointerdown',e=>{
+    ensureAudio();
+    started=true;
+
+    if(appMode==='combat'){
+      if(e.target?.closest?.('#microZJWidget'))return;
+
+      if(e.button===0){
+        combatCamera.dragging=true;
+        combatCamera.dragButton=0;
+        combatCamera.dragMoved=false;
+        combatCamera.downX=e.clientX;
+        combatCamera.downY=e.clientY;
+        combatCamera.lastX=e.clientX;
+        combatCamera.lastY=e.clientY;
+        fireHeld=false;
+        document.body.classList.add('cameraDragging');
+        e.preventDefault();
+        return;
+      }
+
+      if(e.button===1){
+        resetCombatCamera(true);
+        updateCombatCamera(0);
+        e.preventDefault();
+        return;
+      }
+
+      if(e.button===2){
+        // RMB deliberately owns no combat-camera state.
+        e.preventDefault();
+        return;
+      }
+    }
+
+    const menuMode=appMode!=='combat';
+    const menuDrag=menuMode && e.button===0 && !cameraTargetIsInteractive(e.target);
+
+    if(menuDrag){
+      menuCamera.dragging=true;
+      menuCamera.dragButton=e.button;
+      menuCamera.lastX=e.clientX;
+      menuCamera.lastY=e.clientY;
+      menuCamera.manual=true;
+      document.body.classList.add('cameraDragging');
+      e.preventDefault();
+    }
+  });
+
+  addEventListener('pointermove',e=>{
+    if(appMode==='combat'){
+      if(!combatCamera.dragging)return;
+
+      const dx=e.clientX-combatCamera.lastX;
+      const dy=e.clientY-combatCamera.lastY;
+      combatCamera.lastX=e.clientX;
+      combatCamera.lastY=e.clientY;
+
+      if(
+        Math.abs(e.clientX-combatCamera.downX)>3 ||
+        Math.abs(e.clientY-combatCamera.downY)>3
+      ){
+        combatCamera.dragMoved=true;
+      }
+
+      combatCamera.yaw=Math.atan2(
+        Math.sin(combatCamera.yaw-dx*.0060),
+        Math.cos(combatCamera.yaw-dx*.0060)
+      );
+      combatCamera.pitch=clamp(
+        combatCamera.pitch-dy*.0048,
+        .04,1.20
+      );
+      combatCamera.manual=true;
+      return;
+    }
+
+    if(!menuCamera.dragging)return;
+    const dx=e.clientX-menuCamera.lastX;
+    const dy=e.clientY-menuCamera.lastY;
+    menuCamera.lastX=e.clientX;
+    menuCamera.lastY=e.clientY;
+
+    menuCamera.yaw=Math.atan2(
+      Math.sin(menuCamera.yaw-dx*.0060),
+      Math.cos(menuCamera.yaw-dx*.0060)
+    );
+    menuCamera.pitch=clamp(menuCamera.pitch-dy*.0048,-.20,1.08);
+    menuCamera.manual=true;
+  });
+
+  addEventListener('pointerup',e=>{
+    if(appMode==='combat' && e.button===0 && combatCamera.dragging){
+      const wasDrag=combatCamera.dragMoved;
+      combatCamera.dragging=false;
+      combatCamera.dragButton=-1;
+      combatCamera.dragMoved=false;
+      document.body.classList.remove('cameraDragging');
+
+      // Click fires once; dragging only orbits.
+      if(!wasDrag){
+        manualFire();
+      }
+      return;
+    }
+
+    if(e.button===0)fireHeld=false;
+
+    if(menuCamera.dragging && e.button===menuCamera.dragButton){
+      menuCamera.dragging=false;
+      menuCamera.dragButton=-1;
+      document.body.classList.remove('cameraDragging');
+    }
+  });
+  addEventListener('pointercancel',()=>{
+    fireHeld=false;
+    combatCamera.dragging=false;
+    combatCamera.dragButton=-1;
+    combatCamera.dragMoved=false;
+    menuCamera.dragging=false;
+    menuCamera.dragButton=-1;
+    document.body.classList.remove('cameraDragging');
+  });
+
+
+  addEventListener('blur',()=>{
+    fireHeld=false;
+    combatCamera.dragging=false;
+    combatCamera.dragButton=-1;
+    combatCamera.dragMoved=false;
+    menuCamera.dragging=false;
+    menuCamera.dragButton=-1;
+    document.body.classList.remove('cameraDragging');
+    renderCameraStatus();
+  });
+
+  addEventListener('wheel',e=>{
+    const menuPanelScroll=appMode!=='combat' && cameraTargetIsInteractive(e.target);
+    if(menuPanelScroll)return;
+
+    if(appMode==='combat'){
+      combatCamera.zoom=clamp(
+        combatCamera.zoom*Math.exp(e.deltaY*.00108),
+        .42,4.8
+      );
+    }else{
+      menuCamera.zoom=clamp(
+        menuCamera.zoom*Math.exp(e.deltaY*.00115),
+        .50,3.65
+      );
+      menuCamera.cinematicLevel=-1;
+      menuCamera.manual=true;
+
+      const btn=document.getElementById('btnCinematicZoom');
+      if(btn){
+        const label=btn.querySelector('span');
+        if(label)label.textContent='CINEMATIC ZOOM // CUSTOM ×'+menuCamera.zoom.toFixed(1);
+        btn.classList.remove('wide','ultra');
+      }
+    }
+
+    e.preventDefault();
+  },{passive:false});
+
+  document.getElementById('restartBtn').onclick=()=>restartEncounter();
+
+  function cycleTarget(){
+    const alive=enemies.filter(e=>!e.dead&&(!e.worldActor||e.alignment==='hostile'));
+    if(!alive.length){selected=null;return}
+    tabIndex=(tabIndex+1)%alive.length;
+    selected=alive[tabIndex];
+  }
+
+
+  function bankGroup(bankId){
+    for(const [group,banks] of Object.entries(WEAPON_GROUPS)){
+      if(banks.includes(bankId))return group;
+    }
+    return 'fore';
+  }
+
+  function weaponDoctrineProfile(weaponOrId){
+    const weapon=typeof weaponOrId==='string'
+      ?(TURRET_CATALOG[weaponOrId]||TURRET_CATALOG.autocannon)
+      :(weaponOrId||TURRET_CATALOG.autocannon);
+
+    const spec=weaponAnatomy(weapon.id,weapon.damageType||'balanced');
+
+    const normalize=(v,min,max)=>clamp((v-min)/Math.max(.001,max-min),0,1);
+    const reach=(weapon.optimal||0)+(weapon.falloff||0)*.65;
+
+    return {
+      id:weapon.id,
+      name:weapon.name,
+      role:spec.role,
+      shield:clamp(spec.shield/1.5,0,1),
+      armour:clamp(spec.armour/1.5,0,1),
+      penetration:clamp(spec.penetration/1.8,0,1),
+      internal:clamp(spec.internalBlast/1.9,0,1),
+      critical:clamp(spec.critical/1.55,0,1),
+      tracking:normalize(weapon.tracking||0,.16,1.85),
+      range:normalize(reach,70,310),
+      capacitor:Math.max(0,Number(weapon.cap)||0)
+    };
+  }
+
+  function weaponDoctrineScoreLabel(value){
+    if(value>=.78)return 'HIGH';
+    if(value>=.52)return 'MED';
+    return 'LOW';
+  }
+
+  function weaponDoctrineSummary(weaponOrId){
+    const p=weaponDoctrineProfile(weaponOrId);
+    return p.role+
+      ' // SHD '+weaponDoctrineScoreLabel(p.shield)+
+      ' · ARM '+weaponDoctrineScoreLabel(p.armour)+
+      ' · PEN '+weaponDoctrineScoreLabel(p.penetration)+
+      ' · INT '+weaponDoctrineScoreLabel(p.internal);
+  }
+
+  function weaponDoctrineBandHTML(weaponOrId){
+    const p=weaponDoctrineProfile(weaponOrId);
+    const chip=(label,value,extra='')=>{
+      const cls=value>=.78?'high':value<=.32?'':'';
+      return '<span class="'+cls+'">'+label+' '+Math.round(value*100)+'</span>';
+    };
+    return '<div class="weaponDoctrineBand">'+
+      '<span class="role">'+p.role+'</span>'+
+      chip('SHD',p.shield)+
+      chip('ARM',p.armour)+
+      chip('PEN',p.penetration)+
+      chip('INT',p.internal)+
+      '<span class="'+(p.critical>=.78?'critical':'')+'">CRIT '+Math.round(p.critical*100)+'</span>'+
+      chip('TRK',p.tracking)+
+      chip('RNG',p.range)+
+    '</div>';
+  }
+
+  function weaponTargetFit(weaponOrId,target){
+    const weapon=typeof weaponOrId==='string'
+      ?(TURRET_CATALOG[weaponOrId]||TURRET_CATALOG.autocannon)
+      :(weaponOrId||TURRET_CATALOG.autocannon);
+    const p=weaponDoctrineProfile(weapon);
+
+    if(!target||target.dead)return {score:.5,reason:'NO TARGET // GENERAL USE'};
+
+    ensureCombatAnatomy(target,false);
+    const shieldRatio=clamp((target.shield||0)/Math.max(1,target.maxShield||1),0,1);
+    const weak=weakestArmourZoneReadable(target);
+    const structureRatio=clamp((target.hull||0)/Math.max(1,target.maxHull||1),0,1);
+
+    let needShield=shieldRatio;
+    let needArmour=(1-shieldRatio)*clamp(weak.ratio+.18,0,1);
+    let needPen=(1-shieldRatio)*clamp(1-weak.ratio+.18,0,1);
+    let needInternal=(1-shieldRatio)*clamp((1-structureRatio)*.5+(weak.breached?.75:.10),0,1);
+
+    // Before the shield fails, stripping it is overwhelmingly the useful job.
+    if(shieldRatio>.18){
+      needShield*=1.55;
+      needArmour*=.44;
+      needPen*=.28;
+      needInternal*=.18;
+    }
+
+    const roleScore=
+      p.shield*needShield+
+      p.armour*needArmour+
+      p.penetration*needPen+
+      p.internal*needInternal;
+
+    const origin=player?.group?.position||new THREE.Vector3();
+    const sol=target.group?shotSolution(weapon,target,origin):{quality:1,range:1};
+    const solution=clamp(sol.quality||1,.08,1);
+
+    const score=clamp(roleScore*.76+solution*.24,0,1);
+
+    let reason='BALANCED PRESSURE';
+    if(shieldRatio>.18)reason='STRIP SHIELDS';
+    else if(weak.breached)reason='EXPLOIT '+weak.id+' BREACH';
+    else if(weak.ratio>.48)reason='BREAK '+weak.id+' ARMOUR';
+    else if(p.penetration>=p.armour)reason='PENETRATE '+weak.id;
+    else reason='OPEN '+weak.id;
+
+    return {score,reason,solution,weak,shieldRatio};
+  }
+
+  function bestFittedWeaponForTarget(target){
+    const frame=currentFrame();
+    let best=null;
+
+    for(const bankId of frame.activeBanks){
+      const weapon=bankWeapon(bankId);
+      const fit=weaponTargetFit(weapon,target);
+      if(!best||fit.score>best.fit.score){
+        best={bankId,weapon,fit};
+      }
+    }
+    return best;
+  }
+
+  function weaponBankDoctrineReadout(bankId,target=null){
+    const weapon=bankWeapon(bankId);
+    const profile=weaponDoctrineProfile(weapon);
+    if(!target)return profile.role+' // '+weapon.damageType.toUpperCase();
+
+    const fit=weaponTargetFit(weapon,target);
+    const mark=fit.score>=.72?'GOOD MATCH':fit.score>=.48?'USABLE':'POOR MATCH';
+    return profile.role+' // '+mark+' // '+fit.reason;
+  }
+
+  function selectedGroupBanks(){
+    const f=currentFrame();
+    return (WEAPON_GROUPS[player.selectedWeaponGroup]||WEAPON_GROUPS.fore)
+      .filter(id=>f.activeBanks.includes(id));
+  }
+
+  function selectWeaponGroup(group){
+    if(!WEAPON_GROUPS[group])return;
+    const available=(WEAPON_GROUPS[group]||[]).some(id=>currentFrame().activeBanks.includes(id));
+    if(!available){
+      flashMission('WEAPON GROUP UNAVAILABLE',group.toUpperCase()+' BANKS NOT FITTED TO THIS HULL',.55);
+      return;
+    }
+    player.selectedWeaponGroup=group;
+    updateWeaponGroupHUD();
+    flashMission('MANUAL WEAPON GROUP',group.toUpperCase(),.45);
+  }
+
+  function toggleSelectedGroupAuto(){
+    const g=player.selectedWeaponGroup;
+    player.groupAuto[g]=!player.groupAuto[g];
+    updateWeaponGroupHUD();
+    flashMission(g.toUpperCase()+' BATTERIES',player.groupAuto[g]?'AUTO FIRE':'HOLD FIRE',.50);
+  }
+
+  function updateWeaponGroupHUD(){
+    const map={fore:ui.groupFore,mid:ui.groupMid,aft:ui.groupAft};
+    for(const [g,el] of Object.entries(map)){
+      if(!el)continue;
+      const available=(WEAPON_GROUPS[g]||[]).some(id=>currentFrame().activeBanks.includes(id));
+      el.style.opacity=available?'1':'.28';
+      el.classList.toggle('selected',player.selectedWeaponGroup===g);
+      el.classList.toggle('hold',!player.groupAuto[g]);
+      const state=el.querySelector('.gstate');
+      if(state)state.textContent=available?(player.groupAuto[g]?'AUTO':'HOLD'):'N/A';
+    }
+  }
+
+  function rangeQuality(weapon,distance){
+    if(distance<=weapon.optimal)return 1;
+    const over=distance-weapon.optimal;
+    const x=over/Math.max(1,weapon.falloff);
+    return clamp(Math.exp(-.72*x*x),.12,1);
+  }
+
+  function trackingQuality(weapon,target,origin){
+    if(!target)return 1;
+    const rel=target.group.position.clone().sub(origin);
+    const dist=Math.max(1,rel.length());
+    const radial=rel.clone().normalize();
+    const relVel=(target.velocity||new THREE.Vector3()).clone().sub(player.velocity||new THREE.Vector3());
+    const radialSpeed=radial.dot(relVel);
+    const transverse=relVel.clone().sub(radial.multiplyScalar(radialSpeed)).length();
+    const angular=transverse/dist;
+    const signature=clamp((target.radius||8)/12,.42,2.1);
+    const tolerance=Math.max(.0025,weapon.tracking*.035*signature);
+    return clamp(1-(angular/tolerance)*.74,.10,1);
+  }
+
+  function shotSolution(weapon,target,origin){
+    const distance=target?origin.distanceTo(target.group.position):weapon.optimal;
+    const range=rangeQuality(weapon,distance);
+    const tracking=trackingQuality(weapon,target,origin);
+    const quality=clamp(range*tracking,.08,1);
+    return {distance,range,tracking,quality};
+  }
+
+  function subsystemDamageMultiplier(node,damageType){
+    const type=damageType||'balanced';
+    let mult=DAMAGE_PROFILES[type]?.subsystem||1;
+    if(type==='void' && node?.id==='REACTOR')mult*=1.35;
+    if(type==='kinetic' && node?.type==='weapon')mult*=1.20;
+    if(type==='explosive' && node?.type==='drive')mult*=1.25;
+    if(type==='thermal' && node?.id==='SHIELD')mult*=1.18;
+    return mult;
+  }
+
+
+  // ============================================================
+  // FORGE 0.26.8 — COMBAT ANATOMY
+  // One causal hit path: SHIELD -> LOCAL ARMOUR -> STRUCTURE -> SYSTEMS.
+  // ============================================================
+  const ARMOUR_ZONE_ORDER=['FORE','PORT','STARBOARD','AFT','CORE'];
+  const ARMOUR_ZONE_WEIGHTS={FORE:.23,PORT:.21,STARBOARD:.21,AFT:.16,CORE:.19};
+  const ARMOUR_ZONE_THICKNESS={FORE:1.10,PORT:1,STARBOARD:1,AFT:.84,CORE:1.24};
+  const CLASS_ARMOUR_THICKNESS={
+    fighter:.58,pod:.50,starter:.64,frigate:.72,
+    assault_frigate:.80,specialist_frigate:.74,destroyer:.86,
+    cruiser:1,heavy_cruiser:1.10,advanced_cruiser:1.02,
+    battlecruiser:1.08,specialist_ship:1.04,battleship:1.18,
+    drone_carrier:1.17,industrial:1.20,autonomous:1.14,
+    dreadnought:1.38,carrier:1.42,titan:1.58
+  };
+
+
+  function combatClassId(entity){
+    if(entity===player)return currentFrame()?.classId||'cruiser';
+    return entity?.classId||entity?.type||'fighter';
+  }
+
+  function entityCombatRadius(entity){
+    if(entity===player)return Math.max(5,Number(currentFrame()?.radius)||8);
+    return Math.max(3,Number(entity?.radius)||6);
+  }
+
+  function weaponAnatomy(source='normal',damageType='balanced'){
+    const base=WEAPON_ANATOMY[String(source||'normal')]||WEAPON_ANATOMY.normal;
+    const t={
+      balanced:[1,1,1,1],
+      kinetic:[1.12,1.08,1.02,.92],
+      thermal:[.90,1.18,.96,1.02],
+      explosive:[.82,1.02,1.10,1.28],
+      void:[1.08,1.04,1.12,1.30]
+    }[damageType]||[1,1,1,1];
+    return {
+      role:base.role||'GENERAL PURPOSE',
+      shield:(Number(base.shield)||1),
+      penetration:base.penetration*t[0],
+      armour:base.armour*t[1],
+      structure:base.structure*t[2],
+      internalBlast:base.internalBlast*t[3],
+      critical:Number(base.critical)||.75,
+      shieldBypass:clamp(Number(base.shieldBypass)||0,0,.35)
+    };
+  }
+
+  function armourZoneFromHit(entity,hitPos){
+    if(!entity?.group||!hitPos)return 'CORE';
+    const local=hitPos.clone().sub(entity.group.position)
+      .applyQuaternion(entity.group.quaternion.clone().invert());
+    const ax=Math.abs(local.x),az=Math.abs(local.z),r=entityCombatRadius(entity);
+    if(local.length()<r*.24)return 'CORE';
+    if(ax>az*.72)return local.x<0?'PORT':'STARBOARD';
+    if(local.z<0)return 'FORE';
+    if(local.z>0)return 'AFT';
+    return 'CORE';
+  }
+
+  function syncArmourAggregate(entity){
+    if(!entity?.armorZones)return;
+    let hp=0,max=0;
+    for(const z of Object.values(entity.armorZones)){hp+=Math.max(0,z.hp);max+=Math.max(0,z.maxHp)}
+    entity.armor=hp;
+    entity.maxArmor=Math.max(1,max);
+  }
+
+  function initializeEnemyCombatSystems(entity){
+    if(!entity||entity===player)return;
+    const r=entityCombatRadius(entity),h=Math.max(40,Number(entity.maxHull)||100);
+    entity.combatSystems=[
+      {id:'ENGINE',name:'Drive Array',type:'drive',local:new THREE.Vector3(0,0,r*.62),maxHp:h*.34},
+      {id:'REACTOR',name:'Reactor Core',type:'critical',local:new THREE.Vector3(0,0,r*.08),maxHp:h*.42},
+      {id:'SHIELD',name:'Shield Generator',type:'critical',local:new THREE.Vector3(0,r*.16,-r*.05),maxHp:h*.34},
+      {id:'COMMAND',name:'Command Core',type:'critical',local:new THREE.Vector3(0,r*.12,-r*.38),maxHp:h*.30},
+      {id:'WPN_PORT',name:'Port Battery',type:'weapon',local:new THREE.Vector3(-r*.48,0,-r*.04),maxHp:h*.27},
+      {id:'WPN_STAR',name:'Starboard Battery',type:'weapon',local:new THREE.Vector3(r*.48,0,-r*.04),maxHp:h*.27}
+    ].map(s=>({...s,hp:s.maxHp,disabled:false}));
+  }
+
+  function ensureCombatAnatomy(entity,restore=false){
+    if(!entity)return null;
+    const maxArmor=Math.max(1,Number(entity.maxArmor)||1);
+    const existingMax=entity.armorZones
+      ?Object.values(entity.armorZones).reduce((s,z)=>s+(Number(z.maxHp)||0),0):0;
+
+    if(restore||!entity.armorZones||Math.abs(existingMax-maxArmor)>Math.max(2,maxArmor*.015)){
+      const ratio=restore?1:clamp((Number(entity.armor)||maxArmor)/maxArmor,0,1);
+      entity.armorZones={};
+      for(const id of ARMOUR_ZONE_ORDER){
+        const zmax=maxArmor*ARMOUR_ZONE_WEIGHTS[id];
+        entity.armorZones[id]={id,hp:zmax*ratio,maxHp:zmax,breached:false};
+      }
+      syncArmourAggregate(entity);
+    }else{
+      const zoned=Object.values(entity.armorZones).reduce((s,z)=>s+z.hp,0);
+      const aggregate=clamp(Number(entity.armor)||0,0,maxArmor);
+      const delta=aggregate-zoned;
+      if(Math.abs(delta)>maxArmor*.002){
+        if(delta>0){
+          let missing=0;
+          for(const z of Object.values(entity.armorZones))missing+=Math.max(0,z.maxHp-z.hp);
+          if(missing>0)for(const z of Object.values(entity.armorZones)){
+            z.hp=Math.min(z.maxHp,z.hp+delta*Math.max(0,z.maxHp-z.hp)/missing);
+            if(z.hp>z.maxHp*.08)z.breached=false;
+          }
+        }else if(zoned>0){
+          const scale=clamp(aggregate/zoned,0,1);
+          for(const z of Object.values(entity.armorZones))z.hp*=scale;
+        }
+        syncArmourAggregate(entity);
+      }
+    }
+
+    entity.structure=entity.hull;
+    entity.maxStructure=entity.maxHull;
+    if(entity!==player&&!entity.combatSystems)initializeEnemyCombatSystems(entity);
+    return entity.armorZones;
+  }
+
+  function resetCombatAnatomy(entity){
+    if(!entity)return;
+    delete entity.armorZones;
+    if(entity!==player)delete entity.combatSystems;
+    ensureCombatAnatomy(entity,true);
+  }
+
+  function armourZoneRatio(entity,id){
+    ensureCombatAnatomy(entity,false);
+    const z=entity?.armorZones?.[id];
+    return z?clamp(z.hp/Math.max(1,z.maxHp),0,1):0;
+  }
+
+  function armourZoneTelemetry(entity){
+    ensureCombatAnatomy(entity,false);
+    return ARMOUR_ZONE_ORDER.map(id=>{
+      const z=entity.armorZones[id];
+      return {id,ratio:clamp(z.hp/Math.max(1,z.maxHp),0,1),breached:!!z.breached};
+    });
+  }
+
+  function enemySystemWorldPosition(entity,system,out=new THREE.Vector3()){
+    if(!entity?.group||!system)return out.copy(entity?.group?.position||new THREE.Vector3());
+    return out.copy(system.local).applyQuaternion(entity.group.quaternion).add(entity.group.position);
+  }
+
+  function entitySystem(entity,id){
+    if(entity===player)return systemNode(id);
+    ensureCombatAnatomy(entity,false);
+    return entity?.combatSystems?.find(s=>s.id===id)||null;
+  }
+
+  function entitySystemRatio(entity,id){
+    const s=entitySystem(entity,id);
+    return s?clamp((Number(s.hp)||0)/Math.max(1,Number(s.maxHp)||1),0,1):1;
+  }
+  function enemyWeaponIntegrity(e){return (entitySystemRatio(e,'WPN_PORT')+entitySystemRatio(e,'WPN_STAR'))*.5}
+  function enemyDriveIntegrity(e){return entitySystemRatio(e,'ENGINE')}
+  function enemyReactorIntegrity(e){return entitySystemRatio(e,'REACTOR')}
+  function enemyCommandIntegrity(e){return entitySystemRatio(e,'COMMAND')}
+  function enemyShieldIntegrity(e){return entitySystemRatio(e,'SHIELD')}
+
+  function damageEnemyCombatSystem(entity,system,amount,hitPos){
+    if(!system||system.disabled||amount<=0)return false;
+    system.hp=Math.max(0,system.hp-amount);
+    if(system.hp<=0){
+      system.disabled=true;
+      const wp=enemySystemWorldPosition(entity,system);
+      spawnExplosion(wp,system.type==='critical'?0xff684c:0xffaa54,system.type==='critical'?3.1:2,false);
+      synthBoom(system.type==='critical'?.07:.035);
+      return true;
+    }
+    if(Math.random()<.22)spawnExplosion(hitPos.clone(),0xffa04b,1,false);
+    return false;
+  }
+
+  function nearbyInternalSystems(entity,hitPos,blastScale=1){
+    const r=entityCombatRadius(entity);
+    const radius=Math.max(3.8,r*(.54+.26*clamp(blastScale,.3,2.2)));
+    const found=[];
+    if(entity===player){
+      for(const node of player.systemNodes){
+        if(node.disabled||node.frameDisabled)continue;
+        const dist=systemWorldPosition(node,new THREE.Vector3()).distanceTo(hitPos);
+        if(dist<=radius)found.push({system:node,dist,radius});
+      }
+    }else{
+      ensureCombatAnatomy(entity,false);
+      for(const system of entity.combatSystems||[]){
+        if(system.disabled)continue;
+        const dist=enemySystemWorldPosition(entity,system,new THREE.Vector3()).distanceTo(hitPos);
+        if(dist<=radius)found.push({system,dist,radius});
+      }
+    }
+    return found.sort((a,b)=>a.dist-b.dist);
+  }
+
+  function damageNearbyInternalSystems(entity,hitPos,structureDamage,spec,damageType){
+    if(structureDamage<=0)return [];
+    const hits=[];
+    for(const item of nearbyInternalSystems(entity,hitPos,spec.internalBlast).slice(0,3)){
+      const falloff=clamp(1-item.dist/Math.max(.01,item.radius),.12,1);
+      const mult=entity===player
+        ?subsystemDamageMultiplier(item.system,damageType)
+        :(DAMAGE_PROFILES[damageType]?.subsystem||1);
+      // Critical rating is deterministic emphasis, not a random double-damage
+      // popup: penetrators and precision weapons transfer more energy into
+      // physically nearby systems after they earn a breach.
+      const criticalEmphasis=.72+.28*clamp(spec.critical||.75,.35,1.6);
+      const dmg=structureDamage*(.36+.28*spec.internalBlast)*criticalEmphasis*falloff*mult;
+      if(entity===player){
+        const before=item.system.hp;
+        damageSystemNode(item.system,dmg,hitPos);
+        hits.push({id:item.system.id,name:item.system.name,amount:before-item.system.hp,disabled:item.system.disabled});
+      }else{
+        const before=item.system.hp;
+        const disabled=damageEnemyCombatSystem(entity,item.system,dmg,hitPos);
+        hits.push({id:item.system.id,name:item.system.name,amount:before-item.system.hp,disabled});
+      }
+    }
+    return hits;
+  }
+
+  function combatDamageFeedback(entity,result){
+    entity.lastAnatomyHit=result;
+    const critical=result.systemHits?.find(x=>x.disabled);
+    if(!critical&&!result.zoneBreached&&result.structureDamage<Math.max(12,(entity.maxHull||100)*.045))return;
+    if(gameTime-(entity.lastAnatomyCalloutAt||-99)<.38)return;
+    entity.lastAnatomyCalloutAt=gameTime;
+    const line=critical
+      ?critical.name.toUpperCase()+' // OFFLINE'
+      :result.zoneBreached
+        ?result.zone+' ARMOUR // BREACHED'
+        :'STRUCTURE HIT // '+result.zone;
+    const el=document.getElementById('damageCallout');
+    if(el&&(entity===player||entity===selected)){
+      el.textContent=line;el.style.opacity='1';
+      clearTimeout(combatDamageFeedback._hide);
+      combatDamageFeedback._hide=setTimeout(()=>el.style.opacity='0',720);
+    }
+  }
+
+  function armourTelemetryHTML(entity){
+    return armourZoneTelemetry(entity).map(z=>{
+      const pct=Math.round(z.ratio*100),short=z.id==='STARBOARD'?'STAR':z.id;
+      const cls=z.breached?'breach':z.ratio<.35?'weak':'';
+      return '<span class="'+cls+'">'+short+' '+pct+'</span>';
+    }).join(' · ');
+  }
+
+  function enemySystemsTelemetry(entity){
+    if(!entity||entity===player)return '';
+    ensureCombatAnatomy(entity,false);
+    const damaged=(entity.combatSystems||[])
+      .filter(s=>s.disabled||s.hp<s.maxHp*.55)
+      .sort((a,b)=>(a.hp/a.maxHp)-(b.hp/b.maxHp)).slice(0,2);
+    if(!damaged.length)return 'SYSTEMS NOMINAL';
+    return damaged.map(s=>
+      '<span class="system">'+s.name.toUpperCase()+' '+(s.disabled?'OFFLINE':Math.round(s.hp/s.maxHp*100)+'%')+'</span>'
+    ).join(' · ');
+  }
+
+
+
+  // ============================================================
+  // FORGE 0.26.9 — DAMAGE READABILITY
+  // Damage is tactical information: visible scars + weak-side posture.
+  // ============================================================
+  const DAMAGE_MARK_LIMIT=7;
+
+  function disposeDamageMark(mark){
+    if(!mark)return;
+    try{
+      if(mark.group?.parent)mark.group.parent.remove(mark.group);
+      mark.group?.traverse?.(obj=>{
+        if(obj.geometry?.dispose)obj.geometry.dispose();
+        if(obj.material?.dispose)obj.material.dispose();
+      });
+    }catch(_){}
+  }
+
+  function clearDamageMarks(entity){
+    if(!entity?.damageMarks)return;
+    for(const mark of entity.damageMarks)disposeDamageMark(mark);
+    entity.damageMarks.length=0;
+  }
+
+  function spawnDamageMark(entity,worldPos,kind='armour',zone='CORE',damageType='balanced'){
+    if(!entity?.group||!worldPos)return null;
+
+    entity.damageMarks=entity.damageMarks||[];
+    const local=entity.group.worldToLocal(worldPos.clone());
+    const radius=entityCombatRadius(entity);
+    const baseScale=clamp(radius*.065,.24,1.8);
+    const colour=
+      kind==='breach'?0xff6a3d:
+      kind==='structure'?(damageType==='void'?0xb75cff:0xff493d):
+      0xffb457;
+
+    const g=new THREE.Group();
+    g.position.copy(local);
+    entity.group.add(g);
+
+    // Face the scar broadly away from ship centre.
+    const normal=local.clone();
+    if(normal.lengthSq()<.0001)normal.set(0,1,0);
+    normal.normalize();
+
+    const core=new THREE.Mesh(
+      new THREE.SphereGeometry(baseScale*(kind==='breach'?.42:.28),8,6),
+      new THREE.MeshBasicMaterial({
+        color:colour,transparent:true,
+        opacity:kind==='breach'?.88:.58,
+        toneMapped:false,depthWrite:false
+      })
+    );
+    g.add(core);
+
+    const ring=new THREE.Mesh(
+      new THREE.TorusGeometry(
+        baseScale*(kind==='breach'?.72:.48),
+        baseScale*(kind==='breach'?.09:.055),
+        7,18
+      ),
+      new THREE.MeshBasicMaterial({
+        color:colour,transparent:true,
+        opacity:kind==='breach'?.72:.38,
+        toneMapped:false,depthWrite:false
+      })
+    );
+    ring.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),normal);
+    g.add(ring);
+
+    const mark={
+      group:g,core,ring,kind,zone,damageType,
+      born:gameTime,
+      permanent:kind==='breach',
+      life:kind==='breach'?999:kind==='structure'?11:6.5,
+      phase:Math.random()*Math.PI*2
+    };
+    entity.damageMarks.push(mark);
+
+    while(entity.damageMarks.length>DAMAGE_MARK_LIMIT){
+      const old=entity.damageMarks.shift();
+      disposeDamageMark(old);
+    }
+    return mark;
+  }
+
+  function updateEntityDamageMarks(entity,dt){
+    if(!entity?.damageMarks?.length)return;
+    for(let i=entity.damageMarks.length-1;i>=0;i--){
+      const m=entity.damageMarks[i];
+      const age=gameTime-m.born;
+      const flicker=.78+Math.sin(gameTime*8+m.phase)*.18;
+      if(m.core?.material){
+        m.core.material.opacity=(m.kind==='breach'?.82:m.kind==='structure'?.52:.34)*flicker;
+      }
+      if(m.ring?.material){
+        m.ring.material.opacity=(m.kind==='breach'?.64:m.kind==='structure'?.34:.24)*flicker;
+      }
+      if(m.ring)m.ring.rotation.z+=dt*(m.kind==='breach'?.34:.16);
+
+      if(!m.permanent&&age>m.life){
+        disposeDamageMark(m);
+        entity.damageMarks.splice(i,1);
+      }
+    }
+  }
+
+  function updateDamageReadability(dt){
+    updateEntityDamageMarks(player,dt);
+    for(const e of enemies)if(!e.dead)updateEntityDamageMarks(e,dt);
+  }
+
+  function strongestArmourZone(entity){
+    ensureCombatAnatomy(entity,false);
+    const candidates=['FORE','PORT','STARBOARD','AFT'];
+    let best={id:'FORE',ratio:-1};
+    for(const id of candidates){
+      const ratio=armourZoneRatio(entity,id);
+      if(ratio>best.ratio)best={id,ratio};
+    }
+    return best;
+  }
+
+  function weakestArmourZoneReadable(entity){
+    ensureCombatAnatomy(entity,false);
+    const candidates=['FORE','PORT','STARBOARD','AFT'];
+    let weak={id:'FORE',ratio:2,breached:false};
+    for(const id of candidates){
+      const z=entity.armorZones[id];
+      const ratio=armourZoneRatio(entity,id);
+      if(ratio<weak.ratio)weak={id,ratio,breached:!!z?.breached};
+    }
+    return weak;
+  }
+
+  function localAxisForArmourZone(id){
+    if(id==='PORT')return new THREE.Vector3(-1,0,0);
+    if(id==='STARBOARD')return new THREE.Vector3(1,0,0);
+    if(id==='AFT')return new THREE.Vector3(0,0,1);
+    return new THREE.Vector3(0,0,-1);
+  }
+
+  function enemyTacticalFacing(e,incomingDirection){
+    // Small craft keep nose-on dogfighting. Larger ships start presenting
+    // intact armour once a flank is genuinely compromised.
+    const cls=e?.classId||e?.type;
+    if(!['destroyer','cruiser','battleship','dreadnought','titan'].includes(cls)){
+      return new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0,0,-1),incomingDirection
+      );
+    }
+
+    const weak=weakestArmourZoneReadable(e);
+    const shields=clamp((e.shield||0)/Math.max(1,e.maxShield||1),0,1);
+    const react=weak.breached||weak.ratio<.30||shields<.10;
+
+    if(!react){
+      e.damagePosture='NOSE ON';
+      return new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0,0,-1),incomingDirection
+      );
+    }
+
+    const strong=strongestArmourZone(e);
+    e.damagePosture='PRESENTING '+strong.id+' // PROTECTING '+weak.id;
+
+    return new THREE.Quaternion().setFromUnitVectors(
+      localAxisForArmourZone(strong.id),
+      incomingDirection
+    );
+  }
+
+  function enemyCapabilityState(entity){
+    if(!entity||entity===player)return 'UNKNOWN';
+    const drive=enemyDriveIntegrity(entity);
+    const reactor=enemyReactorIntegrity(entity);
+    const weapons=enemyWeaponIntegrity(entity);
+    const command=enemyCommandIntegrity(entity);
+
+    if(drive<.06)return 'DRIVE DISABLED';
+    if(reactor<.06)return 'REACTOR OFFLINE';
+    if(weapons<.08)return 'BATTERIES SILENCED';
+    if(command<.08)return 'COMMAND SEVERED';
+    if(Math.min(drive,reactor,weapons,command)<.35)return 'CRIPPLED SYSTEMS';
+    if(Math.min(drive,reactor,weapons,command)<.65)return 'SYSTEM DAMAGE';
+    return 'COMBAT CAPABLE';
+  }
+
+  function damageResultReadout(result){
+    if(!result)return '';
+    if(result.shieldDamage>0&&result.armorDamage<=0&&result.structureDamage<=0){
+      return 'SHIELD IMPACT // '+Math.round(result.shieldDamage);
+    }
+
+    const bits=[result.zone];
+    if(result.zoneBreached)bits.push('BREACH');
+    else if(result.armorDamage>0)bits.push('ARMOUR '+Math.round(result.armorDamage));
+
+    if(result.penetrationFactor>.04){
+      bits.push('PEN '+Math.round(result.penetrationFactor*100)+'%');
+    }
+    if(result.structureDamage>0){
+      bits.push('STRUCT '+Math.round(result.structureDamage));
+    }
+    const critical=result.systemHits?.find(h=>h.disabled);
+    if(critical)bits.push(critical.name.toUpperCase()+' OFFLINE');
+    return bits.join(' // ');
+  }
+
+  function targetWeaknessReadout(entity){
+    const weak=weakestArmourZoneReadable(entity);
+    const capability=enemyCapabilityState(entity);
+    const weakPct=Math.round(weak.ratio*100);
+    let text='STATE // '+enemyDamageState(entity)+' // WEAK SIDE // '+weak.id+' '+weakPct+'%';
+    if(weak.breached)text+=' // OPEN BREACH';
+    text+=' // '+capability;
+    if(entity.damagePosture)text+=' // '+entity.damagePosture;
+
+    const last=entity.lastAnatomyHit;
+    if(last&&gameTime-(entity.lastAnatomyHitAt||-99)<1.7){
+      text+='<br>LAST HIT // '+damageResultReadout(last);
+    }
+    return text;
+  }
+
+
+
+  // ============================================================
+  // FORGE 0.27.1 — DAMAGE CONTROL
+  // Damage removes capability before existence. Emergency repair can restore
+  // damaged systems, but cannot rebuild a fully destroyed ship in combat.
+  // ============================================================
+  const DAMAGE_CONTROL={
+    playerTick:.22,
+    playerRepairRate:10.5,
+    armorRepairRate:5.2,
+    structureRepairRate:2.1,
+    capCostPerSecond:11,
+    cooldownAfterHit:2.4,
+    wreckPersist:7.5
+  };
+
+  function playerDamageState(){
+    ensureCombatAnatomy(player,false);
+    const structure=clamp(player.hull/Math.max(1,player.maxHull),0,1);
+    const drive=driveIntegrity();
+    const reactor=reactorIntegrity();
+    const weapons=player.systemNodes.filter(n=>n.type==='weapon'&&!n.frameDisabled);
+    const weaponRatio=weapons.length
+      ?weapons.reduce((s,n)=>s+nodeRatio(n),0)/weapons.length
+      :1;
+
+    if(player.destroyed||structure<=0)return 'DESTROYED';
+    if(structure<.18||drive<.20||reactorIntegrity()<.18)return 'CRIPPLED';
+    if(structure<.42||drive<.45||weaponRatio<.45)return 'DAMAGED';
+    return 'ACTIVE';
+  }
+
+  function enemyDamageState(entity){
+    if(!entity||entity.dead)return entity?.dead?'WRECK':'UNKNOWN';
+    ensureCombatAnatomy(entity,false);
+    const structure=clamp(entity.hull/Math.max(1,entity.maxHull),0,1);
+    const drive=enemyDriveIntegrity(entity);
+    const reactor=enemyReactorIntegrity(entity);
+    const weapons=enemyWeaponIntegrity(entity);
+
+    if(structure<=0)return 'WRECK';
+    if(structure<.16||drive<.10||reactor<.08)return 'CRIPPLED';
+    if(structure<.44||drive<.42||weapons<.40||reactor<.42)return 'DAMAGED';
+    return 'ACTIVE';
+  }
+
+  function mostDamagedPlayerSystem(){
+    return player.systemNodes
+      .filter(n=>!n.frameDisabled && n.hp<n.maxHp)
+      .sort((a,b)=>nodeRatio(a)-nodeRatio(b))[0]||null;
+  }
+
+  function repairPlayerSystemNode(node,amount){
+    if(!node||node.frameDisabled||amount<=0)return 0;
+    const before=node.hp;
+    node.hp=Math.min(node.maxHp,node.hp+amount);
+
+    if(node.disabled && node.hp>=node.maxHp*.18){
+      node.disabled=false;
+      node.ring.material.color.setHex(node.type==='critical'?0xffc85d:0x67f2ff);
+      node.core.material.color.setHex(node.type==='critical'?0xffd171:0xa5fbff);
+      node.ring.material.opacity=.82;
+      node.core.material.opacity=.92;
+
+      for(const idx of node.turretIndices){
+        const t=player.turrets[idx];
+        if(t)t.group.visible=!node.frameDisabled;
+      }
+      for(const idx of node.engineIndices){
+        const e=player.engines[idx];
+        if(e)e.group.visible=!node.frameDisabled;
+      }
+
+      flashMission('SYSTEM RECOVERED',node.name.toUpperCase()+' // EMERGENCY ONLINE',.65);
+    }
+
+    if(node.id==='REACTOR'){
+      player.capacitor=Math.min(player.capacitor,effectiveCapMax());
+    }
+
+    return Math.max(0,node.hp-before);
+  }
+
+  function emergencyDamageControlAvailable(){
+    if(player.destroyed)return false;
+    if(gameTime-player.lastHit<DAMAGE_CONTROL.cooldownAfterHit)return false;
+    if(capacitorPercent()<.08)return false;
+    return true;
+  }
+
+  function updateDamageControl(dt){
+    if(player.destroyed)return;
+
+    player.damageControlClock=(player.damageControlClock||0)+dt;
+    if(player.damageControlClock<DAMAGE_CONTROL.playerTick)return;
+    const step=player.damageControlClock;
+    player.damageControlClock=0;
+
+    const state=playerDamageState();
+    const needsRepair=
+      player.systemNodes.some(n=>!n.frameDisabled&&n.hp<n.maxHp) ||
+      player.armor<player.maxArmor ||
+      player.hull<player.maxHull;
+
+    if(!needsRepair || !emergencyDamageControlAvailable()){
+      player.damageControlActive=false;
+      return;
+    }
+
+    const capCost=DAMAGE_CONTROL.capCostPerSecond*(moduleStats.damageControlCapUse||1)*step;
+    if(!consumeCap(capCost,'DAMAGE CONTROL',false)){
+      player.damageControlActive=false;
+      return;
+    }
+
+    player.damageControlActive=true;
+
+    // 1) Restore the most damaged live/disabled system first.
+    const node=mostDamagedPlayerSystem();
+    if(node){
+      const severity=1-nodeRatio(node);
+      repairPlayerSystemNode(
+        node,
+        DAMAGE_CONTROL.playerRepairRate*(moduleStats.damageControlRate||1)*step*(.55+.75*severity)
+      );
+    }
+
+    // 2) Slowly restore armour aggregate; anatomy bridge distributes it.
+    if(player.armor<player.maxArmor){
+      player.armor=Math.min(
+        player.maxArmor,
+        player.armor+DAMAGE_CONTROL.armorRepairRate*step
+      );
+      ensureCombatAnatomy(player,false);
+    }
+
+    // 3) Structure repair is intentionally tiny in combat.
+    if(player.hull<player.maxHull && state!=='ACTIVE'){
+      player.hull=Math.min(
+        player.maxHull,
+        player.hull+DAMAGE_CONTROL.structureRepairRate*step
+      );
+      player.structure=player.hull;
+    }
+
+    renderSystemIntegrity(false);
+  }
+
+  function damageControlReadout(){
+    const state=playerDamageState();
+    const node=mostDamagedPlayerSystem();
+
+    if(player.destroyed)return 'DAMAGE CONTROL // VESSEL LOST';
+
+    if(gameTime-player.lastHit<DAMAGE_CONTROL.cooldownAfterHit){
+      return 'DAMAGE CONTROL // UNDER FIRE // '+Math.max(
+        0,
+        DAMAGE_CONTROL.cooldownAfterHit-(gameTime-player.lastHit)
+      ).toFixed(1)+'S';
+    }
+
+    if(player.damageControlActive && node){
+      return 'DAMAGE CONTROL // REPAIRING '+node.name.toUpperCase()+
+        ' // '+Math.round(nodeRatio(node)*100)+'%';
+    }
+
+    if(state==='CRIPPLED')return 'DAMAGE CONTROL // CRIPPLED // STABILISING';
+    if(state==='DAMAGED')return 'DAMAGE CONTROL // DAMAGED // AUTO REPAIR READY';
+    return 'DAMAGE CONTROL // STANDBY';
+  }
+
+  function intactEnemySystemRatio(entity){
+    if(!entity?.combatSystems?.length)return 1;
+    let total=0;
+    for(const s of entity.combatSystems){
+      total+=clamp((s.hp||0)/Math.max(1,s.maxHp||1),0,1);
+    }
+    return total/entity.combatSystems.length;
+  }
+
+  function wreckSalvageMultiplier(entity){
+    ensureCombatAnatomy(entity,false);
+    const structure=clamp(entity.hull/Math.max(1,entity.maxHull),0,1);
+    const systems=intactEnemySystemRatio(entity);
+    const armour=clamp(entity.armor/Math.max(1,entity.maxArmor),0,1);
+
+    // Surgical disabling preserves technology and therefore pays more.
+    // Obliterating every system still gives scrap, but less intact value.
+    return clamp(.72 + systems*.58 + armour*.18 + structure*.10,.70,1.55);
+  }
+
+  function wreckConditionLabel(entity){
+    const systems=intactEnemySystemRatio(entity);
+    if(systems>.72)return 'INTACT SYSTEMS';
+    if(systems>.42)return 'DAMAGED WRECK';
+    if(systems>.16)return 'HEAVY WRECK';
+    return 'BURNT HULK';
+  }
+
+
+  // ============================================================
+  // DAMAGE
+  // ============================================================
+  function provokeLivingActor(e,reason='PLAYER FIRE'){
+    if(!e || !e.worldActor || e.dead || e.alignment==='hostile')return;
+    e.alignment='hostile';
+    e.provoked=true;
+    e.aiRole='provoked';
+    e.factionName=e.factionName||e.race?.name||'LOCAL VESSEL';
+    flashMission(
+      'LOCAL CONTACT PROVOKED',
+      (e.cfg?.name||e.factionName).toUpperCase()+' // '+reason,
+      .75
+    );
+  }
+
+  function applyDamage(entity,amount,hitPos,source='normal',damageType='balanced'){
+    if(!entity||entity.dead||entity.destroyed)return {rawRemaining:0};
+    ensureCombatAnatomy(entity,false);
+
+    const profile=DAMAGE_PROFILES[damageType]||DAMAGE_PROFILES.balanced;
+    const spec=weaponAnatomy(source,damageType);
+    const impact=hitPos?.clone?.()||entity.group.position.clone();
+    const zoneId=armourZoneFromHit(entity,impact),zone=entity.armorZones[zoneId];
+
+    let raw=Math.max(0,Number(amount)||0);
+    if(entity.inversion>0)raw*=.55;
+
+    let shieldDamage=0,armorDamage=0,structureDamage=0;
+    let rawAfterShield=raw;
+
+    const bypassRaw=raw*spec.shieldBypass;
+    const shieldRaw=raw-bypassRaw;
+
+    if(entity.shield>0&&shieldRaw>0){
+      const mult=Math.max(.01,profile.shield*spec.shield);
+      const possible=shieldRaw*mult;
+      const used=Math.min(entity.shield,possible);
+      entity.shield-=used;
+      shieldDamage=used;
+      rawAfterShield=bypassRaw+Math.max(0,shieldRaw-used/mult);
+      spawnShieldFlash(entity,impact,entity===player?0x61eaff:0xa25cff);
+      if(entity===player){
+        hitFlash.style.opacity='.9';
+        setTimeout(()=>hitFlash.style.opacity='0',80);
+      }
+    }
+
+    let penetrationRatio=0,penetrationFactor=0,zoneBreached=false;
+
+    if(rawAfterShield>0&&zone){
+      const beforeRatio=clamp(zone.hp/Math.max(1,zone.maxHp),0,1);
+      const thickness=
+        (CLASS_ARMOUR_THICKNESS[combatClassId(entity)]||1)*
+        (ARMOUR_ZONE_THICKNESS[zoneId]||1)*
+        (.34+.66*Math.sqrt(beforeRatio));
+
+      penetrationRatio=spec.penetration/Math.max(.18,thickness);
+
+      const plateDamage=
+        rawAfterShield*Math.max(.01,profile.armor)*spec.armour*
+        (.72+.28*clamp(penetrationRatio,0,1.4));
+
+      armorDamage=Math.min(zone.hp,plateDamage);
+      zone.hp=Math.max(0,zone.hp-plateDamage);
+
+      const afterRatio=clamp(zone.hp/Math.max(1,zone.maxHp),0,1);
+      if(afterRatio<=.06&&!zone.breached){zone.breached=true;zoneBreached=true}
+
+      penetrationFactor=clamp((penetrationRatio-.48)/.92,0,.88);
+      if(zone.breached)penetrationFactor=Math.max(penetrationFactor,.76);
+      else if(afterRatio<.28)penetrationFactor=Math.max(penetrationFactor,.46);
+
+      syncArmourAggregate(entity);
+
+      if(armorDamage>0){
+        spawnExplosion(
+          impact,
+          damageType==='thermal'?0xff7b43:damageType==='void'?0xb45cff:0xffb04a,
+          zoneBreached?2.25:1.25,false
+        );
+      }
+    }
+
+    if(rawAfterShield>0&&penetrationFactor>0){
+      structureDamage=
+        rawAfterShield*Math.max(.01,profile.hull)*spec.structure*penetrationFactor;
+
+      entity.hull=Math.max(0,entity.hull-structureDamage);
+      entity.structure=entity.hull;
+      entity.maxStructure=entity.maxHull;
+
+      spawnExplosion(
+        impact,
+        damageType==='void'?0xb45cff:damageType==='explosive'?0xff4569:0xff5b45,
+        1.45+Math.min(1.6,structureDamage/60),false
+      );
+
+      if(entity===player){
+        cameraShake=Math.max(Number.isFinite(cameraShake)?cameraShake:0,.18+Math.min(.18,structureDamage/180));
+        damageFlash.style.opacity='.85';
+        setTimeout(()=>damageFlash.style.opacity='0',110);
+      }
+    }
+
+    const systemHits=damageNearbyInternalSystems(entity,impact,structureDamage,spec,damageType);
+    const result={
+      rawRemaining:rawAfterShield,shieldDamage,armorDamage,
+      hullDamage:structureDamage,structureDamage,damageType,source,
+      zone:zoneId,zoneRatio:zone?clamp(zone.hp/Math.max(1,zone.maxHp),0,1):0,
+      zoneBreached,penetrationRatio,penetrationFactor,systemHits
+    };
+
+    entity.lastAnatomyHit=result;
+    entity.lastAnatomyHitAt=gameTime;
+
+    // Shield-only hits stay clean energy effects. Physical damage leaves
+    // a readable local scar, and a true plate breach persists.
+    if(zoneBreached){
+      spawnDamageMark(entity,impact,'breach',zoneId,damageType);
+    }else if(structureDamage>0){
+      spawnDamageMark(entity,impact,'structure',zoneId,damageType);
+    }else if(armorDamage>0 && result.zoneRatio<.62 && Math.random()<.34){
+      spawnDamageMark(entity,impact,'armour',zoneId,damageType);
+    }
+
+    combatDamageFeedback(entity,result);
+
+    if(entity===player){
+      entity.lastHit=gameTime;
+      if(entity.hull<=0)destroyPlayer();
+    }else if(entity.hull<=0)destroyEnemy(entity);
+
+    return result;
+  }
+
+  function destroyEnemy(e){
+    if(e.dead)return;
+
+    e.dead=true;
+    e.deathTimer=DAMAGE_CONTROL.wreckPersist;
+    e.wreckCondition=wreckConditionLabel(e);
+    e.wreckSalvageMult=wreckSalvageMultiplier(e);
+
+    const p=new THREE.Vector3();
+    e.group.getWorldPosition(p);
+
+    const cls=e.classId||e.type;
+    const major=['battleship','dreadnought','titan'].includes(cls);
+
+    // Death becomes a transition into a wreck rather than instant disappearance.
+    spawnExplosion(
+      p,
+      e.doctrine?.accent||0xff7c43,
+      cls==='titan'?18:cls==='dreadnought'?12:cls==='battleship'?8:4.5*e.cfg.scale,
+      major
+    );
+
+    // Leave the model visible as a wreck and suppress active visuals.
+    if(e.shieldMesh)e.shieldMesh.material.opacity=0;
+    if(e.model){
+      e.model.traverse(obj=>{
+        if(obj.material?.emissiveIntensity!=null){
+          obj.material.emissiveIntensity*=.35;
+        }
+      });
+    }
+
+    const dropChance=cls==='fighter'?.28:cls==='frigate'?.68:1;
+
+    if(Math.random()<dropChance){
+      const rarity=
+        cls==='titan'||cls==='dreadnought'?'epic':
+        cls==='battleship'?'rare':
+        (cls==='cruiser'||Math.random()<.12)?'rare':'common';
+
+      const rarityMult=rarity==='epic'?1.8:rarity==='rare'?1.35:1;
+      const base=ENEMY_CLASS_CATALOG[cls]?.salvage||8;
+      const wreckMult=e.wreckSalvageMult||1;
+
+      spawnSalvage(
+        p.clone().add(new THREE.Vector3(rand(-4,4),rand(-3,3),rand(-4,4))),
+        Math.max(1,Math.round(base*rarityMult*wreckMult)),
+        rarity,
+        materialFromRace(e.raceId)
+      );
+    }
+
+    const researchGain=wreckResearchValue(e);
+    if(researchGain>0){
+      awardResearchData(researchGain,e.wreckCondition+' // '+(e.cfg?.name||'HOSTILE WRECK'),true);
+      saveSettings();
+    }
+
+    if(selected===e){
+      flashMission(
+        'TARGET DISABLED',
+        (e.cfg?.name||'VESSEL').toUpperCase()+' // '+e.wreckCondition+
+        ' // SALVAGE VALUE ×'+(e.wreckSalvageMult||1).toFixed(2),
+        .95
+      );
+      selected=null;
+      cancelFlightCommand(true);
+    }
+  }
+
+  function destroyPlayer(){
+    if(player.destroyed)return;
+    player.destroyed=true;
+    gameOver=true;
+    fireHeld=false;
+    const p=new THREE.Vector3();player.group.getWorldPosition(p);
+    spawnExplosion(p,0xff8a45,24,true);
+    setTimeout(()=>showDefeat(),850);
+  }
+
+  // ============================================================
+  // PLAYER WEAPONS
+  // ============================================================
+  function getAimTarget(){
+    const threat=enemyFleetThreat();
+    if(ui.fleetThreatText)ui.fleetThreatText.textContent=threat.count?(threat.count+' CONTACTS · THREAT '+threat.score+(threat.capitals?' · '+threat.capitals+' CAPITAL':'')):'NO CONTACTS';
+
+    if(selected && !selected.dead){
+      const p=new THREE.Vector3();selected.group.getWorldPosition(p);
+      return p;
+    }
+    const forward=new THREE.Vector3(0,0,-1).applyQuaternion(player.group.quaternion);
+    return player.group.position.clone().add(forward.multiplyScalar(260));
+  }
+
+  function manualFire(){
+    if(player.manualCooldown>0||player.destroyed)return;
+
+    const banks=selectedGroupBanks().filter(nodeOnline);
+    if(!banks.length){
+      flashMission('WEAPON GROUP OFFLINE',player.selectedWeaponGroup.toUpperCase()+' GROUP HAS NO LIVE BANKS',.55);
+      player.manualCooldown=.5;return;
+    }
+
+    const aimPoint=getAimTarget();
+    const targetEntity=selected&&!selected.dead?selected:null;
+    let shortest=.42;
+    let fired=0;
+
+    for(const bankId of banks){
+      const node=systemNode(bankId);
+      if(!node||node.disabled)continue;
+
+      const w=bankWeapon(bankId);
+      const t=(node.turretIndices||[])
+        .map(i=>player.turrets[i])
+        .find(tt=>tt?.muzzle && hardpointArcContains(tt,aimPoint));
+      if(!t)continue;
+
+      const origin=new THREE.Vector3();
+      t.muzzle.getWorldPosition(origin);
+
+      const sol=targetEntity?shotSolution(w,targetEntity,origin):{range:1,tracking:1,quality:1,distance:w.optimal};
+      const maxReach=w.optimal+w.falloff*1.85;
+      if(targetEntity&&sol.distance>maxReach)continue;
+
+      if(!consumeCap((w.cap||0)*1.35*moduleStats.weaponCapUse,'MANUAL '+player.selectedWeaponGroup.toUpperCase()+' GROUP'))continue;
+
+      const target=aimPoint.clone();
+      if(targetEntity){
+        const spread=(1-sol.quality)*(targetEntity.radius||8)*1.9;
+        target.x+=rand(-spread,spread);
+        target.y+=rand(-spread,spread);
+        target.z+=rand(-spread,spread);
+      }
+
+      const integrity=.52+.48*nodeRatio(node);
+      const damage=36*w.damage*moduleStats.turretDamage*integrity*(.62+.38*sol.range);
+      createProjectile(
+        origin,target,w.speed,damage,player,w.color,w.radius,null,
+        w.homing?targetEntity:null,w.damageType,w.id
+      );
+      shortest=Math.min(shortest,.34/Math.max(.25,w.rate));
+      fired++;
+    }
+
+    player.manualCooldown=fired?shortest:.35;
+    if(fired){
+      cameraShake=Math.max(Number.isFinite(cameraShake)?cameraShake:0,.07+.025*fired);
+      synthShot(220,.11,.045,'square');
+    }
+  }
+
+  const cds={1:0,2:0,3:0,4:0};
+
+  function ability1(){
+    if(cds[1]>0 || !selected || selected.dead || player.destroyed)return;
+    if(!nodeOnline('REACTOR')){flashMission('REACTOR OFFLINE','SOVEREIGN LANCE UNAVAILABLE',.75);return;}
+    if(!consumeCap(115*moduleStats.abilityCapUse,'SOVEREIGN LANCE'))return;
+    cds[1]=6;
+    const from=player.group.position.clone().add(new THREE.Vector3(0,8,-20).applyQuaternion(player.group.quaternion));
+    const to=new THREE.Vector3();selected.group.getWorldPosition(to);
+    cameraShake=Math.max(Number.isFinite(cameraShake)?cameraShake:0,.46);
+    spawnBeam(from,to,0xffd26a,.75,.42);
+    const light=new THREE.PointLight(0xffc74f,120,240,2);light.position.copy(from);scene.add(light);
+    fx.push({type:'tempLight',light,age:0,life:.35});
+    if(selected.worldActor && selected.alignment!=='hostile')provokeLivingActor(selected,'SOVEREIGN LANCE');
+    applyDamage(selected,340*moduleStats.abilityDamage,to.clone(),'lance','kinetic');
+    synthShot(95,.35,.12,'sawtooth');
+  }
+
+  function ability2(){
+    if(cds[2]>0 || player.destroyed)return;
+    if(!nodeOnline('REACTOR')){flashMission('REACTOR OFFLINE','BLACK-SUN PULSE UNAVAILABLE',.75);return;}
+    if(!consumeCap(165*moduleStats.abilityCapUse,'BLACK-SUN PULSE'))return;
+    cds[2]=12;
+    cameraShake=Math.max(Number.isFinite(cameraShake)?cameraShake:0,.62);
+    const p=player.group.position.clone();
+    const ringMesh=addMesh(new THREE.RingGeometry(4,4.6,80),new THREE.MeshBasicMaterial({
+      color:0xffc85c,transparent:true,opacity:.75,side:THREE.DoubleSide,toneMapped:false
+    }),[p.x,p.y,p.z],[Math.PI/2,0,0],[1,1,1]);
+    fx.push({type:'pulse',mesh:ringMesh,age:0,life:1.0,maxScale:36});
+    for(const e of enemies){
+      if(e.dead)continue;
+      const ep=e.group.position;
+      const d=ep.distanceTo(p);
+      if(d<115){
+        if(e.worldActor && e.alignment!=='hostile')provokeLivingActor(e,'BLACK-SUN PULSE');
+        applyDamage(e,220*moduleStats.abilityDamage*(1-d/150),ep.clone(),'pulse','void');
+        const away=ep.clone().sub(p).normalize().multiplyScalar((1-d/130)*15);
+        e.velocity.add(away);
+      }
+    }
+    synthBoom(.14);
+  }
+
+  function ability3(){
+    if(cds[3]>0 || player.destroyed)return;
+    if(!nodeOnline('COMMAND')){flashMission('COMMAND CORE OFFLINE','POINT DEFENCE OVERDRIVE UNAVAILABLE',.75);return;}
+    if(!consumeCap(75*moduleStats.abilityCapUse,'POINT DEFENCE OVERDRIVE'))return;
+    cds[3]=14;
+    player.overdrive=6;
+    flashMission('POINT DEFENCE OVERDRIVE','TURRET CYCLING ACCELERATED',1.2);
+  }
+
+  function ability4(){
+    if(cds[4]>0 || player.destroyed)return;
+    if(!nodeOnline('SHIELD')){flashMission('SHIELD ARRAY OFFLINE','INVERSION MATRIX UNAVAILABLE',.75);return;}
+    if(!consumeCap(100*moduleStats.abilityCapUse,'SHIELD INVERSION'))return;
+    cds[4]=16;
+    player.shield=Math.min(player.maxShield,player.shield+380);
+    player.inversion=4;
+    player.shieldMesh.material.opacity=.20;
+    flashMission('SHIELD INVERSION','ENERGY RETURNED TO THE SOVEREIGN FRAME',1.3);
+    synthShot(420,.32,.08,'sine');
+  }
+
+  function updateTurrets(dt){
+    if(player.destroyed)return;
+    const alive=enemies.filter(e=>!e.dead);if(!alive.length)return;
+
+    for(const t of player.turrets){
+      if(t.systemNode?.disabled||t.systemNode?.frameDisabled)continue;
+
+      const bankId=t.systemNode?.id||'WPN_FL';
+      const group=bankGroup(bankId);
+      const weapon=bankWeapon(bankId);
+      t.cool-=dt;
+
+      let target=selected&&!selected.dead&&(!selected.worldActor||selected.alignment==='hostile')?selected:null;
+      if(target){
+        const checkPos=new THREE.Vector3();
+        target.group.getWorldPosition(checkPos);
+        if(!hardpointArcContains(t,checkPos))target=null;
+      }
+      if(!target){
+        let best=null,bestD=weapon.optimal+weapon.falloff*1.7;
+        const wp=new THREE.Vector3();t.group.getWorldPosition(wp);
+        for(const e of alive){
+          const ep=new THREE.Vector3();
+          e.group.getWorldPosition(ep);
+          if(!hardpointArcContains(t,ep))continue;
+          const d=ep.distanceTo(wp);
+          if(d<bestD){bestD=d;best=e;}
+        }
+        target=best;
+      }
+      if(!target)continue;
+
+      const targetPos=new THREE.Vector3();target.group.getWorldPosition(targetPos);
+      const worldPos=new THREE.Vector3();t.group.getWorldPosition(worldPos);
+      const dir=targetPos.clone().sub(worldPos);
+      const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,-1),dir.clone().normalize());
+      const localParentQ=new THREE.Quaternion();t.group.parent.getWorldQuaternion(localParentQ);
+      t.group.quaternion.copy(localParentQ.clone().invert().multiply(q));
+      t.group.rotation.x=0;t.group.rotation.z=0;
+
+      const commandNode=systemNode('COMMAND');
+      const commandFactor=commandNode&&!commandNode.disabled?(.55+.45*nodeRatio(commandNode)):.42;
+      const bankIntegrity=.52+.48*nodeRatio(t.systemNode);
+      const fireRate=(player.overdrive>0?.34:.62)/(moduleStats.turretRate*commandFactor*weapon.rate*bankIntegrity);
+
+      const sol=shotSolution(weapon,target,worldPos);
+      const maxReach=weapon.optimal+weapon.falloff*1.85;
+
+      if(player.autoFire&&player.groupAuto[group]&&t.cool<=0&&sol.distance<maxReach){
+        if(!consumeCap((weapon.cap||0)*moduleStats.weaponCapUse,'AUTONOMOUS BATTERIES',false))continue;
+        t.cool=fireRate+rand(0,.08);
+
+        const origin=new THREE.Vector3();t.muzzle.getWorldPosition(origin);
+        const lead=weapon.speed>300?.12:weapon.speed<160?.38:.22;
+        const aim=targetPos.clone().add(target.velocity.clone().multiplyScalar(lead));
+
+        // Tracking/falloff become real projectile accuracy rather than a tooltip.
+        const spread=(1-sol.quality)*(target.radius||8)*2.8;
+        if(spread>0){
+          aim.x+=rand(-spread,spread);
+          aim.y+=rand(-spread,spread);
+          aim.z+=rand(-spread,spread);
+        }
+
+        const damage=21*weapon.damage*moduleStats.turretDamage*bankIntegrity*(.58+.42*sol.range);
+        createProjectile(
+          origin,aim,weapon.speed,damage,player,weapon.color,weapon.radius,null,
+          weapon.homing?target:null,weapon.damageType,weapon.id
+        );
+
+        if(Math.random()<.16)synthShot(weapon.id==='railgun'?120:weapon.id==='repeater'?410:250,.045,.016,'square');
+      }
+    }
+  }
+
+  // ============================================================
+  // ENEMY AI
+  // ============================================================
+  function enemyShoot(e,targetEntity=player){
+    if(!e || e.dead || !targetEntity || targetEntity.dead || targetEntity.destroyed)return;
+
+    const from=e.group.position.clone();
+    const weapon=e.weapon||TURRET_CATALOG.autocannon;
+    const playerTarget=targetEntity===player;
+    const targetNode=playerTarget?pickEnemySubsystem(e):null;
+    const baseTarget=playerTarget
+      ?(targetNode?systemWorldPosition(targetNode):player.group.position.clone())
+      :targetEntity.group.position.clone();
+
+    const targetVelocity=(targetEntity.velocity||new THREE.Vector3());
+    const lead=weapon.speed>450?.08:weapon.speed>280?.13:weapon.speed<160?.28:.18;
+    const target=baseTarget.clone().add(targetVelocity.clone().multiplyScalar(lead));
+
+    const cls=e.classId||e.type;
+    const commandHealth=enemyCommandIntegrity(e);
+    const trackingBias=(cls==='fighter'?1.25:cls==='frigate'?1.10:cls==='destroyer'?.92:cls==='cruiser'?.82:cls==='battleship'?.66:cls==='dreadnought'?.48:.38)
+      *(.38+.62*commandHealth);
+    const relativeVel=targetVelocity.clone().sub(e.velocity);
+    const angular=relativeVel.length()/Math.max(25,baseTarget.distanceTo(from));
+    const miss=clamp((angular/(Math.max(.04,weapon.tracking)*.05))*5/trackingBias,0,16);
+
+    target.x+=rand(-miss,miss);
+    target.y+=rand(-miss,miss);
+    target.z+=rand(-miss,miss);
+
+    createProjectile(
+      from,target,weapon.speed,
+      e.cfg.damage*weapon.damage*.66*
+        (.28+.72*enemyWeaponIntegrity(e))*
+        (.42+.58*enemyReactorIntegrity(e)),
+      e,
+      weapon.color,Math.max(.14,weapon.radius),targetNode,
+      weapon.homing?targetEntity:null,
+      weapon.damageType||'balanced',weapon.id,targetEntity
+    );
+
+    e.lastLivingShot=gameTime;
+    if(Math.random()<.22)synthShot(
+      weapon.id==='railgun'?115:weapon.id==='beam_laser'?360:145,
+      .065,.016,'sawtooth'
+    );
+  }
+
+
+  const LIVING_TRAFFIC_PROFILES={
+    chaos:{target:11,friendlyRaces:['chaos','savanah','hybrid_fused'],neutralRaces:['human_hunters','ai','sol_symbiots'],hostileRaces:['blackhole','ai_hunters','pagan_ai'],classes:['fighter','frigate','destroyer']},
+    naraka:{target:12,friendlyRaces:['savanah','human_hunters','sol_symbiots'],neutralRaces:['ai','cosmic_light','hybrid_fused'],hostileRaces:['blackhole','pagan_ai','ai_hunters'],classes:['frigate','destroyer','cruiser','battleship']},
+    erebos:{target:8,friendlyRaces:['cosmic_darkness','savanah'],neutralRaces:['ai_hunters','ai'],hostileRaces:['blackhole','pagan_ai','chaos'],classes:['frigate','destroyer','cruiser']},
+    aion:{target:7,friendlyRaces:['techno_angels','cosmic_light','ai_gods'],neutralRaces:['ai','amethyst_angels'],hostileRaces:['blackhole','ai_hunters','chaos'],classes:['destroyer','cruiser','battleship']}
+  };
+
+  let livingTrafficSector=null;
+  let livingTrafficCooldown=0;
+  let livingTrafficGroupId=1;
+  let livingTrafficPulse=0;
+
+  function livingTrafficProfile(){
+    return LIVING_TRAFFIC_PROFILES[settings.currentSector]||LIVING_TRAFFIC_PROFILES.naraka;
+  }
+
+  function livingActors(alignment=null){
+    return enemies.filter(e=>
+      !e.dead && e.worldActor && e.group?.parent &&
+      (!alignment || e.alignment===alignment)
+    );
+  }
+
+  function livingTrafficSnapshot(){
+    const all=livingActors();
+    return {
+      total:all.length,
+      friendly:all.filter(e=>e.alignment==='friendly').length,
+      neutral:all.filter(e=>e.alignment==='neutral').length,
+      hostile:all.filter(e=>e.alignment==='hostile').length
+    };
+  }
+
+  function trafficLandmarks(){
+    return worldLandmarks.filter(l=>
+      l.sector===settings.currentSector &&
+      l.pos &&
+      l.kind!=='station'
+    );
+  }
+
+  function randomTrafficAnchor(preferHot=false){
+    const list=trafficLandmarks();
+    const filtered=preferHot
+      ?list.filter(l=>['hot','salvage','asset'].includes(l.kind))
+      :list;
+    const pool=filtered.length?filtered:list;
+    if(pool.length){
+      return pool[Math.floor(Math.random()*pool.length)].pos.clone();
+    }
+    return sectorWorld().station.clone().add(new THREE.Vector3(rand(-250,250),rand(-60,60),rand(-250,250)));
+  }
+
+  function pickLivingNavTarget(e){
+    const list=trafficLandmarks();
+    if(e.aiRole==='salvager'){
+      e.navTarget=e.home.clone().add(new THREE.Vector3(rand(-55,55),rand(-18,18),rand(-55,55)));
+      return;
+    }
+    if(list.length){
+      const candidates=list.filter(l=>l.pos.distanceTo(e.group.position)>90);
+      const chosen=(candidates.length?candidates:list)[Math.floor(Math.random()*(candidates.length?candidates.length:list.length))];
+      e.navTarget=chosen.pos.clone().add(new THREE.Vector3(rand(-28,28),rand(-16,16),rand(-28,28)));
+    }else{
+      e.navTarget=e.home.clone().add(new THREE.Vector3(rand(-e.routeRadius,e.routeRadius),rand(-40,40),rand(-e.routeRadius,e.routeRadius)));
+    }
+  }
+
+  function spawnLivingActor(classId,raceId,alignment,role,anchor,groupId,index=0){
+    const p=anchor.clone().add(new THREE.Vector3(
+      rand(-34,34)+index*7,
+      rand(-16,16),
+      rand(-34,34)-index*5
+    ));
+
+    const faction=
+      alignment==='friendly'?'LOCAL PATROL':
+      alignment==='neutral'?(role==='salvager'?'SALVAGE CREW':'CIVILIAN CONVOY'):
+      'RAIDER PACK';
+
+    const e=createEnemy(classId,p,raceId,index,{
+      worldActor:true,
+      alignment,
+      aiRole:role,
+      factionName:faction,
+      home:anchor,
+      navTarget:anchor,
+      routeRadius:190,
+      livingGroup:groupId,
+      callsign:(RACE_CATALOG[raceId]?.name||raceId)+' '+faction+' '+(index+1)
+    });
+    pickLivingNavTarget(e);
+    return e;
+  }
+
+  function spawnLivingGroup(alignment,role,count,anchor=null){
+    const profile=livingTrafficProfile();
+    anchor=anchor||randomTrafficAnchor(alignment==='hostile');
+    const groupId='living_'+(livingTrafficGroupId++);
+    const races=
+      alignment==='friendly'?profile.friendlyRaces:
+      alignment==='neutral'?profile.neutralRaces:
+      profile.hostileRaces;
+
+    const out=[];
+    for(let i=0;i<count;i++){
+      let cls;
+      if(role==='salvager')cls=i===0?'destroyer':'frigate';
+      else if(role==='convoy')cls=i===0?'destroyer':'frigate';
+      else if(role==='patrol')cls=i===count-1?profile.classes[Math.min(1,profile.classes.length-1)]:profile.classes[0];
+      else cls=profile.classes[Math.min(i%profile.classes.length,profile.classes.length-1)];
+
+      const race=races[(i+livingTrafficGroupId)%races.length];
+      out.push(spawnLivingActor(cls,race,alignment,role,anchor,groupId,i));
+    }
+    return out;
+  }
+
+  function spawnInitialLivingTraffic(){
+    if(appMode!=='combat')return;
+    const profile=livingTrafficProfile();
+
+    // Guaranteed local skirmish: both sides are created around the same site,
+    // so the sector is already doing something before the player arrives.
+    const skirmish=randomTrafficAnchor(true);
+    spawnLivingGroup('friendly','patrol',Math.min(3,profile.target),skirmish.clone().add(new THREE.Vector3(-55,8,20)));
+    spawnLivingGroup('hostile','raider',Math.min(3,Math.max(2,profile.target-3)),skirmish.clone().add(new THREE.Vector3(55,-5,-20)));
+
+    if(profile.target>=8){
+      const tradeAnchor=randomTrafficAnchor(false);
+      spawnLivingGroup('neutral','convoy',3,tradeAnchor);
+    }
+
+    if(profile.target>=10){
+      spawnLivingGroup('neutral','salvager',2,randomTrafficAnchor(true));
+    }
+
+    livingTrafficCooldown=rand(8,13);
+    livingTrafficSector=settings.currentSector;
+
+    const snap=livingTrafficSnapshot();
+    flashMission(
+      'LOCAL TRAFFIC RESOLVED',
+      snap.total+' VESSELS // PATROLS · CIVILIANS · RAIDERS',
+      .9
+    );
+  }
+
+  function nearestLivingOpponent(e,live,maxRange=360){
+    let best=null,bestD=maxRange;
+
+    for(const other of live){
+      if(other===e || other.dead || !other.worldActor)continue;
+
+      let hostile=false;
+      if(e.alignment==='friendly')hostile=other.alignment==='hostile';
+      else if(e.alignment==='hostile')hostile=other.alignment==='friendly'||other.alignment==='neutral';
+      else hostile=other.alignment==='hostile';
+
+      if(!hostile)continue;
+      const d=e.group.position.distanceTo(other.group.position);
+      if(d<bestD){best=other;bestD=d;}
+    }
+
+    return best?{target:best,distance:bestD}:null;
+  }
+
+  function updateLivingActor(e,dt,live){
+    e.livingAge+=dt;
+    e.shieldFlash=0;
+    e.shieldMesh.material.opacity=0;
+
+    const cls=e.classId||e.type;
+    const base=ENEMY_CLASS_CATALOG[cls]||ENEMY_CLASS_CATALOG.fighter;
+    const relation=nearestLivingOpponent(e,live,e.alignment==='neutral'?210:390);
+
+    let combatTarget=null;
+    let fleeTarget=null;
+
+    if(e.alignment==='neutral'){
+      if(relation)fleeTarget=relation.target;
+    }else if(relation){
+      combatTarget=relation.target;
+    }else if(e.alignment==='hostile'){
+      // Raiders become a threat to the player only when they actually close in.
+      const pd=e.group.position.distanceTo(player.group.position);
+      if(pd<185 || e.provoked)combatTarget=player;
+    }
+
+    let desired=new THREE.Vector3();
+    let facing=null;
+
+    if(combatTarget){
+      const targetPos=combatTarget.group.position;
+      const toTarget=targetPos.clone().sub(e.group.position);
+      const dist=Math.max(1,toTarget.length());
+      const dir=toTarget.clone().normalize();
+      const ideal=Math.max(55,base.ideal*.72);
+
+      const radial=dir.clone().multiplyScalar((dist-ideal)*.20);
+      const tangent=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0));
+      if(tangent.lengthSq()<.001)tangent.set(1,0,0);
+      tangent.normalize().multiplyScalar(e.orbitSign*base.orbit*.72);
+      desired.copy(radial).add(tangent);
+      facing=dir;
+
+      e.cooldown-=dt;
+      if(dist<e.cfg.range && e.cooldown<=0){
+        const doctrineRate=['prism','ai','techno_angels'].includes(e.raceId)?.86:['mycelium','hybrid_fused','savanah'].includes(e.raceId)?.88:['vanta','ai_hunters','cosmic_darkness'].includes(e.raceId)?1.18:1;
+        e.cooldown=e.cfg.fireRate*doctrineRate*rand(.90,1.22);
+        enemyShoot(e,combatTarget);
+      }
+    }else if(fleeTarget){
+      const away=e.group.position.clone().sub(fleeTarget.group.position);
+      if(away.lengthSq()<.001)away.set(1,0,0);
+      away.normalize();
+      desired.copy(away).multiplyScalar(e.cfg.speed);
+      facing=away;
+    }else{
+      if(!e.navTarget || e.group.position.distanceTo(e.navTarget)<28)pickLivingNavTarget(e);
+      const toNav=e.navTarget.clone().sub(e.group.position);
+      const dist=Math.max(1,toNav.length());
+      const dir=toNav.normalize();
+      const cruise=
+        e.aiRole==='salvager'?.32:
+        e.aiRole==='convoy'?.48:
+        e.aiRole==='patrol'?.60:.66;
+      desired.copy(dir).multiplyScalar(e.cfg.speed*cruise);
+      facing=dir;
+
+      // Salvagers slowly orbit the site instead of flying straight through it.
+      if(e.aiRole==='salvager'){
+        const tangent=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0));
+        if(tangent.lengthSq()>.001)desired.add(tangent.normalize().multiplyScalar(base.orbit*.42));
+      }
+    }
+
+    // Local separation keeps traffic readable without turning into one blob.
+    const separation=new THREE.Vector3();
+    for(const other of live){
+      if(other===e || other.dead)continue;
+      const delta=e.group.position.clone().sub(other.group.position);
+      const d2=delta.lengthSq();
+      const avoid=(e.radius+(other.radius||5))*1.30;
+      if(d2>0 && d2<avoid*avoid){
+        separation.add(delta.normalize().multiplyScalar((avoid-Math.sqrt(d2))*1.15));
+      }
+    }
+    desired.add(separation);
+    desired.y+=Math.sin(gameTime*.55+e.orbitPhase)*1.4;
+    ensureCombatAnatomy(e,false);
+    desired.clampLength(0,e.cfg.speed*(.28+.72*enemyDriveIntegrity(e))*(.76+.24*enemyReactorIntegrity(e)));
+
+    const response=(cls==='fighter'?.08:cls==='frigate'?.12:cls==='destroyer'?.18:cls==='cruiser'?.24:.34)
+      *(.75+.25*enemyCommandIntegrity(e));
+    e.velocity.lerp(desired,1-Math.pow(response,dt));
+    e.group.position.addScaledVector(e.velocity,dt);
+
+    if(facing && facing.lengthSq()>.001){
+      const q=combatTarget
+        ?enemyTacticalFacing(e,facing)
+        :new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,-1),facing);
+      e.group.quaternion.slerp(q,1-Math.pow(.06,dt));
+    }
+
+    if(['mycelium','hybrid_fused'].includes(e.raceId)&&e.hull>0&&e.hull<e.maxHull){
+      e.hull=Math.min(e.maxHull,e.hull+e.maxHull*.006*dt*(.35+.65*enemyReactorIntegrity(e)));
+      e.structure=e.hull;
+    }
+    if(['aurelian','cosmic_light'].includes(e.raceId)&&e.shield>0&&e.shield<e.maxShield&&enemyShieldIntegrity(e)>.04){
+      e.shield=Math.min(e.maxShield,e.shield+e.maxShield*.009*dt*
+        (.20+.80*enemyShieldIntegrity(e))*(.45+.55*enemyReactorIntegrity(e)));
+    }
+  }
+
+  function updateLivingTraffic(dt){
+    if(appMode!=='combat')return;
+    if(microZJBattle.active)return;
+
+    if(livingTrafficSector!==settings.currentSector){
+      spawnInitialLivingTraffic();
+      return;
+    }
+
+    livingTrafficPulse+=dt;
+    livingTrafficCooldown-=dt;
+
+    const profile=livingTrafficProfile();
+    const snap=livingTrafficSnapshot();
+
+    if(livingTrafficCooldown<=0 && snap.total<profile.target){
+      // Restore whichever role disappeared instead of spawning arbitrary enemies.
+      if(snap.hostile<2)spawnLivingGroup('hostile','raider',2,randomTrafficAnchor(true));
+      else if(snap.friendly<2)spawnLivingGroup('friendly','patrol',2,randomTrafficAnchor(true));
+      else spawnLivingGroup('neutral',Math.random()<.5?'convoy':'salvager',2,randomTrafficAnchor(false));
+      livingTrafficCooldown=rand(10,17);
+    }
+
+    // A lightweight local pulse keeps free-flight readable without another HUD.
+    if(livingTrafficPulse>8){
+      livingTrafficPulse=0;
+      const s=livingTrafficSnapshot();
+      if(!activeContract() && !ambientEvent && s.total){
+        const hostile=s.hostile?(' · '+s.hostile+' RAIDER'+(s.hostile===1?'':'S')):'';
+        const friendly=s.friendly?(' · '+s.friendly+' PATROL'):'';
+        const neutral=s.neutral?(' · '+s.neutral+' CIVILIAN'):'';
+        const legacy=document.getElementById('zoneActivityHud');
+        if(legacy)legacy.innerHTML='<b>LOCAL TRAFFIC</b>'+friendly+neutral+hostile;
+      }
+    }
+  }
+
+  function updateEnemies(dt){
+    const live=enemies.filter(e=>!e.dead);
+    for(const e of enemies){
+      if(e.dead){
+        e.deathTimer-=dt;
+        e.group.rotation.x+=dt*.10;
+        e.group.rotation.z+=dt*.13;
+        e.velocity.multiplyScalar(Math.exp(-.35*dt));
+        e.group.position.addScaledVector(e.velocity,dt);
+        if(e.deathTimer<=0&&e.group.parent){
+          scene.remove(e.group);
+          disposeGeneratedTree(e.group);
+        }
+        continue;
+      }
+
+      if(e.worldActor){
+        updateLivingActor(e,dt,live);
+        continue;
+      }
+
+      e.shieldFlash=0;e.shieldMesh.material.opacity=0;
+      const toPlayer=player.group.position.clone().sub(e.group.position),dist=Math.max(1,toPlayer.length()),dir=toPlayer.clone().normalize();
+      const cls=e.classId||e.type,base=ENEMY_CLASS_CATALOG[cls]||ENEMY_CLASS_CATALOG.fighter;
+      let ideal=base.ideal;if(e.raceId==='vanta'||e.raceId==='aurelian')ideal*=1.22;if(e.raceId==='ferric'||e.raceId==='ossuary')ideal*=.82;if(e.raceId==='seraphim')ideal*=.88;
+
+      const radial=dir.clone().multiplyScalar((dist-ideal)*.22);
+      const tangent=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0));if(tangent.lengthSq()<.001)tangent.set(1,0,0);tangent.normalize().multiplyScalar(e.orbitSign*base.orbit);
+      let desired=radial.add(tangent);
+
+      // Crippled ships value survival over ideal orbit.
+      const damageState=enemyDamageState(e);
+      if(damageState==='CRIPPLED'){
+        const away=e.group.position.clone().sub(player.group.position);
+        if(away.lengthSq()<.001)away.set(1,0,0);
+        away.normalize();
+        desired.copy(away).multiplyScalar(e.cfg.speed*.62);
+        e.damagePosture='DISENGAGING // CRIPPLED';
+      }
+
+      const separation=new THREE.Vector3();
+      for(const other of live){if(other===e)continue;const delta=e.group.position.clone().sub(other.group.position),d2=delta.lengthSq(),avoid=(e.radius+other.radius)*1.45;if(d2>0&&d2<avoid*avoid)separation.add(delta.normalize().multiplyScalar((avoid-Math.sqrt(d2))*1.4));}
+      desired.add(separation);
+      if(cls==='fighter')desired.add(tangent.clone().multiplyScalar(.75));
+      else if(cls==='frigate'&&dist>ideal*1.25)desired.add(dir.clone().multiplyScalar(4));
+      else if(cls==='destroyer')desired.add(tangent.clone().multiplyScalar(.35));
+      else if(cls==='battleship')desired.multiplyScalar(.78);
+      else if(cls==='dreadnought'||cls==='titan')desired.multiplyScalar(.48);
+
+      if(['mycelium','hybrid_fused'].includes(e.raceId))desired.y+=Math.sin(gameTime*1.6+e.orbitPhase)*4.5;
+      else if(['seraphim','techno_angels'].includes(e.raceId))desired.y+=Math.sin(gameTime*.9+e.orbitPhase)*3.8;
+      else desired.y+=Math.sin(gameTime*.55+e.orbitPhase)*2;
+
+      ensureCombatAnatomy(e,false);
+      const driveHealth=enemyDriveIntegrity(e);
+      const reactorHealth=enemyReactorIntegrity(e);
+      const commandHealth=enemyCommandIntegrity(e);
+      const capabilitySpeed=(.26+.74*driveHealth)*(.72+.28*reactorHealth);
+      desired.clampLength(0,e.cfg.speed*capabilitySpeed);
+      const response=(cls==='fighter'?.08:cls==='frigate'?.11:cls==='destroyer'?.16:cls==='cruiser'?.20:.28)
+        *(.72+.28*commandHealth);
+      e.velocity.lerp(desired,1-Math.pow(response,dt));e.group.position.addScaledVector(e.velocity,dt);
+      const q=enemyTacticalFacing(e,dir);
+      e.group.quaternion.slerp(q,1-Math.pow(cls==='fighter'?.025:.05,dt));
+
+      if(['mycelium','hybrid_fused'].includes(e.raceId)&&e.hull>0&&e.hull<e.maxHull){
+        e.hull=Math.min(e.maxHull,e.hull+e.maxHull*.008*dt*(.35+.65*reactorHealth));
+        e.structure=e.hull;
+      }
+      if(['aurelian','cosmic_light'].includes(e.raceId)&&e.shield>0&&e.shield<e.maxShield&&enemyShieldIntegrity(e)>.04){
+        e.shield=Math.min(e.maxShield,e.shield+e.maxShield*.012*dt*
+          (.20+.80*enemyShieldIntegrity(e))*(.45+.55*reactorHealth));
+      }
+
+      e.cooldown-=dt;
+      if(dist<e.cfg.range&&e.cooldown<=0&&!player.destroyed&&damageState!=='CRIPPLED'){
+        const doctrineRate=['prism','ai','techno_angels'].includes(e.raceId)?.86:['mycelium','hybrid_fused','savanah'].includes(e.raceId)?.88:['vanta','ai_hunters','cosmic_darkness'].includes(e.raceId)?1.18:1;
+        const weaponHealth=enemyWeaponIntegrity(e);
+        const firePenalty=1/(Math.max(.18,weaponHealth)*(.45+.55*reactorHealth));
+        e.cooldown=e.cfg.fireRate*doctrineRate*firePenalty*rand(.84,1.18);
+        if(weaponHealth>.05)enemyShoot(e);
+      }
+    }
+  }
+
+  // ============================================================
+  // RESTORED CAPITAL FLIGHT + CAMERA CONTROLLER // FORGE 0.15.1
+  // ============================================================
+  function updatePlayer(dt){
+    if(player.destroyed)return;
+
+    let boost=!!keys['Space'];
+    if(boost)boost=consumeCap(24*moduleStats.boostCapUse*dt,'BOOST DRIVE',false);
+
+    let thrustInput=(keys['KeyW']?1:0)-(keys['KeyS']?1:0);
+    let yawInput=(keys['KeyA']?1:0)-(keys['KeyD']?1:0);
+    let pitchInput=(keys['KeyR']?1:0)-(keys['KeyF']?1:0);
+    let rollInput=(keys['KeyQ']?1:0)-(keys['KeyE']?1:0);
+
+    // Any direct flight input instantly returns control to the player.
+    if(thrustInput||yawInput||pitchInput||rollInput||keys['Space']){
+      cancelFlightCommand(true);
+    }
+
+    const driveFactor=driveIntegrity();
+    const frame=currentFrame();
+
+    // ----------------------------------------------------------
+    // CAPITAL FLIGHT ASSIST
+    // Translation stays inertial, but lateral drift is actively
+    // cancelled by manoeuvring thrusters. Larger hulls retain more
+    // momentum; frigates align much faster.
+    // ----------------------------------------------------------
+    // ----------------------------------------------------------
+    // TARGET FLIGHT COMMANDS
+    // These steer the SHIP. Camera ownership stays completely separate.
+    // ----------------------------------------------------------
+    if(flightCommand.mode!=='manual'){
+      const t=flightCommand.target;
+
+      if(!t || t.dead || !t.group){
+        cancelFlightCommand(true);
+      }else{
+        const toTarget=t.group.position.clone().sub(player.group.position);
+        const flatTo=new THREE.Vector3(toTarget.x,0,toTarget.z);
+        const dist=Math.max(1,flatTo.length());
+
+        if(flatTo.lengthSq()>.001){
+          flatTo.normalize();
+
+          const currentForward=new THREE.Vector3(0,0,-1)
+            .applyQuaternion(player.group.quaternion);
+          currentForward.y=0;
+          if(currentForward.lengthSq()>.001)currentForward.normalize();
+
+          let desiredHeading=flatTo.clone();
+
+          if(flightCommand.mode==='orbit'){
+            const orbitRange=flightCommand.orbitRange;
+            const radialError=(dist-orbitRange)/Math.max(orbitRange,1);
+            const tangent=new THREE.Vector3(-flatTo.z,0,flatTo.x);
+
+            desiredHeading=flatTo.clone()
+              .multiplyScalar(clamp(radialError*1.6,-.72,.72))
+              .add(tangent.multiplyScalar(.94));
+
+            if(desiredHeading.lengthSq()>.001)desiredHeading.normalize();
+            thrustInput=1;
+          }else{
+            thrustInput=dist>42?1:dist<27?-.45:0;
+          }
+
+          const crossY=
+            currentForward.x*desiredHeading.z-
+            currentForward.z*desiredHeading.x;
+          const dot=clamp(currentForward.dot(desiredHeading),-1,1);
+          const angle=Math.acos(dot);
+
+          yawInput=clamp(
+            -Math.sign(crossY||1)*angle*2.15,
+            -1,1
+          );
+        }
+      }
+    }
+
+    const forward=new THREE.Vector3(0,0,-1).applyQuaternion(player.group.quaternion).normalize();
+    const up=new THREE.Vector3(0,1,0).applyQuaternion(player.group.quaternion).normalize();
+
+    const accel=(boost?27:13.5)*moduleStats.accel*driveFactor;
+    if(thrustInput!==0){
+      // Reverse thrust is deliberately weaker than forward thrust.
+      const reverseFactor=thrustInput<0?.58:1;
+      player.velocity.addScaledVector(forward,thrustInput*accel*reverseFactor*dt);
+    }
+
+    const maxForward=(boost?44:24)*moduleStats.maxSpeed*(.35+.65*driveFactor);
+    const maxReverse=maxForward*.38;
+
+    // Split velocity into forward and lateral components.
+    let axialSpeed=player.velocity.dot(forward);
+    const axial=forward.clone().multiplyScalar(axialSpeed);
+    const lateral=player.velocity.clone().sub(axial);
+
+    // Flight-assist strength follows handling. Small ships cancel drift
+    // quickly; dreadnoughts visibly carry momentum.
+    const handling=moduleStats.fitHandling||1;
+    const assistRate=(1.7+2.8*moduleStats.turn*handling)*(.55+.45*driveFactor);
+    lateral.multiplyScalar(Math.exp(-assistRate*dt));
+
+    // Mild axial damping when not thrusting prevents endless coast without
+    // making the hull feel like it is moving through water.
+    if(thrustInput===0){
+      axialSpeed*=Math.exp(-.20*dt);
+    }else{
+      axialSpeed*=Math.exp(-.035*dt);
+    }
+    axialSpeed=clamp(axialSpeed,-maxReverse,maxForward);
+
+    player.velocity.copy(forward).multiplyScalar(axialSpeed).add(lateral);
+
+    // Hard absolute safety cap for collision/boost spikes.
+    player.velocity.clampLength(0,maxForward*1.08);
+
+    // ----------------------------------------------------------
+    // LOCAL ROTATION
+    // No world-axis yaw and no automatic yaw→roll coupling.
+    // Inputs command target angular rates and damp cleanly to zero.
+    // ----------------------------------------------------------
+    const turnPower=moduleStats.turn*(.50+.50*driveFactor);
+    const boostTurn=boost?.88:1;
+    const targetYaw=yawInput*.34*turnPower*boostTurn;
+    const targetPitch=pitchInput*.25*turnPower*boostTurn;
+    const targetRoll=rollInput*.42*turnPower;
+
+    const angularResponse=1-Math.exp(-6.2*dt);
+    player.yawVel=lerp(player.yawVel,targetYaw,angularResponse);
+    player.pitchVel=lerp(player.pitchVel,targetPitch,angularResponse);
+    player.rollVel=lerp(player.rollVel,targetRoll,angularResponse);
+
+    // Stronger decay when an axis is released.
+    if(!yawInput)player.yawVel*=Math.exp(-5.0*dt);
+    if(!pitchInput)player.pitchVel*=Math.exp(-5.0*dt);
+    if(!rollInput)player.rollVel*=Math.exp(-5.8*dt);
+
+    const qYaw=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),player.yawVel*dt);
+    const qPitch=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),player.pitchVel*dt);
+    const qRoll=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,-1),player.rollVel*dt);
+
+    // multiply() means these axes are local to the ship orientation.
+    player.group.quaternion.multiply(qYaw).multiply(qPitch).multiply(qRoll).normalize();
+
+    player.group.position.addScaledVector(player.velocity,dt);
+
+    // Soft world boundary.
+    const boundary=460;
+    if(player.group.position.length()>boundary){
+      const excess=player.group.position.length()-boundary;
+      const pull=player.group.position.clone().normalize().multiplyScalar(-(8+excess*.10)*dt);
+      player.velocity.add(pull);
+    }
+
+    if(player.manualCooldown>0)player.manualCooldown-=dt;
+    if(fireHeld)manualFire();
+
+    if(player.overdrive>0)player.overdrive-=dt;
+    if(player.inversion>0)player.inversion-=dt;
+
+    player.shieldFlash=0;
+    player.shieldMesh.material.opacity=player.inversion>0?.055:0;
+
+    if(nodeOnline('SHIELD') && gameTime-player.lastHit>4 && player.shield<player.maxShield){
+      const shieldIntegrity=.28+.72*nodeRatio(systemNode('SHIELD'));
+      player.shield=Math.min(player.maxShield,player.shield+20*moduleStats.shieldRegen*shieldIntegrity*dt);
+    }
+
+    const speedRatio=clamp(player.velocity.length()/Math.max(1,maxForward),0,1);
+    for(const e of player.engines){
+      const disabled=e.systemNode?.disabled;
+      const nodePower=e.systemNode?nodeRatio(e.systemNode):1;
+      const intensity=.75+speedRatio*1.35+(boost?.85:0)+Math.abs(thrustInput)*.18;
+      e.plume.material.opacity=disabled?.012:(.05+.07*intensity*nodePower+Math.sin(gameTime*7+e.phase)*.012);
+      e.plume.scale.z=disabled?.35:(.72+intensity*.38*nodePower+Math.sin(gameTime*8+e.phase)*.07);
+    }
+
+    player.rA.rotation.z+=dt*.32;
+    player.rB.rotation.z-=dt*.22;
+
+    ui.speed.textContent=Math.round(player.velocity.length()*42);
+  }
+
+  
+
+  function setMicroZJOverlay(open){
+    microZJOverlayOpen=!!open;
+    if(ui20.microZJOverlay){
+      ui20.microZJOverlay.classList.toggle('open',microZJOverlayOpen);
+    }
+    renderMicroZJDrive();
+  }
+
+  function toggleMicroZJOverlay(){
+    setMicroZJOverlay(!microZJOverlayOpen);
+  }
+
+  function renderMicroZJDrive(){
+    const zone=currentMicroZone();
+    const cooldown=Math.max(0,microZJCooldownUntil-gameTime);
+
+    if(ui20.microZJToggle){
+      if(zone && microZJBattle.active){
+        const total=zone.waves.length;
+        const stage=Math.min(total,microZJBattle.waveIndex);
+        ui20.microZJToggle.innerHTML=
+          '<span>M</span> '+zone.index+' // '+
+          (microZJBattle.complete?'CLEARED':'WAVE '+Math.max(1,stage)+'/'+total);
+        ui20.microZJToggle.classList.add('active');
+      }else{
+        ui20.microZJToggle.innerHTML='<span>M</span> MICRO ZJ DRIVE';
+        ui20.microZJToggle.classList.remove('active');
+      }
+    }
+
+    if(ui20.microZJStatus){
+      if(zone && microZJBattle.active){
+        const alive=enemies.filter(
+          e=>!e.dead&&e.microZoneId===zone.id
+        ).length;
+
+        if(microZJBattle.complete){
+          ui20.microZJStatus.textContent=zone.name+' // CLEARED // SELECT NEXT WORLD';
+        }else if(zone.requiresAdvance && microZJBattle.awaitingAdvance){
+          const nextWave=Math.min(zone.waves.length,microZJBattle.waveIndex+1);
+          const site=microZoneSiteName(zone,nextWave);
+          const d=Math.round(player.group.position.distanceTo(microZoneRouteNode(zone,nextWave)));
+          ui20.microZJStatus.textContent=zone.name+' // TRANSIT '+site+' // '+d+'U';
+        }else{
+          ui20.microZJStatus.textContent=
+            zone.name+' // WAVE '+Math.min(zone.waves.length,microZJBattle.waveIndex)+' / '+
+            zone.waves.length+' // '+alive+' HOSTILES';
+        }
+      }else if(cooldown>0){
+        ui20.microZJStatus.textContent='DRIVE COOLING // '+cooldown.toFixed(1)+'S';
+      }else{
+        let readyCount=0;
+        try{
+          for(const [id,z] of Object.entries(MICRO_ZJ_BATTLE_ZONES)){
+            if(
+              microWorldGroups[id] &&
+              Array.isArray(z.route) && z.route.length>=4 &&
+              Array.isArray(z.waves) && z.waves.length>=10
+            )readyCount++;
+          }
+        }catch(_){}
+        ui20.microZJStatus.textContent=
+          'DRIVE READY // '+readyCount+'/3 WAR WORLDS ONLINE';
+      }
+    }
+
+    for(const button of document.querySelectorAll('[data-micro-zone]')){
+      const id=button.dataset.microZone;
+      const z=MICRO_ZJ_BATTLE_ZONES[id];
+      if(!z)continue;
+
+      const state=button.querySelector('.microRouteState');
+      const clears=microZoneCompletionCount(id);
+      const active=microZJBattle.active&&microZJBattle.zoneId===id;
+
+      let ready=false;
+      try{
+        ready=!!microWorldGroups[id] &&
+          Array.isArray(z.route) && z.route.length>=4 &&
+          Array.isArray(z.waves) && z.waves.length>=10;
+      }catch(_){
+        ready=false;
+      }
+
+      button.disabled=!ready;
+      button.classList.toggle('active',active);
+      button.classList.toggle('notReady',!ready);
+
+      if(state){
+        state.textContent=!ready
+          ?'OFFLINE'
+          :active
+            ?microZJBattle.complete?'CLEARED // ACTIVE':'ACTIVE WORLD'
+            :clears>0
+              ?'CLEARED ×'+clears+' // RELOAD'
+              :'READY // LOAD';
+      }
+    }
+  }
+
+  function clearMicroZJEnemies(){
+    for(let i=enemies.length-1;i>=0;i--){
+      const e=enemies[i];
+      if(!e?.microZoneId)continue;
+
+      if(e.group?.parent)e.group.parent.remove(e.group);
+      disposeGeneratedTree(e.group);
+
+      if(selected===e)selected=null;
+      enemies.splice(i,1);
+    }
+  }
+
+  function resetMicroZJBattleState(clearEnemies=true){
+    if(clearEnemies)clearMicroZJEnemies();
+
+    microZJBattle.active=false;
+    microZJBattle.zoneId=null;
+    microZJBattle.waveIndex=0;
+    microZJBattle.waveActive=false;
+    microZJBattle.timer=0;
+    microZJBattle.complete=false;
+    microZJBattle.startedAt=0;
+    microZJBattle.awaitingAdvance=false;
+    microZJBattle.lastSiteIndex=-1;
+    microZJBattle.hazardClock=0;
+    microZJBattle.furnaceWarningAt=-99;
+    microZJBattle.furnacePulseAt=-99;
+
+    try{syncMicroWorldVisibility();}catch(_){}
+    renderMicroZJDrive();
+  }
+
+  function microZJTransitionLabel(text){
+    const transition=document.getElementById('sectorTransition');
+    const label=transition?.querySelector('.jumpText');
+    if(label)label.textContent=text;
+    if(transition)transition.classList.add('on');
+
+    setTimeout(()=>{
+      if(transition)transition.classList.remove('on');
+      if(label)label.textContent='ANCIENT GATE TRANSIT';
+    },620);
+  }
+
+  function microZJJumpTo(zoneId){
+    const zone=MICRO_ZJ_BATTLE_ZONES[zoneId];
+    if(!zone)return;
+
+    let worldReady=false;
+    try{
+      worldReady=!!microWorldGroups[zoneId] &&
+        Array.isArray(zone.route) && zone.route.length>=4 &&
+        Array.isArray(zone.waves) && zone.waves.length>=10;
+    }catch(_){}
+
+    if(!worldReady){
+      flashMission('MICRO ZJ DRIVE','DESTINATION OFFLINE // WORLD REGISTRY INCOMPLETE',.8);
+      return;
+    }
+
+    if(appMode!=='combat'){
+      flashMission('MICRO ZJ DRIVE','AVAILABLE IN FLIGHT',.55);
+      return;
+    }
+
+    if(settings.currentSector!=='naraka'){
+      flashMission('MICRO ZJ DRIVE','NARAKA WAR ROUTE ONLY // RETURN TO NARAKA VEIL',.75);
+      return;
+    }
+
+    if(encounterActive){
+      flashMission('MICRO ZJ INTERLOCK','ACTIVE CONTRACT ENGAGEMENT MUST BE CLEARED',.85);
+      return;
+    }
+
+    const cooldown=microZJCooldownUntil-gameTime;
+    if(cooldown>0){
+      flashMission('MICRO ZJ COOLING',cooldown.toFixed(1)+'S REMAINING',.45);
+      return;
+    }
+
+    setMicroZJOverlay(false);
+
+    // Leaving a pocket intentionally abandons uncollected field salvage.
+    clearEncounterObjects();
+    resetMicroZJBattleState(false);
+
+    microZJBattle.active=true;
+    microZJBattle.zoneId=zoneId;
+    microZJBattle.waveIndex=0;
+    microZJBattle.waveActive=false;
+    microZJBattle.timer=0;
+    microZJBattle.complete=false;
+    microZJBattle.startedAt=gameTime;
+    microZJBattle.awaitingAdvance=!!zone.requiresAdvance;
+    microZJBattle.lastSiteIndex=-1;
+    microZJBattle.hazardClock=0;
+    microZJBattle.furnaceWarningAt=-99;
+    microZJBattle.furnacePulseAt=-99;
+
+    applySectorPresentation();
+    updateWorldLabels();
+
+    microZJCooldownUntil=gameTime+MICRO_ZJ_COOLDOWN;
+    cancelFlightCommand(true);
+    selected=null;
+    fireHeld=false;
+
+    microZJTransitionLabel('MICRO ZJ TRANSIT // '+zone.name);
+
+    setTimeout(()=>{
+      if(!microZJBattle.active||microZJBattle.zoneId!==zoneId)return;
+
+      player.group.position.copy(zone.entry);
+      player.velocity.set(0,0,0);
+      player.yawVel=0;
+      player.pitchVel=0;
+      player.rollVel=0;
+      player.group.quaternion.identity();
+
+      player.capacitor=Math.max(
+        effectiveCapMax()*.58,
+        player.capacitor-effectiveCapMax()*.16
+      );
+
+      resetCombatCamera(true);
+      updateCombatCamera(0);
+
+      setWorldObjective(
+        'WAR ROUTE '+zone.index+' // '+zone.name,
+        zone.anchor
+      );
+
+      flashMission(
+        'MICRO ZJ // '+zone.name,
+        zone.id==='aether_crucible'
+          ?'FIVE WAR SITES // CLOSE TO EACH NAV NODE TO TRIGGER THE NEXT FORMATION'
+          :zone.threat+' // '+zone.waves.length+' AUTHORED WAVES // '+zone.estimated,
+        1.5
+      );
+
+      synthBoom(.055);
+      renderMicroZJDrive();
+    },250);
+  }
+
+  function microZJReturnHome(){
+    if(appMode!=='combat')return;
+
+    if(encounterActive){
+      flashMission('MICRO ZJ INTERLOCK','ACTIVE CONTRACT ENGAGEMENT MUST BE CLEARED',.7);
+      return;
+    }
+
+    const cooldown=microZJCooldownUntil-gameTime;
+    if(cooldown>0 && microZJBattle.active&&!microZJBattle.complete){
+      flashMission('MICRO ZJ COOLING',cooldown.toFixed(1)+'S REMAINING',.45);
+      return;
+    }
+
+    setMicroZJOverlay(false);
+    clearEncounterObjects();
+    resetMicroZJBattleState(false);
+    applySectorPresentation();
+    updateWorldLabels();
+
+    microZJCooldownUntil=gameTime+3.5;
+    const station=sectorWorld('naraka').station;
+
+    microZJTransitionLabel('MICRO ZJ RETURN // ASTERION');
+
+    setTimeout(()=>{
+      player.group.position.copy(station).add(
+        new THREE.Vector3(-(DOCK_RANGE+92),18,-62)
+      );
+      player.velocity.set(0,0,0);
+      player.group.quaternion.identity();
+      resetCombatCamera(true);
+      updateCombatCamera(0);
+
+      livingTrafficSector=null;
+      livingTrafficCooldown=0;
+
+      setWorldObjective(
+        'ASTERION DISTRICT // FREE FLIGHT',
+        station
+      );
+
+      flashMission(
+        'ASTERION DISTRICT',
+        'MICRO ZJ RETURN COMPLETE // FIELD ROUTE PRESERVED',
+        1.1
+      );
+
+      renderMicroZJDrive();
+    },250);
+  }
+
+  function microZoneRouteNode(zone,waveNumber){
+    const route=zone.route||[zone.anchor];
+    const t=(Math.max(1,waveNumber)-1)/Math.max(1,zone.waves.length-1);
+    const index=Math.min(
+      route.length-1,
+      Math.floor(t*route.length)
+    );
+    return route[index]||zone.anchor;
+  }
+
+  function microZoneRouteIndex(zone,waveNumber){
+    const route=zone.route||[zone.anchor];
+    const t=(Math.max(1,waveNumber)-1)/Math.max(1,zone.waves.length-1);
+    return Math.min(route.length-1,Math.floor(t*route.length));
+  }
+
+  function microZoneSiteName(zone,waveNumber){
+    const idx=microZoneRouteIndex(zone,waveNumber);
+    return zone.siteNames?.[idx]||('WAR NODE '+(idx+1));
+  }
+
+  function aetherFurnaceHeart(){
+    return WORLD.microCrucible.clone().add(new THREE.Vector3(0,0,35));
+  }
+
+  function aetherHazardPulse(){
+    if(!microZJBattle.active||microZJBattle.zoneId!=='aether_crucible')return;
+
+    const heart=aetherFurnaceHeart();
+    const range=132;
+    const playerD=player.group.position.distanceTo(heart);
+
+    // Kiln pulse can hurt every vessel caught near the furnace. It is a piece
+    // of world geometry, not an invisible player-only debuff.
+    const victims=[
+      {entity:player,dist:playerD},
+      ...enemies
+        .filter(e=>!e.dead&&e.microZoneId==='aether_crucible')
+        .map(e=>({entity:e,dist:e.group.position.distanceTo(heart)}))
+    ].filter(v=>v.dist<range);
+
+    for(const {entity,dist} of victims){
+      const falloff=clamp(1-dist/range,.18,1);
+      const hitPos=entity.group.position.clone().add(
+        new THREE.Vector3(0,Math.max(1,entityCombatRadius(entity)*.22),-Math.max(1,entityCombatRadius(entity)*.38))
+      );
+      applyDamage(
+        entity,
+        36*falloff,
+        hitPos,
+        'aether_furnace',
+        'thermal'
+      );
+    }
+
+    // Visual/sonic telegraph at the actual hazard source.
+    spawnExplosion(heart,0xffa942,5.2,false);
+    spawnBeam(
+      heart.clone().add(new THREE.Vector3(-55,0,0)),
+      heart.clone().add(new THREE.Vector3(55,0,0)),
+      0xffb650,.20,.15
+    );
+    synthBoom(.045);
+
+    if(playerD<range){
+      flashMission(
+        'CRUCIBLE SURGE',
+        'THERMAL FURNACE PULSE // BREAK CONTACT WITH THE HEART',
+        .75
+      );
+    }
+  }
+
+  function updateAetherCrucibleHazards(dt){
+    if(
+      !microZJBattle.active ||
+      microZJBattle.complete ||
+      microZJBattle.zoneId!=='aether_crucible'
+    )return;
+
+    microZJBattle.hazardClock+=dt;
+
+    // Furnace cycles only once the player has reached the central half of
+    // the route. Warning comes before damage.
+    if(microZJBattle.waveIndex<2)return;
+
+    const cycle=14.5;
+    const phase=microZJBattle.hazardClock%cycle;
+
+    if(
+      phase>9.6 &&
+      phase<9.6+dt*1.8 &&
+      gameTime-microZJBattle.furnaceWarningAt>5
+    ){
+      microZJBattle.furnaceWarningAt=gameTime;
+      const heart=aetherFurnaceHeart();
+      const d=Math.round(player.group.position.distanceTo(heart));
+      flashMission(
+        'FURNACE PRESSURE RISING',
+        'THERMAL SURGE IN ~3S // HEART RANGE '+d+'U',
+        .9
+      );
+    }
+
+    if(
+      phase>12.6 &&
+      phase<12.6+dt*1.8 &&
+      gameTime-microZJBattle.furnacePulseAt>5
+    ){
+      microZJBattle.furnacePulseAt=gameTime;
+      aetherHazardPulse();
+    }
+  }
+
+  function spawnMicroZJWave(zone,wave,waveNumber){
+    const classRadius={
+      fighter:170,
+      frigate:205,
+      destroyer:235,
+      cruiser:270,
+      battleship:305,
+      dreadnought:335,
+      titan:375
+    };
+
+    const entries=Object.entries(wave).filter(
+      ([key,value])=>ENEMY_CLASS_CATALOG[key] && Number(value)>0
+    );
+
+    const total=entries.reduce((sum,[,count])=>sum+Number(count),0);
+    const battleAnchor=microZoneRouteNode(zone,waveNumber);
+    let index=0;
+
+    const siteName=microZoneSiteName(zone,waveNumber);
+    setWorldObjective(
+      zone.name+' // '+siteName+' // '+(wave.label||('FORMATION '+waveNumber)),
+      battleAnchor
+    );
+
+    for(const [classId,countRaw] of entries){
+      const count=Number(countRaw);
+
+      for(let i=0;i<count;i++){
+        const baseRadius=classRadius[classId]||225;
+        const a=(index/Math.max(1,total))*Math.PI*2+rand(-.16,.16);
+        const radius=baseRadius+rand(-22,34);
+
+        const p=battleAnchor.clone().add(
+          new THREE.Vector3(
+            Math.cos(a)*radius,
+            rand(-42,42),
+            Math.sin(a)*radius
+          )
+        );
+
+        const raceId=zone.races[
+          (waveNumber+index+i)%zone.races.length
+        ];
+
+        const e=createEnemy(
+          classId,
+          p,
+          raceId,
+          index,
+          {powerMult:zone.power}
+        );
+
+        e.microZoneId=zone.id;
+        e.microWave=waveNumber;
+        e.factionName=zone.id==='aether_crucible'?'AETHER CRUCIBLE WARFORMS':'NARAKA WAR ROUTE';
+        e.formationRole=wave.role||e.formationRole||'WAR CONTACT';
+
+        if(zone.id==='aether_crucible'){
+          // Each formation advertises its combat job through actual weapon choice.
+          const role=String(wave.role||'');
+          const weaponId=
+            role.includes('SHIELD')?'beam_laser':
+            role.includes('ARMOUR')||role.includes('PLATE')?'plasma':
+            role.includes('INTERNAL')?'missile':
+            role.includes('KINETIC')||role.includes('BREACH')?'railgun':
+            role.includes('DREADNOUGHT')?'siege_beam':
+            classId==='fighter'?'repeater':
+            classId==='frigate'?'autocannon':
+            'shard';
+          e.weapon=TURRET_CATALOG[weaponId]||e.weapon;
+        }
+
+        index++;
+      }
+    }
+
+    flashMission(
+      zone.id==='aether_crucible'
+        ?siteName+' // '+(wave.label||('FORMATION '+waveNumber))
+        :zone.name+' // WAVE '+waveNumber,
+      total+' HOSTILES // '+(wave.role||zone.threat),
+      1.15
+    );
+
+    if(waveNumber===zone.waves.length){
+      bossBanner.textContent=zone.id==='aether_crucible'
+        ?'AETHER CRUCIBLE // THE FOUNDRY TYRANT'
+        :zone.name+' // FINAL FORMATION';
+      bossBanner.style.display='block';
+      setTimeout(()=>bossBanner.style.display='none',2400);
+    }
+
+    synthBoom(.045);
+  }
+
+  function completeMicroZJBattle(){
+    const zone=currentMicroZone();
+    if(!zone||microZJBattle.complete)return;
+
+    microZJBattle.complete=true;
+    microZJBattle.waveActive=false;
+
+    settings.microZJCompletions=settings.microZJCompletions||{};
+    settings.microZJCompletions[zone.id]=microZoneCompletionCount(zone.id)+1;
+    settings.salvage=(settings.salvage||0)+zone.reward;
+    settings.victories=(settings.victories||0)+1;
+    awardResearchData(zone.id==='aether_crucible'?24:18,zone.name+' // WAR-WORLD ANALYSIS',false);
+
+    if(zone.id==='aether_crucible'){
+      settings.materials=settings.materials||{};
+      settings.materials.ferrite=(settings.materials.ferrite||0)+18;
+      settings.materials.biofiber=(settings.materials.biofiber||0)+8;
+      settings.materials.drone_parts=(settings.materials.drone_parts||0)+4;
+    }
+
+    saveSettings();
+
+    for(let i=0;i<4;i++){
+      spawnSalvage(
+        player.group.position.clone().add(
+          new THREE.Vector3(rand(-18,18),rand(-9,9),rand(-18,18))
+        ),
+        Math.max(16,Math.round(zone.reward*.10)),
+        zone.id==='grave_choir'?'epic':'rare'
+      );
+    }
+
+    setWorldObjective(
+      zone.name+' // CLEARED // MICRO ZJ READY',
+      zone.anchor
+    );
+
+    flashMission(
+      'MICRO WORLD CLEARED',
+      zone.id==='aether_crucible'
+        ?zone.name+' // +'+zone.reward+' SALVAGE // FERRITE 18 · BIO-FIBER 8 · DRONE PARTS 4'
+        :zone.name+' // +'+zone.reward+' SALVAGE // M FOR NEXT JUMP',
+      2.2
+    );
+
+    renderMicroZJDrive();
+
+    setTimeout(()=>{
+      if(microZJBattle.complete)setMicroZJOverlay(true);
+    },2200);
+  }
+
+  function updateMicroZJBattle(dt){
+    if(!microZJBattle.active||microZJBattle.complete)return;
+
+    const zone=currentMicroZone();
+    if(!zone)return;
+
+    const alive=enemies.filter(
+      e=>!e.dead&&e.microZoneId===zone.id
+    ).length;
+
+    if(alive>0)return;
+
+    if(microZJBattle.waveActive){
+      microZJBattle.waveActive=false;
+      microZJBattle.timer=0;
+      microZJBattle.awaitingAdvance=!!zone.requiresAdvance;
+
+      const nextWaveNumber=Math.min(
+        zone.waves.length,
+        microZJBattle.waveIndex+1
+      );
+      const nextNode=microZoneRouteNode(zone,nextWaveNumber);
+      const site=microZoneSiteName(zone,nextWaveNumber);
+
+      setWorldObjective(
+        zone.requiresAdvance
+          ?zone.name+' // TRANSIT TO '+site
+          :zone.name+' // ADVANCE TO NEXT WAR NODE',
+        nextNode
+      );
+
+      flashMission(
+        'FORMATION BROKEN',
+        zone.requiresAdvance
+          ?'NAV TO '+site+' // SALVAGE OR EXPLORE EN ROUTE'
+          :zone.name+' // ADVANCE // REACTOR BREATHING WINDOW',
+        .82
+      );
+      return;
+    }
+
+    if(microZJBattle.waveIndex<zone.waves.length){
+      const nextWaveNumber=microZJBattle.waveIndex+1;
+      const nextNode=microZoneRouteNode(zone,nextWaveNumber);
+      const siteIndex=microZoneRouteIndex(zone,nextWaveNumber);
+      const site=microZoneSiteName(zone,nextWaveNumber);
+
+      if(zone.requiresAdvance){
+        const dist=player.group.position.distanceTo(nextNode);
+
+        if(dist>(zone.advanceRadius||110)){
+          microZJBattle.awaitingAdvance=true;
+          microZJBattle.timer=0;
+          setWorldObjective(
+            zone.name+' // TRANSIT TO '+site+' // '+Math.round(dist)+'U',
+            nextNode
+          );
+          return;
+        }
+
+        if(microZJBattle.awaitingAdvance){
+          microZJBattle.awaitingAdvance=false;
+          microZJBattle.timer=0;
+
+          if(microZJBattle.lastSiteIndex!==siteIndex){
+            microZJBattle.lastSiteIndex=siteIndex;
+            flashMission(
+              site,
+              'WAR SITE ENTERED // FORMATION SIGNATURE ACQUIRING',
+              .75
+            );
+          }
+        }
+      }
+
+      microZJBattle.timer+=dt;
+
+      if(microZJBattle.timer>=zone.interWave){
+        const wave=zone.waves[microZJBattle.waveIndex];
+
+        microZJBattle.waveIndex++;
+        microZJBattle.waveActive=true;
+        microZJBattle.timer=0;
+
+        spawnMicroZJWave(
+          zone,
+          wave,
+          microZJBattle.waveIndex
+        );
+
+        renderMicroZJDrive();
+      }
+      return;
+    }
+
+    microZJBattle.timer+=dt;
+    if(microZJBattle.timer>=3.2)completeMicroZJBattle();
+  }
+
+  function wireMicroZJDrive(){
+    const toggle=document.getElementById('microZJToggle');
+    const close=document.getElementById('microZJClose');
+    const back=document.getElementById('microZJReturn');
+
+    if(toggle&&!toggle.dataset.wired){
+      toggle.dataset.wired='1';
+      toggle.onclick=toggleMicroZJOverlay;
+    }
+
+    if(close&&!close.dataset.wired){
+      close.dataset.wired='1';
+      close.onclick=()=>setMicroZJOverlay(false);
+    }
+
+    if(back&&!back.dataset.wired){
+      back.dataset.wired='1';
+      back.onclick=microZJReturnHome;
+    }
+
+    for(const button of document.querySelectorAll('[data-micro-zone]')){
+      if(button.dataset.wired)continue;
+      button.dataset.wired='1';
+      button.onclick=()=>microZJJumpTo(button.dataset.microZone);
+    }
+
+    renderMicroZJDrive();
+  }
+
+  // ============================================================
+  // GAME DIRECTOR / WAVES
+  // ============================================================
+  let directorStage=0;
+  let stageTimer=0;
+  let bossSpawned=false;
+
+  function flashMission(title,sub='',duration=2.2){
+    missionEl.querySelector('strong').textContent=title;
+    missionEl.querySelector('span').textContent=sub;
+    missionEl.style.opacity='1';
+    setTimeout(()=>missionEl.style.opacity='0',duration*1000);
+  }
+
+  function spawnWave(type,count,radius=240,racePool=null){
+    racePool=racePool||CONTRACT_ENEMY_RACES[(currentContract||activeContract())?.id]||['abyssal'];
+    const cls=type==='interceptor'?'fighter':type,base=ENEMY_CLASS_CATALOG[cls]||ENEMY_CLASS_CATALOG.fighter;
+    for(let i=0;i<count;i++){
+      const slot=i-(count-1)/2,line=Math.floor(i/5),raceId=racePool[(i+contractWaveIndex)%racePool.length];
+      const p=player.group.position.clone().add(new THREE.Vector3(slot*(base.radius*4.2+12)+rand(-8,8),(i%3-1)*(base.radius*1.5+5)+rand(-5,5),-radius-line*28-rand(0,22)));
+      createEnemy(cls,p,raceId,i);
+    }
+  }
+
+  function aliveEnemies(){return enemies.filter(e=>!e.dead&&!e.worldActor).length}
+
+  function spawnContractWave(spec){
+    const c=currentContract||activeContract(),races=CONTRACT_ENEMY_RACES[c?.id]||['abyssal'];
+    const radii={fighter:190,frigate:225,destroyer:270,cruiser:315,battleship:350,dreadnought:380};
+    for(const [type,count] of Object.entries(spec||{}))spawnWave(type,count,radii[type]||240,races);
+  }
+
+  function updateDirector(dt){
+    const c=currentContract||activeContract();
+    if(!c || !encounterActive || encounterComplete)return;
+    stageTimer+=dt;
+
+    if(aliveEnemies()===0){
+      if(contractWaveIndex<c.waves.length){
+        if(!contractWaveSpawned && stageTimer>1.6){
+          const spec=c.waves[contractWaveIndex];
+          flashMission('HOSTILE WAVE '+(contractWaveIndex+1),c.name.toUpperCase(),1.1);
+          spawnContractWave(spec);
+          contractWaveIndex++;
+          contractWaveSpawned=true;
+          stageTimer=0;
+        }
+      }else if(c.boss && !bossSpawned){
+        if(stageTimer>2.2){
+          bossSpawned=true;
+          bossBanner.style.display='block';
+          setTimeout(()=>bossBanner.style.display='none',2600);
+          const p=player.group.position.clone().add(new THREE.Vector3(0,45,-390));
+          const races=CONTRACT_ENEMY_RACES[c.id]||['abyssal'];
+          const boss=createEnemy('titan',p,races[races.length-1],0);
+          selected=boss;
+          stageTimer=0;
+        }
+      }else if((!c.boss || bossSpawned) && stageTimer>1.8){
+        completeContract();
+      }
+    }else{
+      contractWaveSpawned=false;
+    }
+  }
+
+  // ============================================================
+  // UI
+  // ============================================================
+  function pct(v,m){return clamp(v/m*100,0,100)}
+
+  let tacticalAccum=0;
+
+  function selectEnemyById(id){
+    const e=enemies.find(x=>x.id===id&&!x.dead);
+    if(e)selected=e;
+  }
+
+  function updateTacticalHUD(dt=0){
+    if(!ui.tacticalPanel||!ui.tacticalRadar)return;
+    const visible=appMode==='combat'||appMode==='pause';
+    ui.tacticalPanel.style.display=visible?'block':'none';
+    if(!visible)return;
+
+    tacticalAccum+=dt;
+    if(tacticalAccum<.12&&dt>0)return;
+    tacticalAccum=0;
+
+    const canvas=ui.tacticalRadar,ctx=canvas.getContext('2d');
+    if(!ctx)return;
+    const w=canvas.width,h=canvas.height,cx=w*.5,cy=h*.5,range=450;
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle='rgba(100,235,255,.13)';ctx.lineWidth=1;
+    for(const r of [.25,.5,.75,1]){ctx.beginPath();ctx.arc(cx,cy,Math.min(w,h)*.43*r,0,Math.PI*2);ctx.stroke();}
+    ctx.beginPath();ctx.moveTo(cx,10);ctx.lineTo(cx,h-10);ctx.moveTo(10,cy);ctx.lineTo(w-10,cy);ctx.stroke();
+
+    const forward=new THREE.Vector3(0,0,-1).applyQuaternion(player.group.quaternion);
+    const right=new THREE.Vector3(1,0,0).applyQuaternion(player.group.quaternion);
+    const mapPoint=(pos)=>{
+      const rel=pos.clone().sub(player.group.position);
+      return [
+        cx+clamp(rel.dot(right)/range,-1,1)*(w*.43),
+        cy-clamp(rel.dot(forward)/range,-1,1)*(h*.43),
+        rel.length()
+      ];
+    };
+
+    for(const lm of worldLandmarks){
+      if(lm.sector!==settings.currentSector)continue;
+      const [x,y,d]=mapPoint(lm.pos);if(d>range)continue;
+      ctx.fillStyle=lm.kind==='hot'?'rgba(255,111,91,.42)':lm.kind==='station'?'rgba(120,255,195,.55)':'rgba(104,232,255,.38)';
+      ctx.fillRect(x-2,y-2,4,4);
+    }
+
+    if(ambientEvent && ambientEvent.sector===settings.currentSector){
+      const [x,y,d]=mapPoint(ambientEvent.pos);
+      if(d<=range){
+        ctx.strokeStyle=ambientEvent.kind==='elite'?'rgba(205,105,255,.95)':'rgba(255,211,111,.85)';
+        ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.stroke();
+      }
+    }
+
+    const alive=enemies.filter(e=>!e.dead);
+    for(const e of alive){
+      const [x,y,d]=mapPoint(e.group.position);if(d>range)continue;
+      const capital=['battleship','dreadnought','titan'].includes(e.classId);
+      const alignment=e.worldActor?e.alignment:'hostile';
+      const contactColor=
+        alignment==='friendly'?'rgba(104,242,255,.88)':
+        alignment==='neutral'?'rgba(255,213,112,.78)':
+        capital?'rgba(255,93,77,.92)':'rgba(255,145,110,.72)';
+      ctx.beginPath();ctx.fillStyle=contactColor;
+      ctx.arc(x,y,capital?4.5:2.8,0,Math.PI*2);ctx.fill();
+      if(e===selected){
+        ctx.strokeStyle='rgba(255,225,135,.95)';ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(x,y,capital?8:6.5,0,Math.PI*2);ctx.stroke();
+      }
+    }
+
+    ctx.fillStyle='rgba(104,245,255,.95)';
+    ctx.beginPath();ctx.moveTo(cx,cy-7);ctx.lineTo(cx-5,cy+5);ctx.lineTo(cx+5,cy+5);ctx.closePath();ctx.fill();
+
+    if(ui.contactList){
+      const nearest=alive.map(e=>({e,d:e.group.position.distanceTo(player.group.position)})).sort((a,b)=>a.d-b.d).slice(0,6);
+      ui.contactList.innerHTML='';
+      for(const {e,d} of nearest){
+        const b=document.createElement('button');
+        const capital=['battleship','dreadnought','titan'].includes(e.classId);
+        b.className='contactRow'+(capital?' capital':'')+(e===selected?' selected':'');
+        const tag=e.worldActor
+          ?(e.alignment==='friendly'?'PATROL':e.alignment==='neutral'?'CIV':'RAIDER')
+          :'HOSTILE';
+        const capability=enemyCapabilityState(e);
+        const stateTag=capability==='COMBAT CAPABLE'?'':(' · '+capability);
+        b.innerHTML='<span>['+tag+'] '+(e.race?.name||'UNKNOWN')+' '+(e.classId||e.type)+stateTag+'</span><span class="range">'+Math.round(d)+'U</span>';
+        b.onclick=()=>selectEnemyById(e.id);
+        ui.contactList.appendChild(b);
+      }
+      if(!nearest.length)ui.contactList.innerHTML='<div style="padding:8px 2px;color:rgba(180,215,224,.30);font-size:7px;letter-spacing:.12em">NO LOCAL CONTACTS</div>';
+    }
+  }
+
+  
+  function h20SetBar(fill,text,value){
+    const v=clamp(Number.isFinite(value)?value:0,0,100);
+    if(fill)fill.style.width=v+'%';
+    if(text)text.textContent=Math.round(v)+'%';
+  }
+
+  function h20SetSystem(row,ratio,label=null){
+    if(!row)return;
+    const r=clamp(Number.isFinite(ratio)?ratio:0,0,1);
+    const fill=row.querySelector('i');
+    const value=row.querySelector('b');
+    if(fill)fill.style.width=(r*100)+'%';
+    if(value)value.textContent=label??Math.round(r*100)+'%';
+    row.classList.toggle('critical',r<.34);
+  }
+
+  function h20ContextState(){
+    const alive=enemies.filter(e=>!e.dead);
+    const hostile=alive.filter(e=>!e.worldActor||e.alignment==='hostile');
+    const traffic=livingTrafficSnapshot();
+    const contract=activeContract();
+
+    if(selected && !selected.dead){
+      const d=selected.group.position.distanceTo(player.group.position);
+      return {
+        type:'Selected Contact',
+        title:(selected.race?.name||'UNKNOWN')+' '+(selected.classId||selected.type||'VESSEL'),
+        body:(selected.worldActor
+          ?((selected.alignment||'UNKNOWN').toUpperCase()+' // '+(selected.aiRole||'TRAFFIC').toUpperCase())
+          :(selected.formationRole||'CONTACT'))+
+          ' // '+(selected.weapon?.name||'UNKNOWN WEAPON')+
+          ' // '+Math.round(selected.group.position.distanceTo(player.group.position))+'U',
+        prompt:selected.worldActor&&selected.alignment!=='hostile'
+          ?'INSPECT CONTACT // LMB WILL PROVOKE'
+          :'Z APPROACH · O ORBIT · TAB CYCLE · LMB FIRE'
+      };
+    }
+
+    if(microZJBattle.active){
+      const zone=currentMicroZone();
+
+      if(zone){
+        const alive=enemies.filter(
+          e=>!e.dead&&e.microZoneId===zone.id
+        ).length;
+
+        return {
+          type:'Micro ZJ War Route',
+          title:zone.name,
+          body:microZJBattle.complete
+            ?'CLEARED // '+zone.estimated+' ROUTE // REWARD BANKED'
+            :'WAVE '+Math.max(1,microZJBattle.waveIndex)+' / '+
+             zone.waves.length+' // '+alive+' HOSTILES // '+zone.threat,
+          prompt:microZJBattle.complete
+            ?'M // SELECT NEXT WORLD'
+            :'TAB // TARGET · LMB // FIRE · M // ZJ MAP'
+        };
+      }
+    }
+
+    if(nearPortal){
+      return {
+        type:'Transit',
+        title:nearPortal.name||'PORTAL',
+        body:'LINK // '+nearPortal.targetName+(nearPortal.unlocked?' // STABLE':' // LOCKED'),
+        prompt:nearPortal.unlocked?'G // TRANSIT':'LOCKED // '+nearPortal.lockedMessage
+      };
+    }
+
+    if(nearWorldInteractable){
+      return {
+        type:'World Interaction',
+        title:nearWorldInteractable.name||'SITE',
+        body:(nearWorldInteractable.kind||'SITE').toUpperCase()+' // '+Math.round(player.group.position.distanceTo(nearWorldInteractable.pos))+'U',
+        prompt:nearWorldInteractable.prompt||'G // INTERACT'
+      };
+    }
+
+    if(nearStation){
+      return {
+        type:'Station',
+        title:sectorMeta().stationName,
+        body:'DOCKING RANGE // REPAIR · REFIT · CONTRACTS',
+        prompt:'H // DOCK'
+      };
+    }
+
+    if(ambientEvent && ambientEvent.sector===settings.currentSector){
+      const d=Math.round(player.group.position.distanceTo(ambientEvent.pos));
+      return {
+        type:'Zone Activity',
+        title:(ambientEvent.label||ambientEvent.kind||'SIGNAL').toUpperCase(),
+        body:(ambientEvent.kind||'EVENT').toUpperCase()+' // '+d+'U // DYNAMIC LOCAL EVENT',
+        prompt:'APPROACH // INVESTIGATE'
+      };
+    }
+
+    if(contract){
+      return {
+        type:'Active Operation',
+        title:contract.name,
+        body:encounterComplete?'COMPLETE // RETURN TO '+sectorMeta().stationName.toUpperCase():
+          encounterActive?'ENGAGED // '+hostile.filter(e=>!e.worldActor).length+' CONTRACT HOSTILES ACTIVE':
+          'NAVIGATE // '+String(contract.target||'OBJECTIVE').toUpperCase(),
+        prompt:encounterActive?'TAB // TARGET · LMB // FIRE':'FOLLOW NAV OBJECTIVE'
+      };
+    }
+
+    if(traffic.total){
+      return {
+        type:'Living Local Space',
+        title:'TRAFFIC ACTIVE',
+        body:traffic.friendly+' PATROL // '+traffic.neutral+' CIVILIAN // '+traffic.hostile+' RAIDER',
+        prompt:traffic.hostile?'TAB // CYCLE HOSTILES · ROAM / INTERVENE':'ROAM // FOLLOW LOCAL CONTACTS'
+      };
+    }
+
+    return {
+      type:'Local Space',
+      title:'FREE FLIGHT',
+      body:'NO IMMEDIATE EVENT // '+sectorMeta().name,
+      prompt:'ROAM // SCAN LOCAL SPACE'
+    };
+  }
+
+  function renderUnifiedHUD(){
+    if(appMode==='combat'){
+      try{
+        gameUI.classList.remove('shellHidden');
+        gameUI.style.opacity='1';
+        gameUI.style.visibility='visible';
+        if(ui20?.root){
+          ui20.root.style.setProperty('display','block','important');
+          ui20.root.style.setProperty('visibility','visible','important');
+          ui20.root.style.setProperty('opacity','1','important');
+        }
+      }catch(_){}
+    }
+
+    if(!ui20.root)return;
+
+    const frame=currentFrame();
+    const sp=pct(player.shield,player.maxShield);
+    const ap=pct(player.armor,player.maxArmor);
+    const hp=pct(player.hull,player.maxHull);
+    const cp=capacitorPercent()*100;
+
+    ensureCombatAnatomy(player,false);
+    ui20.shipName.textContent=frame.name;
+    ui20.shipMeta.textContent=frame.raceName+' // '+frame.className;
+    if(ui20.armorZones)ui20.armorZones.innerHTML=armourTelemetryHTML(player);
+    h20SetBar(ui20.shieldFill,ui20.shieldText,sp);
+    h20SetBar(ui20.armorFill,ui20.armorText,ap);
+    h20SetBar(ui20.hullFill,ui20.hullText,hp);
+    h20SetBar(ui20.capFill,ui20.capText,cp);
+    if(ui20.capStatus){
+      const cp=capacitorPercent();
+      ui20.capStatus.textContent=capacitorCombatReadout();
+      ui20.capStatus.classList.toggle('stable',cp>=.45);
+      ui20.capStatus.classList.toggle('warn',cp<.45&&cp>=.18);
+      ui20.capStatus.classList.toggle('critical',cp<.18);
+    }
+    ui20.velocity.textContent=Math.round(player.velocity.length())+' U/S';
+    ui20.salvage.textContent=Math.floor(settings.salvage||0)+' SALVAGE';
+
+    ui20.sector.textContent='SECTOR // '+sectorMeta().name;
+    const legacyObjective=document.getElementById('worldObjective');
+    ui20.objective.textContent=legacyObjective?.textContent||'FREE FLIGHT';
+    if(worldObjectiveTarget){
+      ui20.objectiveDistance.textContent=
+        'DISTANCE '+Math.round(player.group.position.distanceTo(worldObjectiveTarget))+'U';
+    }else{
+      ui20.objectiveDistance.textContent='NO LOCKED NAV POINT';
+    }
+
+    const reactor=systemNode('REACTOR');
+    const shield=systemNode('SHIELD');
+    const dl=systemNode('ENG_L'),dr=systemNode('ENG_R');
+    const weapons=player.systemNodes.filter(n=>n.type==='weapon'&&!n.frameDisabled);
+    const onlineWeapons=weapons.filter(n=>!n.disabled).length;
+    h20SetSystem(ui20.sys.reactor,nodeRatio(reactor));
+    h20SetSystem(ui20.sys.shield,nodeRatio(shield));
+    h20SetSystem(ui20.sys.drive,(nodeRatio(dl)+nodeRatio(dr))*.5);
+    h20SetSystem(
+      ui20.sys.weapons,
+      weapons.length?onlineWeapons/weapons.length:0,
+      onlineWeapons+'/'+weapons.length
+    );
+
+    if(ui20.sys.damageControl){
+      const damageState=playerDamageState();
+      ui20.sys.damageControl.textContent=damageControlReadout();
+      ui20.sys.damageControl.classList.toggle('warn',damageState==='DAMAGED');
+      ui20.sys.damageControl.classList.toggle(
+        'critical',
+        damageState==='CRIPPLED'||damageState==='DESTROYED'
+      );
+    }
+
+    const banks=selectedGroupBanks();
+    const representative=banks[0]||frame.activeBanks[0];
+    const weapon=bankWeapon(representative);
+    ui20.weaponName.textContent=
+      player.selectedWeaponGroup.toUpperCase()+' // '+(weapon?.name||'NO WEAPON');
+    ui20.weaponState.textContent=
+      (player.autoFire?'AUTO BATTERIES':'MANUAL HOLD')+
+      ' // '+(player.groupAuto[player.selectedWeaponGroup]?'GROUP AUTO':'GROUP HOLD');
+    ui20.weaponState.classList.toggle('h20danger',!player.autoFire);
+    ui20.weaponState.classList.toggle('h20cyan',player.autoFire);
+
+    if(ui20.weaponDoctrine){
+      const selectedTarget=selected&&!selected.dead?selected:null;
+      const currentReadout=weaponBankDoctrineReadout(representative,selectedTarget);
+
+      if(selectedTarget){
+        const best=bestFittedWeaponForTarget(selectedTarget);
+        const bestGroup=best?bankGroup(best.bankId).toUpperCase():'—';
+        const suffix=best&&best.bankId!==representative
+          ?' // BEST '+bestGroup+' · '+best.weapon.name
+          :' // CURRENT BANK SUITED';
+        ui20.weaponDoctrine.textContent='DOCTRINE // '+currentReadout+suffix;
+      }else{
+        ui20.weaponDoctrine.textContent='DOCTRINE // '+currentReadout;
+      }
+    }
+
+    for(const el of ui20.groups){
+      el.classList.toggle('active',el.dataset.h20Group===player.selectedWeaponGroup);
+      const g=el.dataset.h20Group;
+      const available=(WEAPON_GROUPS[g]||[]).some(id=>frame.activeBanks.includes(id));
+      el.style.opacity=available?'1':'.25';
+    }
+
+    for(let i=1;i<=4;i++){
+      if(ui20.cd[i])ui20.cd[i].textContent=cds[i]<=0?'READY':cds[i].toFixed(1)+'S';
+    }
+
+    if(selected && !selected.dead){
+      ui20.target.classList.add('visible');
+      const d=selected.group.position.distanceTo(player.group.position);
+      ui20.targetName.textContent=selected.cfg?.name||selected.race?.name||'HOSTILE CONTACT';
+      ui20.targetMeta.textContent=
+        (selected.race?.name||'UNKNOWN')+' // '+
+        String(selected.classId||selected.cfg?.class||selected.type||'VESSEL').toUpperCase()+
+        ' // '+String(selected.formationRole||'CONTACT').toUpperCase();
+      ui20.targetRange.textContent=Math.round(d)+'U';
+      ensureCombatAnatomy(selected,false);
+      h20SetBar(ui20.targetShield,null,pct(selected.shield,selected.maxShield));
+      h20SetBar(ui20.targetArmor,null,pct(selected.armor,selected.maxArmor));
+      h20SetBar(ui20.targetHull,null,pct(selected.hull,selected.maxHull));
+      if(ui20.targetWeakness){
+        ui20.targetWeakness.innerHTML=targetWeaknessReadout(selected);
+        const weak=weakestArmourZoneReadable(selected);
+        ui20.targetWeakness.classList.toggle('danger',weak.breached||weak.ratio<.22);
+        ui20.targetWeakness.classList.toggle('good',!weak.breached&&weak.ratio>.60);
+      }
+      if(ui20.targetAnatomy){
+        ui20.targetAnatomy.innerHTML='ARMOUR // '+armourTelemetryHTML(selected)+'<br>'+enemySystemsTelemetry(selected);
+      }
+    }else{
+      ui20.target.classList.remove('visible');
+      if(ui20.targetWeakness){
+        ui20.targetWeakness.textContent='TACTICAL SCAN // NO TARGET';
+        ui20.targetWeakness.classList.remove('danger','good');
+      }
+      if(ui20.targetAnatomy)ui20.targetAnatomy.textContent='ARMOUR // NO SCAN';
+    }
+
+    const context=h20ContextState();
+    ui20.contextType.textContent=context.type;
+    ui20.contextTitle.textContent=context.title;
+    ui20.contextBody.textContent=context.body;
+    ui20.contextPrompt.textContent=context.prompt;
+
+    let prompt='';
+    if(nearPortal){
+      prompt=nearPortal.unlocked?'G // '+nearPortal.name+' → '+nearPortal.targetName:'PORTAL LOCKED';
+    }else if(nearWorldInteractable){
+      prompt=nearWorldInteractable.prompt||'G // INTERACT';
+    }else if(nearStation){
+      prompt='H // DOCK WITH '+sectorMeta().stationName.toUpperCase();
+    }
+    ui20.prompt.textContent=prompt;
+    renderMicroZJDrive();
+  }
+
+function updateUI(){
+    updateTacticalHUD(appMode==='pause'?0:.016);
+    ensureCombatAnatomy(player,false);
+    const sp=pct(player.shield,player.maxShield);
+    const ap=pct(player.armor,player.maxArmor);
+    const hp=pct(player.hull,player.maxHull);
+    const cp=capacitorPercent()*100;
+
+    ui.shieldBar.style.width=sp+'%';
+    ui.armorBar.style.width=ap+'%';
+    ui.hullBar.style.width=hp+'%';
+    ui.capBar.style.width=cp+'%';
+    ui.shieldText.textContent=Math.round(sp)+'%';
+    ui.armorText.textContent=Math.round(ap)+'%';
+    ui.hullText.textContent=Math.round(hp)+'%';
+    ui.capText.textContent=Math.round(cp)+'%';
+    ui.capText.classList.toggle('low',cp<20);
+    ui.autoFireState.textContent=player.autoFire?'ONLINE':'HOLD';
+    ui.autoFireState.classList.toggle('on',player.autoFire);
+    ui.autoFireState.classList.toggle('off',!player.autoFire);
+    updateWeaponGroupHUD();
+
+    for(let i=1;i<=4;i++){
+      ui.cd[i].textContent=cds[i]<=0?'READY':cds[i].toFixed(1)+'s';
+      ui.cd[i].style.color=cds[i]<=0?'rgba(255,224,153,.85)':'rgba(153,220,235,.45)';
+    }
+
+    if(selected && !selected.dead){
+      targetInfo.style.display='block';
+      targetInfo.querySelector('.name').textContent=selected.cfg.name;
+      targetInfo.querySelector('.class').textContent=selected.cfg.class;
+      if(ui.enemyDoctrine)ui.enemyDoctrine.textContent=(selected.race?.name||'UNKNOWN').toUpperCase()+' // '+(selected.formationRole||'CONTACT')+' // '+(selected.weapon?.name||'UNKNOWN WEAPON')+' // '+(selected.doctrine?.desc||'UNKNOWN DOCTRINE');
+      ui.targetShield.style.width=pct(selected.shield,selected.maxShield)+'%';
+      ui.targetArmor.style.width=pct(selected.armor,selected.maxArmor)+'%';
+      ui.targetHull.style.width=pct(selected.hull,selected.maxHull)+'%';
+
+      const banks=selectedGroupBanks();
+      const repBank=banks[0]||currentFrame().activeBanks[0];
+      const weapon=bankWeapon(repBank);
+      const sol=shotSolution(weapon,selected,player.group.position);
+      if(ui.targetTelemetry){
+        const band=sol.distance<=weapon.optimal?'OPTIMAL':sol.distance<=weapon.optimal+weapon.falloff?'FALLOFF':'DEEP FALLOFF';
+        const fit=weaponTargetFit(weapon,selected);
+        ui.targetTelemetry.textContent=
+          'RANGE '+Math.round(sol.distance)+'U · '+band+
+          ' · TRACK '+Math.round(sol.tracking*100)+'% · SOLUTION '+Math.round(sol.quality*100)+'% · '+
+          weapon.damageType.toUpperCase()+' · '+weaponDoctrineProfile(weapon).role+
+          ' · TARGET FIT '+Math.round(fit.score*100)+'%';
+      }
+
+      const wp=selected.group.position.clone().project(camera);
+      if(wp.z<1 && Math.abs(wp.x)<1.3 && Math.abs(wp.y)<1.3){
+        targetBox.style.display='block';
+        targetBox.style.left=((wp.x*.5+.5)*innerWidth)+'px';
+        targetBox.style.top=((-wp.y*.5+.5)*innerHeight)+'px';
+        const d=selected.group.position.distanceTo(camera.position);
+        const size=clamp(14500/d,48,118);
+        targetBox.style.width=size+'px';
+        targetBox.style.height=size+'px';
+      }else targetBox.style.display='none';
+    }else{
+      targetInfo.style.display='none';
+      targetBox.style.display='none';
+    }
+
+    // 0.20 owns all visible gameplay HUD presentation.
+    renderUnifiedHUD();
+  }
+
+  // ============================================================
+  // FX UPDATE
+  // ============================================================
+  function updateFX(dt){
+    for(let i=fx.length-1;i>=0;i--){
+      const f=fx[i];f.age+=dt;
+      const k=f.age/f.life;
+      if(f.type==='beam'){
+        f.mesh.material.opacity=1-k;
+        f.mesh.scale.x=1+k*.7;f.mesh.scale.z=1+k*.7;
+      }else if(f.type==='explosion'){
+        const s=1+k*2.6;
+        f.core.scale.setScalar(f.scale*.5*s);
+        f.core.material.opacity=1-k;
+        f.ring.scale.setScalar(f.scale*(.6+k*2.8));
+        f.ring.material.opacity=(1-k)*.8;
+        if(f.light)f.light.intensity=(1-k)*95;
+      }else if(f.type==='shieldRing'){
+        f.mesh.scale.setScalar(1+k*5);
+        f.mesh.material.opacity=(1-k)*.8;
+      }else if(f.type==='pulse'){
+        f.mesh.scale.setScalar(1+k*f.maxScale);
+        f.mesh.material.opacity=(1-k)*.75;
+      }else if(f.type==='tempLight'){
+        f.light.intensity=(1-k)*120;
+      }
+
+      if(k>=1){
+        if(f.mesh && f.mesh.parent)f.mesh.parent.remove(f.mesh);
+        if(f.group && f.group.parent)f.group.parent.remove(f.group);
+        if(f.light && f.type==='tempLight')scene.remove(f.light);
+        fx.splice(i,1);
+      }
+    }
+  }
+
+  // ============================================================
+  // AUTO TARGET ACQUISITION
+  // ============================================================
+  function autoAcquire(){
+    if(selected && !selected.dead)return;
+    let best=null,bestScore=1e9;
+    for(const e of enemies){
+      if(e.dead || (e.worldActor && e.alignment!=='hostile'))continue;
+      const p=e.group.position.clone().project(camera);
+      if(p.z>1)continue;
+      const score=Math.hypot(p.x,p.y)*2 + e.group.position.distanceTo(player.group.position)/500;
+      if(score<bestScore){bestScore=score;best=e}
+    }
+    if(best)selected=best;
+  }
+
+  // ============================================================
+  // MAIN LOOP
+  // ============================================================
+  const clock=new THREE.Clock();
+  let introShown=false;
+  let perfAccum=0,perfFrames=0,perfTier=0;
+  const perfHud=document.getElementById('perfHud');
+  function setPerfTier(tier){
+    perfTier=clamp(tier,0,2);
+    settings.quality=perfTier;
+    const ratios=[1.12,.92,.76];
+    const dpr=Math.min(devicePixelRatio,ratios[perfTier]);
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(innerWidth,innerHeight,false);
+    composer.setPixelRatio(dpr);
+    composer.setSize(innerWidth,innerHeight);
+    bloom.strength=settings.bloom?[.78,.68,.58][perfTier]:0;
+    bloom.enabled=!!settings.bloom;
+  }
+
+  let combatRuntimeFaulted=false;
+  let cameraShake=0;
+
+  function repairCombatRuntimeState(){
+    if(!Number.isFinite(cameraShake))cameraShake=0;
+
+    if(!player.velocity || !Number.isFinite(player.velocity.x) || !Number.isFinite(player.velocity.y) || !Number.isFinite(player.velocity.z)){
+      player.velocity=new THREE.Vector3();
+    }
+
+    if(!Number.isFinite(player.yawVel))player.yawVel=0;
+    if(!Number.isFinite(player.pitchVel))player.pitchVel=0;
+    if(!Number.isFinite(player.rollVel))player.rollVel=0;
+    if(!Number.isFinite(player.manualCooldown))player.manualCooldown=0;
+
+    if(!Array.isArray(projectiles)){
+      throw new Error('projectile pool unavailable');
+    }
+    if(!Array.isArray(fx)){
+      throw new Error('FX pool unavailable');
+    }
+  }
+
+
+  function repairArmourAggregate(amount){
+    if(amount<=0||player.armor>=player.maxArmor)return 0;
+    const before=player.armor;
+    player.armor=Math.min(player.maxArmor,player.armor+amount);
+    ensureCombatAnatomy(player,false);
+    return player.armor-before;
+  }
+
+  function updateActiveModules(dt){
+    const active=activeDefenseModule();
+    if(!active||!moduleAutomationEnabled('defense')||player.destroyed)return;
+
+    const {mod,runtime}=active;
+    player.activeModuleClocks=player.activeModuleClocks||{};
+    player.activeModuleClocks[mod.id]=(player.activeModuleClocks[mod.id]||0)+dt;
+
+    if(player.activeModuleClocks[mod.id]<runtime.cycle)return;
+
+    const shouldCycle=
+      runtime.kind==='shield_boost'
+        ?nodeOnline('SHIELD')&&player.shield/player.maxShield<runtime.threshold
+        :player.armor/player.maxArmor<runtime.threshold;
+
+    if(!shouldCycle)return;
+
+    const reason=runtime.kind==='shield_boost'
+      ?'AEGIS ACTIVE TANK'
+      :'ARMOUR REPAIR ACTIVE TANK';
+
+    if(!consumeCap(runtime.cap,reason,false)){
+      if(gameTime-(player.activeModuleCapWarnAt||-99)>.9){
+        player.activeModuleCapWarnAt=gameTime;
+        flashMission(mod.name.toUpperCase(),'ACTIVE CYCLE FAILED // CAPACITOR INSUFFICIENT',.55);
+      }
+      return;
+    }
+
+    player.activeModuleClocks[mod.id]=0;
+
+    if(runtime.kind==='shield_boost'){
+      player.shield=Math.min(player.maxShield,player.shield+runtime.amount);
+      player.shieldMesh.material.opacity=Math.max(player.shieldMesh.material.opacity,.12);
+    }else{
+      const repaired=repairArmourAggregate(runtime.amount);
+      if(repaired>0){
+        const node=mostDamagedPlayerSystem();
+        if(node&&nodeRatio(node)<.55)repairPlayerSystemNode(node,Math.min(12,runtime.amount*.10));
+      }
+    }
+  }
+
+function runCombatFrame(dt){
+    let ok=true;
+    const faults=[];
+
+    try{
+      repairCombatRuntimeState();
+    }catch(error){
+      console.error('Combat runtime state repair fault:',error);
+    }
+
+    const safe=(label,fn)=>{
+      try{
+        fn();
+      }catch(error){
+        ok=false;
+        faults.push({label,error});
+        console.error('Combat subsystem fault ['+label+']:',error);
+      }
+    };
+
+    // Each major subsystem now fails independently.
+    safe('PLAYER',()=>updatePlayer(dt));
+    safe('DRONES',()=>updatePlayerDrones(dt));
+    safe('CAPACITOR',()=>updateCapacitor(dt));
+    safe('ACTIVE MODULES',()=>updateActiveModules(dt));
+    safe('DAMAGE CONTROL',()=>updateDamageControl(dt));
+    safe('SYSTEM NODES',()=>updateSystemNodes(dt));
+    safe('WORLD',()=>updateWorld(dt));
+    safe('TURRETS',()=>updateTurrets(dt));
+    safe('ENEMIES',()=>updateEnemies(dt));
+    safe('PROJECTILES',()=>updateProjectiles(dt));
+    safe('FX',()=>updateFX(dt));
+    safe('DAMAGE READABILITY',()=>updateDamageReadability(dt));
+    if(encounterActive)safe('DIRECTOR',()=>updateDirector(dt));
+    if(microZJBattle.active){
+      safe('MICRO ZJ WAR ROUTE',()=>updateMicroZJBattle(dt));
+      safe('MICRO WORLD HAZARDS',()=>updateAetherCrucibleHazards(dt));
+    }
+    safe('TARGETING',()=>autoAcquire());
+    safe('HUD',()=>updateUI());
+
+    if(faults.length){
+      if(!combatRuntimeFaulted){
+        combatRuntimeFaulted=true;
+
+        const summary=faults
+          .slice(0,3)
+          .map(f=>f.label+' // '+String(f.error?.message||f.error))
+          .join('  |  ');
+
+        showDeploymentFault(new Error(summary));
+      }
+    }else{
+      combatRuntimeFaulted=false;
+    }
+
+    // Camera owns its own failure domain and always executes.
+    try{
+      updateCombatCamera(dt);
+    }catch(cameraError){
+      console.error('Combat camera isolated fault:',cameraError);
+
+      try{
+        const frame=currentFrame();
+        const center=new THREE.Vector3();
+        player.group.getWorldPosition(center);
+        const fallbackDistance=Math.max(
+          65,
+          (frame.cameraDist||70)*Math.max(.75,combatCamera.zoom||1)
+        );
+
+        camera.position.copy(center).add(
+          new THREE.Vector3(
+            0,
+            (frame.cameraHeight||24)+10,
+            fallbackDistance
+          )
+        );
+        camera.up.set(0,1,0);
+        camera.lookAt(center);
+      }catch(_){}
+    }
+
+    return ok;
+  }
+
+  let renderFallbackActive=false;
+  function safeRenderFrame(){
+    try{
+      if(renderFallbackActive)renderer.render(scene,camera);
+      else composer.render();
+    }catch(error){
+      if(!renderFallbackActive){
+        console.error('Post-processing render failed; falling back to direct renderer:',error);
+        renderFallbackActive=true;
+        try{renderer.render(scene,camera);}catch(fatalRenderError){
+          console.error('Direct renderer also failed:',fatalRenderError);
+        }
+      }
+    }
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt=Math.min(clock.getDelta(),.033);
+    gameTime+=dt;
+    processIndustryJobs();
+    perfAccum+=dt;perfFrames++;
+    if(perfAccum>=2.0){
+      const fps=Math.round(perfFrames/perfAccum);
+      perfHud.textContent='PERF '+fps+' FPS · Q'+(3-perfTier);
+      if(settings.autoQuality && fps<42 && perfTier<2)setPerfTier(perfTier+1);
+      else if(settings.autoQuality && fps>57 && perfTier>0)setPerfTier(perfTier-1);
+      perfAccum=0;perfFrames=0;
+    }
+
+    if(appMode==='countdown'){
+      countdownTimer-=dt;
+      const n=Math.max(1,Math.ceil(countdownTimer));
+      if(n!==countdownLast){
+        countdownLast=n;
+        document.getElementById('countdown').textContent=String(n);
+        synthShot(150+n*35,.08,.025,'sine');
+      }
+      updateMenuCamera(dt);
+      if(countdownTimer<=0)beginCombat();
+    }
+    else if(appMode==='combat' && !gameOver){
+      if(!introShown && gameTime>.25)introShown=true;
+      for(let i=1;i<=4;i++)cds[i]=Math.max(0,cds[i]-dt);
+
+      runCombatFrame(dt);
+    }
+    else if(appMode==='pause'){
+      updateSystemNodes(0);
+      updateDamageReadability(dt);
+      updateWorldLabels();
+      updateUI();
+      updateCombatCamera(dt);
+    }
+    else if(appMode==='defeat'){
+      updateFX(dt);
+      updateCombatCamera(dt);
+    }
+    else{
+      updateFX(dt);
+      updateMenuCamera(dt);
+
+      // World presentation continues breathing while menus are open.
+      // This keeps the title-screen hero shot alive without running combat.
+      updateWorldAssetAnimations(dt);
+      updateWorldLabels();
+
+      if(ui20.root)ui20.root.style.display='none';
+      if(ui.tacticalPanel)ui.tacticalPanel.style.display='none';
+    }
+
+    for(const r of eclipseRings)r.rotation.z+=r.userData.spin;
+    safeRenderFrame();
+  }
+
+  addEventListener('resize',()=>{
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+    composer.setSize(innerWidth,innerHeight);
+  });
+
+  renderer.domElement.addEventListener('webglcontextlost',event=>{
+    event.preventDefault();
+    console.error('WebGL context lost');
+    renderFallbackActive=true;
+    if(ui.deploymentFault){
+      ui.deploymentFault.style.display='block';
+      const span=ui.deploymentFault.querySelector('span');
+      if(span)span.textContent='WEBGL CONTEXT LOST // REDUCING RENDER PATH';
+    }
+  },false);
+
+  renderer.domElement.addEventListener('webglcontextrestored',()=>{
+    console.log('WebGL context restored');
+    renderFallbackActive=false;
+    if(ui.deploymentFault)ui.deploymentFault.style.display='none';
+    applySectorPresentation();
+  },false);
+
+  window.addEventListener('unhandledrejection',event=>{
+    console.error('Unhandled runtime rejection:',event.reason);
+  });
+
+  const REQUIRED_RUNTIME_FUNCTIONS={
+    updatePlayer,updateCombatCamera,updateWorld,updateTurrets,updateEnemies,updateProjectiles,updateUI
+  };
+  const missingRuntime=Object.entries(REQUIRED_RUNTIME_FUNCTIONS)
+    .filter(([,fn])=>typeof fn!=='function').map(([name])=>name);
+  if(missingRuntime.length)throw new Error('Missing runtime systems: '+missingRuntime.join(', '));
+
+  wireShell();
+  applySectorPresentation();
+  applySelectedFrame(true);
+  resetSystemNodes();
+  rebuildVisualModules();
+  renderModules();
+  renderStation();
+  updateFittingBudgetUI();
+  updateBriefing();
+  applySettings();
+  setAppMode('main');
+  setTimeout(()=>loading.classList.add('hide'),600);
+  animate();
+
+}catch(e){
+  console.error(e);
+  loading.style.display='none';
+  err.style.display='block';
+  err.innerHTML='<b>Forge 0.27.5 failed to start.</b><br><br>'+String(e)+
+    '<br><br>This HTML loads Three.js from jsDelivr, so it needs internet access when opened.';
+}

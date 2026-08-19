@@ -1,0 +1,864 @@
+/* sovereign-eclipse/styles/station.css
+   Extracted unchanged from gold master 0.27.5 lines 1884-2742.
+   World/menu reforge, UI ownership, station/hangar density
+   Zero-feature-change. Cascade order: base → hud → screens → station → forge.
+*/
+/* === 0.25.4 WORLD + MENU REFORGE OVERRIDES === */
+.forgeDockNav{
+  display:flex;flex-wrap:wrap;gap:8px;
+  margin:0 0 14px 0;padding:10px 12px;
+  border:1px solid rgba(122,230,246,.16);
+  border-radius:14px;
+  background:linear-gradient(135deg,rgba(7,16,24,.82),rgba(4,9,14,.52));
+  box-shadow:inset 0 0 28px rgba(91,213,241,.04),0 10px 24px rgba(0,0,0,.14);
+}
+.forgeDockNav button{
+  appearance:none;border:1px solid rgba(118,231,246,.14);
+  background:rgba(6,14,21,.72);color:rgba(215,243,248,.72);
+  border-radius:999px;padding:8px 12px;cursor:pointer;
+  font:700 10px/1.1 inherit;letter-spacing:.14em;text-transform:uppercase;
+  transition:.18s ease;
+}
+.forgeDockNav button:hover{
+  color:#fff6c1;border-color:rgba(255,203,111,.35);transform:translateY(-1px);
+}
+.forgeDockNav button.active{
+  color:#fff4c2;border-color:rgba(255,212,125,.48);
+  background:linear-gradient(135deg,rgba(35,28,11,.92),rgba(11,18,25,.88));
+  box-shadow:0 0 0 1px rgba(255,221,146,.10) inset,0 0 18px rgba(255,191,88,.12);
+}
+.forgeDockNav .worldTag{
+  margin-left:auto;display:flex;align-items:center;
+  color:rgba(155,228,244,.62);font-size:9px;letter-spacing:.18em;text-transform:uppercase;
+}
+.stationLayout{
+  grid-template-columns:minmax(320px,.72fr) minmax(640px,1.28fr)!important;
+  gap:14px!important;
+}
+.stationMain,.stationSide,.shipDeck,.statsDeck,.moduleSlots,.moduleCatalog,.bankPanel,.weaponPanel,.hullForgeLibrary,.hullForgeCanvasPanel,.hullForgeInspector{
+  min-height:0;overflow:auto;
+}
+.stationResources.three{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.contractGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px!important}
+.repairGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stationNav{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important}
+.panelHead{
+  align-items:flex-start!important;
+  min-height:60px;
+}
+.panelHead h2{letter-spacing:.08em}
+.panelHead p{max-width:72ch}
+.glassPanel{
+  border-radius:16px!important;
+  background:
+    linear-gradient(180deg,rgba(16,31,42,.84),rgba(5,12,18,.76))!important;
+  border:1px solid rgba(136,234,245,.12)!important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.018),
+    inset 0 0 34px rgba(82,193,218,.04),
+    0 18px 50px rgba(0,0,0,.20)!important;
+}
+.shipCards{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:9px!important;
+}
+.weaponGrid,.catalogGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.stationIdentityDescCard,.stationWorldCard{
+  margin-top:12px;padding:12px 13px;border-radius:12px;
+  border:1px solid rgba(124,230,246,.12);
+  background:rgba(5,13,19,.58);
+}
+.stationIdentityDescCard b,.stationWorldCard b{
+  display:block;margin-bottom:5px;color:#ffe6a8;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+}
+.stationIdentityDescCard span,.stationWorldCard span{
+  display:block;color:rgba(209,235,242,.66);font-size:10px;line-height:1.5;
+}
+#screen-main .menuMeta{
+  max-width:44ch;line-height:1.55;
+}
+@media(max-width:1240px){
+  .stationLayout,.hangarGrid,.hardpointLayout,.moduleLayout{grid-template-columns:1fr!important}
+  .contractGrid,.repairGrid,.stationNav,.weaponGrid,.catalogGrid{grid-template-columns:1fr!important}
+  .shipCards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .forgeDockNav .worldTag{width:100%;margin-left:0;padding-top:4px}
+}
+@media(max-width:780px){
+  .shipCards{grid-template-columns:1fr!important}
+  .forgeDockNav button{flex:1 1 calc(50% - 8px)}
+}
+
+
+/* ============================================================
+   FORGE 0.25.5 — ELITE WORKBENCH
+   ============================================================ */
+.stationToolTabs{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:7px;
+  margin-bottom:12px;
+}
+.stationToolTabs button{
+  appearance:none;
+  border:1px solid rgba(114,229,246,.13);
+  background:rgba(4,12,18,.72);
+  color:rgba(207,239,245,.62);
+  min-height:38px;
+  padding:8px 10px;
+  border-radius:9px;
+  cursor:pointer;
+  font:750 9px/1.15 inherit;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.stationToolTabs button:hover,
+.stationToolTabs button.active{
+  color:#ffe8ad;
+  border-color:rgba(255,205,101,.42);
+  background:linear-gradient(135deg,rgba(36,27,10,.74),rgba(5,14,20,.82));
+}
+.stationToolView{display:none}
+.stationToolView.active{display:block}
+.stationToolHeader{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  margin-bottom:10px;
+}
+.stationCompactStat{
+  flex:0 0 auto;
+  padding:7px 9px;border-radius:999px;
+  border:1px solid rgba(111,231,250,.14);
+  background:rgba(2,10,15,.58);
+  color:#bfefff;font-size:8px;letter-spacing:.12em;text-transform:uppercase;
+}
+.contractCard{
+  min-height:0!important;padding:12px!important;border-radius:12px!important;
+  display:grid;grid-template-rows:auto 1fr auto auto;gap:7px;
+}
+.contractCard p{margin:0!important;font-size:9px!important;line-height:1.45!important}
+.contractCard .ctop h4{font-size:12px!important;margin:3px 0 0!important}
+.contractCard .miniBtn{width:100%;min-height:31px}
+.contractMeta{display:grid!important;grid-template-columns:1fr 1fr;gap:6px!important}
+.contractMeta span{
+  padding:6px 7px;border-radius:7px;
+  background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.04);
+}
+.repairRow{
+  display:grid!important;
+  grid-template-columns:minmax(120px,1fr) minmax(110px,.8fr) auto!important;
+  gap:8px!important;align-items:center;
+  min-height:50px!important;padding:9px 10px!important;border-radius:10px;
+}
+.repairCondition{
+  grid-column:1 / -1;
+  height:3px;border-radius:99px;background:rgba(255,255,255,.055);overflow:hidden;
+}
+.repairCondition i{
+  display:block;height:100%;border-radius:99px;
+  background:linear-gradient(90deg,#ff6656,#ffca66 48%,#70efff);
+}
+.toolFilterBar{
+  display:grid;
+  grid-template-columns:minmax(170px,1.35fr) minmax(120px,.8fr) minmax(135px,.9fr) auto;
+  gap:7px;margin:10px 0 7px;
+}
+.toolFilterBar input,.toolFilterBar select,.toolFilterBar button{
+  min-height:35px;border-radius:8px;
+  border:1px solid rgba(111,227,247,.14);
+  background:rgba(2,10,16,.76);
+  color:#d9f5fb;padding:7px 9px;
+  font:650 9px/1.1 inherit;letter-spacing:.07em;
+}
+.toolFilterBar button{cursor:pointer;text-transform:uppercase;color:#ffe0a0}
+.toolSummaryStrip{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;
+}
+.toolSummaryStrip span{
+  padding:5px 7px;border-radius:999px;
+  border:1px solid rgba(112,227,247,.10);
+  background:rgba(0,0,0,.18);
+  color:rgba(196,235,243,.58);
+  font-size:8px;letter-spacing:.10em;text-transform:uppercase;
+}
+.moduleSlotGrid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:7px!important;
+}
+.moduleSlot{border-radius:10px!important;padding:10px!important}
+.moduleStats{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:6px!important;
+}
+.moduleStat{border-radius:8px!important}
+.weaponCard,.moduleCard,.bankCard{
+  border-radius:11px!important;
+}
+.weaponCard,.moduleCard{min-height:0!important}
+.weaponStats{display:grid!important;grid-template-columns:repeat(3,1fr);gap:5px!important}
+.weaponStats span{
+  text-align:center;padding:5px 4px;border-radius:6px;
+  background:rgba(0,0,0,.18);
+}
+.forgeWindowBar{
+  position:sticky;top:0;z-index:4;
+  margin:-4px -2px 10px!important;
+  background:linear-gradient(180deg,rgba(8,19,27,.97),rgba(7,16,23,.91));
+  backdrop-filter:blur(8px);
+}
+.forgeWindowControls button{font-weight:900}
+.forgeWindow.maximized{
+  inset:26px!important;
+  border-radius:16px!important;
+}
+body.forgeWindowFocus #shell{z-index:11999}
+@media(max-width:1100px){
+  .stationToolTabs{grid-template-columns:repeat(2,1fr)}
+  .toolFilterBar{grid-template-columns:1fr 1fr}
+  .moduleStats{grid-template-columns:repeat(2,1fr)!important}
+}
+@media(max-width:700px){
+  .stationToolTabs,.toolFilterBar,.moduleSlotGrid{grid-template-columns:1fr!important}
+}
+
+
+/* ============================================================
+   FORGE 0.25.9 — MICRO ZJ DRIVE + AUTHORED WAR ROUTE
+   ============================================================ */
+#microZJWidget{
+  position:absolute;
+  right:22px;
+  bottom:22px;
+  z-index:36;
+  pointer-events:auto;
+}
+#microZJToggle{
+  min-width:176px;
+  min-height:38px;
+  padding:0 12px;
+  border:1px solid rgba(124,233,248,.22);
+  border-radius:9px;
+  background:linear-gradient(90deg,rgba(8,20,29,.94),rgba(26,20,8,.88));
+  color:#dff8fd;
+  cursor:pointer;
+  font:850 9px/1 system-ui;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  box-shadow:0 10px 32px rgba(0,0,0,.28),inset 0 0 24px rgba(92,222,244,.035);
+}
+#microZJToggle span{
+  display:inline-grid;place-items:center;
+  width:22px;height:22px;margin-right:7px;
+  border-radius:50%;
+  border:1px solid rgba(255,210,111,.34);
+  color:#ffd77d;
+}
+#microZJToggle.active{
+  border-color:rgba(255,207,105,.48);
+  color:#ffe6a6;
+}
+#microZJOverlay{
+  position:absolute;
+  right:0;
+  bottom:48px;
+  width:min(430px,calc(100vw - 36px));
+  display:none;
+  padding:14px;
+  border:1px solid rgba(117,230,247,.20);
+  border-radius:14px;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(120,94,255,.08),transparent 36%),
+    linear-gradient(180deg,rgba(5,15,23,.985),rgba(2,7,12,.97));
+  box-shadow:0 30px 90px rgba(0,0,0,.58),inset 0 0 38px rgba(74,211,235,.035);
+  backdrop-filter:blur(12px);
+}
+#microZJOverlay.open{display:block}
+.microZJHead{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+}
+.microZJTitle{
+  margin-top:4px;
+  color:#fff0b7;
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+#microZJClose{
+  width:31px;height:31px;
+  border:1px solid rgba(118,231,246,.18);
+  border-radius:7px;
+  background:rgba(0,0,0,.22);
+  color:#dff8fd;
+  cursor:pointer;
+  font-size:17px;
+}
+.microZJIntro{
+  margin:11px 0 10px;
+  padding:9px 10px;
+  border-left:2px solid rgba(255,205,103,.42);
+  background:rgba(255,195,76,.035);
+  color:rgba(205,234,241,.59);
+  font-size:8px;
+  line-height:1.55;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.microZJRoutes{display:grid;gap:7px}
+.microZJRoute{
+  display:grid;
+  grid-template-columns:32px minmax(0,1fr) auto;
+  align-items:center;
+  gap:9px;
+  width:100%;
+  padding:10px;
+  border:1px solid rgba(111,225,245,.10);
+  border-radius:10px;
+  background:linear-gradient(100deg,rgba(9,20,28,.78),rgba(3,9,14,.62));
+  color:#e6f8fb;
+  text-align:left;
+  cursor:pointer;
+  transition:.16s ease;
+}
+.microZJRoute:hover{
+  transform:translateX(-3px);
+  border-color:rgba(255,207,103,.36);
+  background:linear-gradient(100deg,rgba(19,29,34,.88),rgba(25,18,6,.66));
+}
+.microZJRoute.active{
+  border-color:rgba(255,207,103,.54);
+  box-shadow:inset 0 0 24px rgba(255,195,63,.05);
+}
+.microRouteIndex{
+  display:grid;place-items:center;
+  width:29px;height:29px;
+  border-radius:50%;
+  border:1px solid rgba(120,233,248,.22);
+  color:#76efff;
+  font-weight:900;
+  font-size:10px;
+}
+.microRouteBody b{
+  display:block;
+  color:#fff0b7;
+  font-size:10px;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+}
+.microRouteBody small,.microRouteBody em{
+  display:block;
+  margin-top:4px;
+  color:rgba(195,229,236,.48);
+  font-style:normal;
+  font-size:7px;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+.microRouteBody em{color:rgba(151,230,244,.58)}
+.microRouteState{
+  color:#7bf1ff;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.microZJFoot{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:center;
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid rgba(255,255,255,.055);
+}
+#microZJStatus{
+  color:rgba(202,233,240,.54);
+  font-size:7px;
+  line-height:1.45;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+#microZJReturn{
+  flex:0 0 auto;
+  min-height:31px;
+  border:1px solid rgba(255,205,103,.23);
+  border-radius:8px;
+  background:rgba(49,35,9,.28);
+  color:#ffd579;
+  cursor:pointer;
+  padding:0 9px;
+  font:850 7px/1 system-ui;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+@media(max-width:760px){
+  #microZJWidget{right:12px;bottom:12px}
+  #microZJOverlay{width:calc(100vw - 24px)}
+  .microZJFoot{align-items:stretch;flex-direction:column}
+  #microZJReturn{min-height:36px}
+}
+
+
+/* ============================================================
+   FORGE 0.26.0 — PANTHEON CODEX
+   ============================================================ */
+.codexLayout{
+  min-height:0;
+  flex:1;
+  display:grid;
+  grid-template-columns:minmax(260px,.62fr) minmax(620px,1.38fr);
+  gap:14px;
+}
+.codexIndexPanel,.codexLorePanel{
+  min-height:0;
+  overflow:auto;
+  padding:16px;
+}
+.codexIndexHead{
+  position:sticky;top:0;z-index:3;
+  padding-bottom:11px;
+  background:linear-gradient(180deg,rgba(7,17,24,.98),rgba(7,17,24,.91),transparent);
+}
+.codexIndexHead h3{
+  margin:4px 0 10px;
+  color:#fff0b7;
+  font-size:14px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+#codexSearch{
+  width:100%;
+  box-sizing:border-box;
+  min-height:36px;
+  border-radius:8px;
+  border:1px solid rgba(113,227,247,.14);
+  background:rgba(1,8,13,.74);
+  color:#e2f7fb;
+  padding:8px 10px;
+  font:700 9px/1.2 system-ui;
+  letter-spacing:.06em;
+}
+.codexRaceList{display:grid;gap:7px}
+.codexRaceCard{
+  appearance:none;
+  width:100%;
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr);
+  gap:9px;
+  align-items:center;
+  padding:10px;
+  border:1px solid rgba(107,222,242,.09);
+  border-radius:10px;
+  background:linear-gradient(115deg,rgba(7,16,23,.80),rgba(2,7,11,.58));
+  color:#dff4f8;
+  text-align:left;
+  cursor:pointer;
+  transition:.15s ease;
+}
+.codexRaceCard:hover{transform:translateX(3px);border-color:rgba(255,206,108,.28)}
+.codexRaceCard.active{
+  border-color:rgba(255,209,112,.48);
+  background:linear-gradient(115deg,rgba(30,24,9,.74),rgba(5,14,20,.78));
+  box-shadow:inset 0 0 26px rgba(255,194,63,.035);
+}
+.codexRaceGlyph{
+  display:grid;
+  place-items:center;
+  width:34px;height:34px;
+  border-radius:50%;
+  border:1px solid rgba(126,234,248,.18);
+  color:#80efff;
+  font-size:17px;
+  text-shadow:0 0 14px currentColor;
+}
+.codexRaceCard b{
+  display:block;
+  color:#fff0b7;
+  font-size:10px;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+}
+.codexRaceCard span{
+  display:block;
+  margin-top:3px;
+  color:rgba(190,226,234,.47);
+  font-size:7px;
+  line-height:1.4;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.codexLorePanel{scroll-behavior:smooth}
+.codexHero{
+  display:grid;
+  grid-template-columns:76px minmax(0,1fr) auto;
+  align-items:center;
+  gap:15px;
+  padding:16px;
+  border:1px solid rgba(119,228,245,.13);
+  border-radius:14px;
+  background:
+    radial-gradient(circle at 0% 0%,rgba(100,229,248,.08),transparent 28%),
+    radial-gradient(circle at 100% 0%,rgba(255,193,70,.065),transparent 30%),
+    rgba(2,9,14,.40);
+}
+.codexSigil{
+  display:grid;place-items:center;
+  width:72px;height:72px;
+  border-radius:50%;
+  border:1px solid rgba(255,211,118,.38);
+  color:#7ff0ff;
+  font-size:33px;
+  text-shadow:0 0 24px currentColor;
+  box-shadow:inset 0 0 26px rgba(82,225,246,.055);
+}
+.codexDomain{
+  color:rgba(124,235,249,.50);
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.20em;
+  text-transform:uppercase;
+}
+#codexRaceName{
+  margin:4px 0 2px;
+  color:#fff2c2;
+  font-size:28px;
+  line-height:.95;
+  letter-spacing:.12em;
+}
+.codexGodName{
+  color:rgba(226,241,245,.65);
+  font-size:10px;
+  letter-spacing:.08em;
+}
+.codexTemperament{
+  max-width:210px;
+  color:rgba(255,211,122,.58);
+  font-size:7px;
+  line-height:1.6;
+  letter-spacing:.12em;
+  text-align:right;
+  text-transform:uppercase;
+}
+.codexQuote{
+  margin:14px 0;
+  padding:13px 15px;
+  border-left:2px solid rgba(255,203,103,.45);
+  background:rgba(255,196,72,.028);
+  color:rgba(237,244,244,.72);
+  font:italic 11px/1.6 Georgia,serif;
+}
+.codexSectionGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.codexSection,.codexLongform{
+  padding:13px 14px;
+  border:1px solid rgba(117,226,243,.08);
+  border-radius:11px;
+  background:rgba(2,8,13,.34);
+}
+.codexSectionLabel{
+  margin-bottom:7px;
+  color:#7feeff;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+}
+.codexSection>div:last-child,
+.codexLongform>div:last-child{
+  color:rgba(210,232,237,.65);
+  font:400 10px/1.72 Georgia,serif;
+}
+.codexLongform{margin-top:10px}
+.codexLongform>div:last-child{
+  columns:2;
+  column-gap:30px;
+}
+.codexDoctrineStrip{
+  display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;
+}
+.codexDoctrineStrip span{
+  padding:6px 8px;
+  border-radius:999px;
+  border:1px solid rgba(120,229,246,.10);
+  background:rgba(0,0,0,.16);
+  color:rgba(199,232,239,.53);
+  font-size:7px;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+@media(max-width:1100px){
+  .codexLayout{grid-template-columns:1fr}
+  .codexIndexPanel{max-height:240px}
+  .codexRaceList{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  .codexRaceList,.codexSectionGrid{grid-template-columns:1fr}
+  .codexHero{grid-template-columns:58px 1fr}
+  .codexSigil{width:54px;height:54px}
+  .codexTemperament{grid-column:1/-1;max-width:none;text-align:left}
+  .codexLongform>div:last-child{columns:1}
+}
+
+
+/* === 0.26.1 STARTER FLEET PROGRESSION === */
+.shipCard.destroyerHull{
+  border-color:rgba(104,230,248,.14);
+}
+.shipCard.battleshipHull{
+  border-color:rgba(255,205,104,.20);
+  box-shadow:inset 0 0 24px rgba(255,188,55,.025);
+}
+.shipCard.titanHull{
+  opacity:.88;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(174,93,255,.06),transparent 38%),
+    rgba(5,10,15,.58);
+}
+.sandboxHull{
+  border:1px solid rgba(185,113,255,.34);
+  background:rgba(53,20,76,.26);
+  color:#d8a8ff;
+  padding:5px 7px;
+  font:900 7px system-ui;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  cursor:pointer;
+}
+.sandboxHull:hover{
+  border-color:rgba(210,156,255,.64);
+  background:rgba(76,31,104,.40);
+}
+
+
+/* ============================================================
+   FORGE 0.26.2 — FLEET LINEAGE MANIFEST
+   ============================================================ */
+.lineageHero{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:16px 18px;
+  margin-bottom:12px;
+  background:
+    radial-gradient(circle at 0% 0%,rgba(102,235,250,.07),transparent 30%),
+    radial-gradient(circle at 100% 0%,rgba(255,196,67,.06),transparent 32%),
+    linear-gradient(135deg,rgba(7,17,24,.88),rgba(4,10,15,.68))!important;
+}
+.lineageHero h3{
+  margin:4px 0 6px;
+  color:#fff1be;
+  font-size:18px;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+}
+.lineageHero p{
+  max-width:820px;
+  margin:0;
+  color:rgba(205,233,240,.60);
+  font-size:9px;
+  line-height:1.6;
+}
+.lineageTasteBadges{
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(120px,1fr));
+  gap:6px;
+}
+.lineageTasteBadges span{
+  padding:7px 8px;
+  border:1px solid rgba(115,228,246,.11);
+  border-radius:8px;
+  background:rgba(0,0,0,.18);
+  color:#7fefff;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.10em;
+  text-align:center;
+  text-transform:uppercase;
+}
+.fleetLineageGrid{
+  min-height:0;
+  flex:1;
+  overflow:auto;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(230px,1fr));
+  gap:9px;
+  padding-right:3px;
+}
+.lineageTier{
+  min-height:190px;
+  padding:13px;
+  border:1px solid rgba(117,226,243,.09);
+  border-radius:12px;
+  background:
+    linear-gradient(150deg,rgba(8,18,25,.78),rgba(2,7,11,.56));
+  box-shadow:inset 0 0 28px rgba(84,215,237,.024);
+}
+.lineageTier.tierCapital{
+  border-color:rgba(255,202,97,.15);
+  background:
+    radial-gradient(circle at 100% 0%,rgba(255,190,62,.05),transparent 40%),
+    linear-gradient(150deg,rgba(16,17,20,.82),rgba(3,8,12,.62));
+}
+.lineageTier.tierApex{
+  border-color:rgba(188,112,255,.20);
+  background:
+    radial-gradient(circle at 100% 0%,rgba(174,94,255,.08),transparent 42%),
+    linear-gradient(150deg,rgba(11,10,20,.86),rgba(3,7,12,.64));
+}
+.lineageTierHead{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+  margin-bottom:10px;
+}
+.lineageTierIndex{
+  display:grid;
+  place-items:center;
+  width:31px;height:31px;
+  border-radius:50%;
+  border:1px solid rgba(119,231,248,.20);
+  color:#7fefff;
+  font-size:9px;
+  font-weight:900;
+}
+.lineageTier.tierCapital .lineageTierIndex{color:#ffd379;border-color:rgba(255,207,112,.28)}
+.lineageTier.tierApex .lineageTierIndex{color:#d7a4ff;border-color:rgba(203,139,255,.30)}
+.lineageTier h3{
+  margin:0;
+  color:#fff0b7;
+  font-size:12px;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+}
+.lineageTier .tierSubtitle{
+  margin-top:3px;
+  color:rgba(189,225,234,.45);
+  font-size:7px;
+  line-height:1.4;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.lineageClassList{
+  display:grid;
+  gap:5px;
+}
+.lineageClass{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:9px;
+  padding:7px 8px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,.04);
+  background:rgba(0,0,0,.16);
+}
+.lineageClass b{
+  color:rgba(231,246,249,.78);
+  font-size:8px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.lineageClass span{
+  color:rgba(120,231,247,.46);
+  font-size:7px;
+  letter-spacing:.07em;
+  text-align:right;
+  text-transform:uppercase;
+}
+.lineageClass.playable{
+  border-color:rgba(255,205,102,.20);
+  background:rgba(255,194,63,.035);
+}
+.lineageClass.playable b{color:#ffe3a0}
+.lineageClass.experimental{
+  border-color:rgba(186,114,255,.16);
+  background:rgba(117,58,164,.04);
+}
+.lineageClass.experimental b{color:#d7a7ff}
+.lineageTierNote{
+  margin-top:10px;
+  padding-top:9px;
+  border-top:1px solid rgba(255,255,255,.045);
+  color:rgba(197,226,233,.43);
+  font:400 8px/1.55 Georgia,serif;
+}
+.lineageFooter{
+  flex:0 0 auto;
+  margin-top:10px;
+  padding:13px 15px;
+}
+.lineageFooter h3{
+  margin:4px 0 5px;
+  color:#fff0b7;
+  font-size:13px;
+  letter-spacing:.08em;
+}
+.lineageFooter p{
+  margin:0;
+  color:rgba(207,232,238,.58);
+  font:400 9px/1.65 Georgia,serif;
+}
+@media(max-width:1450px){
+  .fleetLineageGrid{grid-template-columns:repeat(3,minmax(230px,1fr))}
+}
+@media(max-width:1100px){
+  .fleetLineageGrid{grid-template-columns:repeat(2,minmax(230px,1fr))}
+  .lineageHero{align-items:flex-start;flex-direction:column}
+}
+@media(max-width:720px){
+  .fleetLineageGrid{grid-template-columns:1fr}
+  .lineageTasteBadges{grid-template-columns:1fr 1fr;width:100%}
+}
+
+
+/* === 0.26.7.2 HARD UI OWNERSHIP ===
+   MENUS own the shell.
+   COMBAT / PAUSE own the unified HUD.
+   This replaces the broken 0.26.3 rule that hid forgeHud20 when shellHidden
+   was REMOVED — exactly backwards for flight. */
+#forgeHud20{display:none}
+
+body.menuMode #gameUI{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+body.menuMode #forgeHud20{
+  display:none!important;
+  visibility:hidden!important;
+}
+
+body.combatMode #gameUI{
+  opacity:1!important;
+  visibility:visible!important;
+  filter:none!important;
+}
+body.combatMode #forgeHud20{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+/* Pause has shell open but menuMode=false and gameUI.shellHidden=false. */
+#gameUI:not(.shellHidden) #forgeHud20{
+  display:block!important;
+  visibility:visible!important;
+}
+
+/* Explicit shell-hidden menus still win unless combatMode overrides above. */
+#gameUI.shellHidden #forgeHud20{
+  display:none!important;
+}
+body.combatMode #gameUI.shellHidden #forgeHud20{
+  display:block!important;
+  visibility:visible!important;
+}
+
+.screen.active{isolation:isolate}
+
+

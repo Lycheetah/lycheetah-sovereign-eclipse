@@ -1,0 +1,1085 @@
+/* sovereign-eclipse/styles/base.css
+   Extracted unchanged from gold master 0.27.5 lines 9-1088.
+   Forge 0.27.5 tokens, canvas, loading, early shell/HUD chrome
+   Zero-feature-change. Cascade order: base → hud → screens → station → forge.
+*/
+:root{
+  --gold:#ffc95b;
+  --gold2:#fff1b5;
+  --cyan:#65f4ff;
+  --blue:#4b7dff;
+  --red:#ff5b54;
+  --orange:#ff9a45;
+  --panel:rgba(2,7,12,.62);
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;width:100%;height:100%;overflow:hidden;background:#05090e;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
+}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+#loading{
+  position:fixed;inset:0;z-index:100;display:grid;place-items:center;
+  background:
+    radial-gradient(circle at 50% 44%,rgba(35,83,103,.26),transparent 32%),
+    radial-gradient(circle at 50% 46%,rgba(255,156,44,.07),transparent 20%),
+    #010205;
+  color:#dffcff;font:700 11px/1.5 system-ui;letter-spacing:.32em;text-transform:uppercase;
+  transition:opacity .75s ease
+}
+#loading b{color:var(--gold)}
+#loading.hide{opacity:0;pointer-events:none}
+#gameUI{position:fixed;inset:0;pointer-events:none;color:white;text-shadow:0 0 16px rgba(90,230,255,.16)}
+.corner{position:absolute;width:58px;height:58px;border-color:rgba(101,244,255,.15)}
+.c1{left:12px;top:12px;border-left:1px solid;border-top:1px solid}
+.c2{right:12px;top:12px;border-right:1px solid;border-top:1px solid}
+.c3{left:12px;bottom:12px;border-left:1px solid;border-bottom:1px solid}
+.c4{right:12px;bottom:12px;border-right:1px solid;border-bottom:1px solid}
+.brand{position:absolute;left:24px;top:20px}
+.brand .title{color:var(--gold2);font-size:13px;font-weight:900;letter-spacing:.34em;text-transform:uppercase}
+.brand .sub{margin-top:7px;color:rgba(200,239,249,.58);font-size:8px;letter-spacing:.22em;text-transform:uppercase}
+#mission{
+  position:absolute;left:50%;top:17%;transform:translateX(-50%);
+  text-align:center;text-transform:uppercase;letter-spacing:.26em;
+  font-size:11px;color:rgba(228,251,255,.86);opacity:0;
+  transition:opacity .35s ease;
+}
+#mission strong{display:block;color:var(--gold2);font-size:19px;letter-spacing:.28em;margin-bottom:8px}
+#centerReticle{
+  position:absolute;left:50%;top:50%;width:42px;height:42px;transform:translate(-50%,-50%);
+  border:1px solid rgba(101,244,255,.22);border-radius:50%;opacity:.75
+}
+#centerReticle:before,#centerReticle:after{
+  content:"";position:absolute;background:rgba(101,244,255,.55)
+}
+#centerReticle:before{width:64px;height:1px;left:-12px;top:20px}
+#centerReticle:after{width:1px;height:64px;left:20px;top:-12px}
+#targetBox{
+  position:absolute;width:80px;height:80px;border:1px solid rgba(255,201,91,.78);
+  transform:translate(-50%,-50%);display:none;
+  box-shadow:0 0 22px rgba(255,187,66,.16),inset 0 0 18px rgba(255,187,66,.08)
+}
+#targetBox:before,#targetBox:after{
+  content:"";position:absolute;inset:7px;border:1px solid rgba(255,201,91,.20)
+}
+#targetInfo{
+  position:absolute;right:24px;top:105px;width:270px;padding:12px 14px;
+  background:linear-gradient(180deg,rgba(4,11,17,.62),rgba(1,4,7,.42));
+  border-left:1px solid rgba(255,201,91,.28);border-top:1px solid rgba(255,255,255,.05);
+  display:none
+}
+#targetInfo .name{font-weight:850;color:var(--gold2);letter-spacing:.16em;text-transform:uppercase;font-size:11px}
+#targetInfo .class{margin-top:5px;color:rgba(200,235,245,.54);font-size:8px;letter-spacing:.2em;text-transform:uppercase}
+.tbar{margin-top:9px;height:4px;background:rgba(255,255,255,.06);overflow:hidden}
+.tbar>i{display:block;height:100%;width:100%;background:var(--cyan)}
+.tbar.arm>i{background:var(--orange)}
+.tbar.hull>i{background:var(--red)}
+#leftHud{
+  position:absolute;left:24px;bottom:26px;width:310px;padding:13px 15px 14px;
+  background:linear-gradient(180deg,rgba(5,14,20,.55),rgba(1,4,7,.44));
+  border-left:1px solid rgba(101,244,255,.25);border-bottom:1px solid rgba(255,255,255,.04)
+}
+.statusTitle{font-size:9px;color:rgba(213,245,252,.66);letter-spacing:.24em;text-transform:uppercase}
+.barRow{margin-top:10px}
+.barLabel{display:flex;justify-content:space-between;font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(220,245,250,.56)}
+.bar{margin-top:4px;height:6px;background:rgba(255,255,255,.06);overflow:hidden}
+.bar>i{display:block;width:100%;height:100%;transition:width .12s linear}
+#shieldBar{background:linear-gradient(90deg,#248dff,#66f5ff)}
+#armorBar{background:linear-gradient(90deg,#8b5825,#ffc254)}
+#hullBar{background:linear-gradient(90deg,#8c2028,#ff6555)}
+#rightHud{
+  position:absolute;right:24px;bottom:26px;width:330px;padding:13px 15px;
+  background:linear-gradient(180deg,rgba(5,14,20,.55),rgba(1,4,7,.44));
+  border-right:1px solid rgba(255,201,91,.24);border-bottom:1px solid rgba(255,255,255,.04)
+}
+.ability{
+  display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center;
+  margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.045)
+}
+.key{
+  width:27px;height:27px;display:grid;place-items:center;border:1px solid rgba(255,201,91,.28);
+  color:var(--gold2);font-weight:800;font-size:10px
+}
+.aname{font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:rgba(230,247,250,.78)}
+.cool{font-size:8px;letter-spacing:.12em;color:rgba(153,220,235,.55)}
+#speed{
+  position:absolute;left:50%;bottom:27px;transform:translateX(-50%);
+  min-width:210px;text-align:center;color:rgba(210,246,251,.63);font-size:9px;letter-spacing:.20em;text-transform:uppercase
+}
+#speed strong{display:block;color:var(--gold2);font-size:20px;letter-spacing:.08em;margin-bottom:3px}
+#hitFlash{
+  position:absolute;inset:0;background:radial-gradient(circle at center,transparent 25%,rgba(68,207,255,.0) 55%,rgba(68,207,255,.22) 100%);
+  opacity:0;transition:opacity .12s linear
+}
+#damageFlash{
+  position:absolute;inset:0;background:radial-gradient(circle at center,transparent 25%,rgba(255,74,54,.0) 55%,rgba(255,74,54,.28) 100%);
+  opacity:0;transition:opacity .12s linear
+}
+#controls{
+  position:absolute;left:50%;bottom:54px;transform:translateX(-50%);
+  color:rgba(193,228,239,.38);font-size:8px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap
+}
+#bossBanner{
+  position:absolute;left:50%;top:26%;transform:translateX(-50%);
+  font-size:26px;font-weight:900;letter-spacing:.28em;text-transform:uppercase;
+  color:#fff1bf;text-shadow:0 0 22px rgba(255,141,50,.45);display:none
+}
+#bossBanner small{display:block;text-align:center;font-size:9px;color:rgba(255,226,180,.6);letter-spacing:.30em;margin-top:8px}
+#gameOver{
+  position:absolute;inset:0;display:none;place-items:center;background:rgba(0,0,0,.54);
+  backdrop-filter:blur(5px);pointer-events:auto
+}
+#gameOver .card{
+  width:min(480px,90vw);padding:28px;background:rgba(4,10,15,.92);border:1px solid rgba(255,201,91,.22);text-align:center
+}
+#gameOver h1{margin:0;color:var(--gold2);font-size:24px;letter-spacing:.25em;text-transform:uppercase}
+#gameOver p{color:rgba(213,239,246,.6);font-size:12px;line-height:1.55}
+#gameOver button{
+  pointer-events:auto;background:transparent;color:var(--gold2);border:1px solid rgba(255,201,91,.42);
+  padding:10px 16px;text-transform:uppercase;letter-spacing:.18em;font-weight:800;cursor:pointer
+}
+#err{
+  display:none;position:fixed;z-index:200;left:50%;top:50%;transform:translate(-50%,-50%);
+  max-width:640px;padding:18px 22px;background:#0a0d12;border:1px solid #5a4420;color:#fff;font:13px/1.55 system-ui
+}
+@media(max-width:820px){
+  .brand{left:15px;top:13px}.brand .title{font-size:10px}
+  #leftHud{left:12px;bottom:12px;width:260px}
+  #rightHud{display:none}
+  #controls{display:none}
+  #speed{bottom:16px}
+}
+
+/* ============================================================
+   FORGE 0.3 — REAL GAME SHELL
+   ============================================================ */
+#shell{
+  position:fixed;inset:0;z-index:80;pointer-events:none;color:white;
+}
+#shell.open{pointer-events:auto}
+.shellShade{
+  position:absolute;inset:0;
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.79) 0%,rgba(0,0,0,.38) 38%,rgba(0,0,0,.10) 67%,rgba(0,0,0,.48) 100%),
+    linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.12) 60%,rgba(0,0,0,.68));
+  backdrop-filter:blur(1.5px);
+  opacity:0;transition:opacity .35s ease
+}
+#shell.open .shellShade{opacity:1}
+.screen{
+  position:absolute;inset:0;display:none;opacity:0;transform:translateY(8px);
+  transition:opacity .28s ease,transform .28s ease;
+}
+.screen.active{display:block;opacity:1;transform:none}
+.menuRail{
+  position:absolute;left:5.2vw;top:50%;transform:translateY(-50%);
+  width:min(490px,42vw);
+}
+.eyebrow{
+  color:rgba(111,244,255,.72);font-size:9px;letter-spacing:.32em;text-transform:uppercase;
+  margin-bottom:14px
+}
+.gameLogo{
+  margin:0;color:#fff1bd;font-weight:950;font-size:clamp(34px,4vw,67px);
+  line-height:.90;letter-spacing:.055em;text-transform:uppercase;
+  text-shadow:0 0 34px rgba(255,189,70,.17)
+}
+.gameLogo em{
+  display:block;font-style:normal;color:rgba(105,242,255,.88);
+  font-size:.27em;letter-spacing:.42em;margin-top:16px
+}
+.tagline{
+  margin:22px 0 28px;color:rgba(219,239,246,.52);max-width:430px;
+  font-size:11px;line-height:1.7;letter-spacing:.08em
+}
+.menuButtons{display:grid;gap:8px;width:min(350px,100%)}
+.uiBtn{
+  appearance:none;border:1px solid rgba(255,255,255,.08);
+  border-left:2px solid rgba(255,199,86,.34);
+  background:linear-gradient(90deg,rgba(10,19,25,.78),rgba(3,7,11,.28));
+  color:rgba(229,247,251,.80);min-height:43px;padding:0 15px;text-align:left;
+  font:800 10px/1 system-ui;letter-spacing:.18em;text-transform:uppercase;
+  cursor:pointer;transition:.18s ease;position:relative;overflow:hidden
+}
+.uiBtn:after{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:0;
+  background:linear-gradient(90deg,rgba(255,195,70,.18),rgba(90,235,255,.05));
+  transition:width .2s ease;z-index:0
+}
+.uiBtn span{position:relative;z-index:1}
+.uiBtn:hover{
+  color:#fff4cb;border-color:rgba(255,202,93,.35);transform:translateX(5px)
+}
+.uiBtn:hover:after{width:100%}
+.uiBtn.primary{
+  border-color:rgba(255,203,94,.36);border-left-color:#ffc85b;color:#fff0b8;
+  background:linear-gradient(90deg,rgba(72,47,12,.52),rgba(4,10,13,.32))
+}
+.uiBtn.cyan{border-left-color:#63f2ff}
+.uiBtn.danger{border-left-color:#ff6655}
+.uiBtn:disabled{opacity:.28;cursor:not-allowed;transform:none}
+.menuMeta{
+  margin-top:18px;color:rgba(166,212,223,.34);font-size:8px;letter-spacing:.16em;text-transform:uppercase
+}
+.panelWrap{
+  position:absolute;left:5vw;right:5vw;top:7vh;bottom:7vh;
+  display:flex;flex-direction:column
+}
+.panelHead{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px}
+.panelHead h2{
+  margin:0;color:#fff1b6;font-size:clamp(23px,3vw,44px);letter-spacing:.12em;text-transform:uppercase
+}
+.panelHead p{
+  margin:7px 0 0;color:rgba(200,233,243,.47);font-size:9px;letter-spacing:.18em;text-transform:uppercase
+}
+.backBtn{
+  appearance:none;border:0;background:none;color:rgba(190,231,240,.55);cursor:pointer;
+  font:800 9px/1 system-ui;letter-spacing:.20em;text-transform:uppercase;padding:9px
+}
+.backBtn:hover{color:#fff1b6}
+.glassPanel{
+  background:linear-gradient(135deg,rgba(7,16,23,.82),rgba(2,6,10,.61));
+  border:1px solid rgba(255,255,255,.065);
+  box-shadow:inset 0 0 40px rgba(50,170,205,.025),0 18px 80px rgba(0,0,0,.25);
+  backdrop-filter:blur(10px)
+}
+
+/* hangar */
+.hangarGrid{
+  min-height:0;flex:1;display:grid;grid-template-columns:minmax(410px,1.25fr) minmax(300px,.75fr);gap:18px
+}
+.shipDeck{padding:18px;display:flex;flex-direction:column;min-height:0}
+.shipCards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.shipCard{
+  min-height:146px;padding:14px;border:1px solid rgba(255,255,255,.07);
+  background:linear-gradient(145deg,rgba(20,31,39,.66),rgba(3,8,12,.46));
+  cursor:pointer;transition:.2s ease;position:relative;overflow:hidden
+}
+.shipCard:hover{transform:translateY(-3px);border-color:rgba(94,237,255,.20)}
+.shipCard.selected{
+  border-color:rgba(255,201,91,.48);
+  box-shadow:inset 0 0 36px rgba(255,174,45,.07),0 0 28px rgba(255,174,45,.04)
+}
+.shipCard.locked{cursor:default;filter:saturate(.45);opacity:.56}
+.shipCard .tier{color:rgba(100,239,255,.55);font-size:8px;letter-spacing:.18em;text-transform:uppercase}
+.shipCard h3{margin:18px 0 5px;color:#edfaff;font-size:14px;letter-spacing:.08em;text-transform:uppercase}
+.shipCard p{margin:0;color:rgba(193,225,235,.44);font-size:9px;line-height:1.55}
+.shipCard .lock{
+  position:absolute;right:10px;top:10px;color:rgba(255,204,107,.52);font-size:8px;letter-spacing:.12em;text-transform:uppercase
+}
+.shipBlueprint{
+  margin-top:12px;flex:1;min-height:170px;position:relative;display:grid;place-items:center;
+  border:1px solid rgba(255,255,255,.04);
+  background:
+    linear-gradient(rgba(100,240,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(100,240,255,.025) 1px,transparent 1px);
+  background-size:28px 28px
+}
+.shipBlueprint .sil{
+  width:78%;height:60%;clip-path:polygon(50% 0,55% 17%,67% 25%,64% 34%,88% 43%,73% 51%,93% 66%,68% 69%,61% 86%,53% 77%,50% 100%,47% 77%,39% 86%,32% 69%,7% 66%,27% 51%,12% 43%,36% 34%,33% 25%,45% 17%);
+  background:
+    linear-gradient(90deg,rgba(255,186,58,.10),rgba(95,240,255,.19),rgba(255,186,58,.10));
+  filter:drop-shadow(0 0 18px rgba(88,237,255,.15))
+}
+.shipBlueprint .scan{
+  position:absolute;left:8%;right:8%;height:1px;top:20%;background:#68f3ff;opacity:.25;
+  animation:scan 3s linear infinite
+}
+@keyframes scan{to{top:80%}}
+.statsDeck{padding:18px;overflow:auto}
+.statName{font-size:10px;color:rgba(218,245,250,.55);letter-spacing:.20em;text-transform:uppercase}
+.frameName{margin-top:6px;color:#fff1bc;font-size:27px;font-weight:900;letter-spacing:.11em;text-transform:uppercase}
+.frameRole{margin-top:5px;color:rgba(100,239,255,.56);font-size:8px;letter-spacing:.19em;text-transform:uppercase}
+.statRows{margin-top:22px;display:grid;gap:11px}
+.statRow .lbl{display:flex;justify-content:space-between;color:rgba(212,239,245,.52);font-size:8px;letter-spacing:.15em;text-transform:uppercase}
+.meter{height:5px;background:rgba(255,255,255,.05);margin-top:5px}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,#44d8ed,#ffd268)}
+.loadout{
+  margin-top:22px;border-top:1px solid rgba(255,255,255,.06);padding-top:16px
+}
+.loadout h4{margin:0 0 10px;color:rgba(255,238,190,.74);font-size:9px;letter-spacing:.19em;text-transform:uppercase}
+.slot{
+  display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.035);
+  font-size:9px;color:rgba(205,236,244,.54)
+}
+.slot b{color:rgba(235,249,252,.76);font-weight:700}
+.hangarActions{margin-top:18px;display:flex;gap:8px}
+
+/* settings / controls */
+.settingsGrid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:14px;max-width:920px}
+.settingBox{padding:16px 17px}
+.settingBox label{
+  display:flex;justify-content:space-between;align-items:center;gap:20px;
+  color:rgba(220,242,247,.68);font-size:9px;letter-spacing:.15em;text-transform:uppercase
+}
+.settingBox small{display:block;margin-top:8px;color:rgba(173,211,221,.36);font-size:9px;line-height:1.5}
+.settingBox select,.settingBox input[type="range"]{
+  background:#071017;color:#e8fbff;border:1px solid rgba(101,243,255,.15);padding:7px
+}
+.toggle{width:42px;height:22px;border:1px solid rgba(255,255,255,.12);position:relative;cursor:pointer;background:#070b0e}
+.toggle i{position:absolute;width:16px;height:16px;left:3px;top:2px;background:#5b6970;transition:.18s}
+.toggle.on i{left:21px;background:#67f3ff;box-shadow:0 0 15px rgba(103,243,255,.35)}
+.controlsGrid{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:10px;max-width:900px}
+.controlRow{
+  display:flex;justify-content:space-between;align-items:center;padding:12px 14px;
+  background:rgba(4,11,16,.62);border:1px solid rgba(255,255,255,.045)
+}
+.controlRow span{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(216,240,246,.58)}
+.controlRow kbd{
+  min-width:64px;text-align:center;padding:6px 9px;background:#0a141a;border:1px solid rgba(255,205,97,.18);
+  color:#fff0b8;font:800 9px system-ui;letter-spacing:.10em
+}
+
+/* briefing */
+.briefCard{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(780px,90vw);padding:25px
+}
+.briefCard .chapter{color:#67f3ff;font-size:9px;letter-spacing:.27em;text-transform:uppercase}
+.briefCard h2{margin:9px 0 5px;color:#fff1bd;font-size:34px;letter-spacing:.12em;text-transform:uppercase}
+.briefCard .briefText{color:rgba(213,239,246,.57);font-size:11px;line-height:1.75;max-width:650px}
+.threatGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:20px 0}
+.threat{
+  padding:12px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.05)
+}
+.threat b{display:block;color:#fff0b6;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.threat span{display:block;margin-top:5px;color:rgba(185,221,231,.40);font-size:8px;letter-spacing:.10em;text-transform:uppercase}
+.briefActions{display:flex;gap:8px}
+#countdown{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  font-size:min(20vw,180px);font-weight:950;color:#fff0b6;letter-spacing:.06em;
+  text-shadow:0 0 60px rgba(255,183,55,.25)
+}
+
+/* pause / ending */
+.centerCard{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(430px,90vw);padding:24px
+}
+.centerCard h2{
+  margin:0 0 6px;color:#fff0b6;font-size:27px;letter-spacing:.17em;text-transform:uppercase
+}
+.centerCard p{margin:0 0 18px;color:rgba(207,236,243,.50);font-size:10px;line-height:1.65}
+.centerCard .menuButtons{width:100%}
+.victoryGlow{
+  color:#72f7ff!important;text-shadow:0 0 32px rgba(72,235,255,.38)!important
+}
+#shellStatus{
+  position:absolute;right:23px;bottom:19px;color:rgba(167,214,224,.32);
+  font-size:8px;letter-spacing:.16em;text-transform:uppercase
+}
+#gameUI{transition:opacity .28s ease,filter .28s ease}
+#gameUI.shellHidden{opacity:0!important}
+#gameUI.pausedDim{filter:brightness(.48) saturate(.72)}
+@media(max-width:900px){
+  .menuRail{width:86vw;left:7vw}
+  .hangarGrid{grid-template-columns:1fr;overflow:auto}
+  .shipCards{grid-template-columns:1fr}
+  .settingsGrid,.controlsGrid{grid-template-columns:1fr}
+  .threatGrid{grid-template-columns:repeat(2,1fr)}
+}
+
+
+/* ============================================================
+   FORGE 0.4 — WORLD + MODULES
+   ============================================================ */
+#worldHud{position:absolute;left:50%;top:20px;transform:translateX(-50%);min-width:430px;text-align:center;display:none}
+#worldHud .sector{color:rgba(101,244,255,.50);font-size:8px;letter-spacing:.24em;text-transform:uppercase}
+#worldHud .objective{margin-top:6px;color:#fff0ba;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+#worldHud .distance{margin-top:4px;color:rgba(211,239,246,.50);font-size:8px;letter-spacing:.18em;text-transform:uppercase}
+#resourceHud{position:absolute;right:24px;top:77px;padding:8px 10px;border-right:1px solid rgba(255,202,92,.22);background:rgba(3,8,12,.32);color:rgba(224,244,248,.54);font-size:8px;letter-spacing:.15em;text-transform:uppercase;display:none}
+#resourceHud b{color:#ffd16d;font-size:11px}
+#dockHint{position:absolute;left:50%;bottom:89px;transform:translateX(-50%);padding:8px 13px;border:1px solid rgba(101,244,255,.18);background:rgba(2,8,12,.52);color:#c9f7ff;font-size:9px;letter-spacing:.18em;text-transform:uppercase;display:none}
+#worldLabels{position:absolute;inset:0;pointer-events:none}
+.worldLabel{position:absolute;transform:translate(-50%,-50%);color:rgba(216,243,249,.62);font-size:8px;letter-spacing:.16em;text-transform:uppercase;text-shadow:0 0 10px #000,0 0 20px #000;white-space:nowrap}
+.worldLabel b{display:block;color:#dffcff;font-size:9px;margin-bottom:3px}
+.worldLabel.hot b{color:#ffb76a}.worldLabel.station b{color:#73f2ff}.worldLabel.gate b{color:#d4b0ff}
+.moduleLayout{min-height:0;flex:1;display:grid;grid-template-columns:minmax(340px,.8fr) minmax(470px,1.2fr);gap:16px}
+.moduleSlots,.moduleCatalog{padding:18px;overflow:auto}
+.moduleSlots h3,.moduleCatalog h3{margin:0;color:#fff0b8;font-size:14px;letter-spacing:.16em;text-transform:uppercase}
+.moduleSlots>p,.moduleCatalog>p{color:rgba(194,226,235,.43);font-size:9px;line-height:1.55;margin:6px 0 16px}
+.moduleSlotGrid{display:grid;gap:8px}
+.moduleSlot{padding:12px;border:1px solid rgba(255,255,255,.06);background:rgba(4,10,15,.52)}
+.moduleSlot .slotType{color:rgba(101,244,255,.47);font-size:8px;letter-spacing:.19em;text-transform:uppercase}
+.moduleSlot .slotName{margin-top:6px;color:#fff1bd;font-size:11px;font-weight:850;letter-spacing:.10em;text-transform:uppercase}
+.moduleSlot .slotDesc{margin-top:5px;color:rgba(193,225,234,.42);font-size:8px;line-height:1.5}
+.moduleStats{margin-top:15px;padding-top:14px;border-top:1px solid rgba(255,255,255,.055);display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.moduleStat{padding:9px 10px;background:rgba(0,0,0,.20);border:1px solid rgba(255,255,255,.035)}
+.moduleStat span{display:block;color:rgba(190,225,234,.38);font-size:7px;letter-spacing:.14em;text-transform:uppercase}
+.moduleStat b{display:block;margin-top:4px;color:#eefcff;font-size:13px}
+.catalogGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.moduleCard{padding:13px;border:1px solid rgba(255,255,255,.055);background:rgba(4,10,15,.58);cursor:pointer;transition:.18s ease;position:relative}
+.moduleCard:hover{border-color:rgba(101,244,255,.20);transform:translateY(-2px)}
+.moduleCard.installed{border-color:rgba(255,203,92,.36);box-shadow:inset 0 0 28px rgba(255,190,60,.05)}
+.moduleCard .cat{color:rgba(101,244,255,.46);font-size:7px;letter-spacing:.18em;text-transform:uppercase}
+.moduleCard h4{margin:7px 0 5px;color:#f1fbff;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.moduleCard p{margin:0;color:rgba(190,220,230,.40);font-size:8px;line-height:1.5}
+.moduleCard .effect{margin-top:9px;color:#ffd373;font-size:8px;letter-spacing:.08em}
+.moduleCard .installedTag{position:absolute;right:9px;top:9px;color:#ffd16c;font-size:7px;letter-spacing:.13em;text-transform:uppercase}
+.moduleFooter{margin-top:14px;display:flex;justify-content:space-between;align-items:center;color:rgba(188,222,230,.40);font-size:8px;letter-spacing:.12em;text-transform:uppercase}
+.moduleFooter b{color:#ffd16d}
+#fitSummary{margin-top:7px;color:rgba(191,231,239,.48);font-size:8px;line-height:1.55;letter-spacing:.06em}
+@media(max-width:900px){#worldHud{min-width:0;width:78vw;top:64px}.moduleLayout{grid-template-columns:1fr;overflow:auto}.catalogGrid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   FORGE 0.5 — PHYSICAL SUBSYSTEMS
+   ============================================================ */
+#systemHud{
+  position:absolute;left:24px;top:76px;width:245px;padding:10px 11px;
+  background:linear-gradient(180deg,rgba(4,12,18,.44),rgba(1,5,8,.28));
+  border-left:1px solid rgba(101,244,255,.16);display:none
+}
+#systemHud .sysTitle{
+  color:rgba(204,239,247,.45);font-size:7px;letter-spacing:.22em;text-transform:uppercase;margin-bottom:8px
+}
+.sysRow{
+  display:grid;grid-template-columns:72px 1fr 40px;gap:8px;align-items:center;margin-top:5px
+}
+.sysRow span{
+  color:rgba(215,241,247,.48);font-size:7px;letter-spacing:.10em;text-transform:uppercase
+}
+.sysMini{height:3px;background:rgba(255,255,255,.055);overflow:hidden}
+.sysMini i{display:block;height:100%;background:linear-gradient(90deg,#42dbea,#ffd166);transition:width .18s}
+.sysRow b{
+  color:rgba(229,248,251,.65);font-size:7px;font-weight:700;text-align:right;letter-spacing:.06em
+}
+.sysRow.critical .sysMini i{background:linear-gradient(90deg,#ff4f47,#ff9a45)}
+.sysRow.critical b{color:#ff8a72}
+.nodeHealthGrid{
+  margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.055);
+  display:grid;grid-template-columns:repeat(2,1fr);gap:7px
+}
+.nodeHealth{
+  position:relative;padding:9px 10px;background:rgba(0,0,0,.20);
+  border:1px solid rgba(255,255,255,.04);overflow:hidden
+}
+.nodeHealth.disabled{border-color:rgba(255,91,74,.28);background:rgba(55,7,8,.18)}
+.nodeHealth .nhTop{display:flex;justify-content:space-between;gap:8px}
+.nodeHealth .nhTop b{
+  color:rgba(232,249,252,.74);font-size:8px;letter-spacing:.08em;text-transform:uppercase
+}
+.nodeHealth .nhTop span{
+  color:rgba(178,218,228,.38);font-size:7px;letter-spacing:.08em;text-transform:uppercase
+}
+.nodeHealth .nhBar{height:3px;margin-top:7px;background:rgba(255,255,255,.055)}
+.nodeHealth .nhBar i{display:block;height:100%;background:#69f1ff}
+.nodeHealth.disabled .nhBar i{background:#ff5b4e}
+.nodeHealth .nhState{margin-top:5px;color:rgba(190,226,235,.36);font-size:7px;letter-spacing:.08em;text-transform:uppercase}
+.nodeHealth.disabled .nhState{color:#ff7565}
+.damageCallout{
+  position:absolute;left:50%;top:31%;transform:translate(-50%,-50%);
+  color:#ff876f;font-size:10px;font-weight:900;letter-spacing:.20em;text-transform:uppercase;
+  text-shadow:0 0 18px rgba(255,70,45,.42);opacity:0;transition:opacity .15s;white-space:nowrap
+}
+@media(max-width:820px){
+  #systemHud{display:none!important}
+}
+
+
+/* ============================================================
+   FORGE 0.6 — PROGRESSION / STATION / CONTRACTS
+   ============================================================ */
+.stationLayout{
+  min-height:0;flex:1;display:grid;grid-template-columns:minmax(340px,.72fr) minmax(520px,1.28fr);gap:16px
+}
+.stationSide,.stationMain{padding:18px;overflow:auto}
+.stationIdentity{
+  padding-bottom:15px;border-bottom:1px solid rgba(255,255,255,.055)
+}
+.stationIdentity .ey{color:rgba(104,241,255,.48);font-size:8px;letter-spacing:.21em;text-transform:uppercase}
+.stationIdentity h3{margin:7px 0 3px;color:#fff1bb;font-size:23px;letter-spacing:.12em;text-transform:uppercase}
+.stationIdentity p{margin:0;color:rgba(193,226,235,.40);font-size:9px;line-height:1.55}
+.stationResources{
+  margin-top:15px;display:grid;grid-template-columns:repeat(2,1fr);gap:8px
+}
+.stationRes{padding:11px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.04)}
+.stationRes span{display:block;color:rgba(190,225,234,.38);font-size:7px;letter-spacing:.15em;text-transform:uppercase}
+.stationRes b{display:block;margin-top:5px;color:#ffd16a;font-size:18px}
+.stationNav{margin-top:16px;display:grid;gap:7px}
+.stationSectionTitle{
+  color:#fff0ba;font-size:12px;font-weight:850;letter-spacing:.17em;text-transform:uppercase;margin:0 0 5px
+}
+.stationSectionSub{
+  color:rgba(193,227,235,.40);font-size:8px;line-height:1.5;margin:0 0 13px
+}
+.contractGrid{display:grid;gap:9px}
+.contractCard{
+  position:relative;padding:14px;border:1px solid rgba(255,255,255,.055);
+  background:linear-gradient(135deg,rgba(10,19,26,.72),rgba(3,8,12,.48));
+  transition:.18s ease
+}
+.contractCard.active{border-color:rgba(255,202,91,.39);box-shadow:inset 0 0 30px rgba(255,178,43,.045)}
+.contractCard.completed{border-color:rgba(101,244,255,.20)}
+.contractCard .ctop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.contractCard .ctype{color:rgba(103,243,255,.45);font-size:7px;letter-spacing:.18em;text-transform:uppercase}
+.contractCard h4{margin:7px 0 5px;color:#eefcff;font-size:13px;letter-spacing:.09em;text-transform:uppercase}
+.contractCard p{margin:0;color:rgba(190,222,231,.41);font-size:8px;line-height:1.55;max-width:88%}
+.contractMeta{
+  display:flex;gap:16px;margin-top:11px;color:rgba(210,235,241,.42);
+  font-size:7px;letter-spacing:.12em;text-transform:uppercase
+}
+.contractMeta b{color:#ffd06b}
+.contractCard button{margin-top:11px;width:100%}
+.contractBadge{
+  color:#ffd16b;font-size:7px;letter-spacing:.15em;text-transform:uppercase;white-space:nowrap
+}
+.contractBadge.done{color:#6ef3ff}
+.repairGrid{display:grid;gap:7px;margin-top:13px}
+.repairRow{
+  display:grid;grid-template-columns:1fr 80px 96px;gap:8px;align-items:center;
+  padding:9px 10px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.04)
+}
+.repairRow .rname{color:rgba(227,246,249,.65);font-size:8px;letter-spacing:.10em;text-transform:uppercase}
+.repairRow .rstate{color:rgba(190,225,234,.38);font-size:7px;text-align:right}
+.miniBtn{
+  border:1px solid rgba(255,201,91,.22);background:rgba(50,34,9,.28);color:#ffd477;
+  min-height:27px;font:800 7px system-ui;letter-spacing:.11em;text-transform:uppercase;cursor:pointer
+}
+.miniBtn:hover{border-color:rgba(255,201,91,.48)}
+.miniBtn:disabled{opacity:.28;cursor:default}
+.repairAll{
+  display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;
+  border-top:1px solid rgba(255,255,255,.055);color:rgba(210,236,242,.48);font-size:8px;text-transform:uppercase;letter-spacing:.12em
+}
+#interactHint{
+  position:absolute;left:50%;bottom:120px;transform:translateX(-50%);
+  padding:8px 13px;border:1px solid rgba(255,203,92,.20);background:rgba(4,8,12,.62);
+  color:#ffe4a4;font-size:9px;letter-spacing:.17em;text-transform:uppercase;display:none
+}
+.lootRarity-common{color:#d9eef3!important}
+.lootRarity-rare{color:#62e9ff!important}
+.lootRarity-epic{color:#ba75ff!important}
+.moduleCard.lockedModule{border-color:rgba(255,255,255,.035);opacity:.77}
+.moduleCard .cost{
+  margin-top:8px;color:#ffd16a;font-size:8px;letter-spacing:.10em;text-transform:uppercase
+}
+.moduleCard .owned{
+  margin-top:8px;color:#6ef3ff;font-size:8px;letter-spacing:.10em;text-transform:uppercase
+}
+#contractHud{
+  position:absolute;right:24px;top:110px;width:265px;padding:10px 12px;
+  background:rgba(2,8,12,.38);border-right:1px solid rgba(255,201,91,.18);display:none
+}
+#contractHud .chType{color:rgba(101,244,255,.44);font-size:7px;letter-spacing:.18em;text-transform:uppercase}
+#contractHud .chName{margin-top:5px;color:#fff0b7;font-size:10px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+#contractHud .chState{margin-top:6px;color:rgba(203,233,240,.45);font-size:8px;line-height:1.45}
+@media(max-width:920px){
+  .stationLayout{grid-template-columns:1fr;overflow:auto}
+  #contractHud{display:none!important}
+}
+
+
+/* ============================================================
+   FORGE 0.7 — SECOND SECTOR / GATE TRAVEL / CAMPAIGN TIER II
+   ============================================================ */
+#sectorTransition{
+  position:fixed;inset:0;z-index:95;pointer-events:none;opacity:0;
+  background:
+    radial-gradient(circle at center,rgba(173,111,255,.42),rgba(35,18,63,.28) 25%,rgba(0,0,0,.94) 72%);
+  transition:opacity .28s ease
+}
+#sectorTransition.on{opacity:1}
+#sectorTransition .jumpText{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  color:#f1e7ff;font-size:14px;font-weight:900;letter-spacing:.34em;text-transform:uppercase;
+  text-shadow:0 0 28px rgba(177,98,255,.55)
+}
+.sectorChip{
+  display:inline-block;margin-top:7px;padding:5px 7px;border:1px solid rgba(103,241,255,.12);
+  color:rgba(109,241,255,.50);font-size:7px;letter-spacing:.16em;text-transform:uppercase
+}
+.stationResources.three{grid-template-columns:repeat(3,1fr)}
+.moduleCard.sectorLocked{opacity:.43;filter:saturate(.35)}
+.moduleCard .sectorReq{
+  margin-top:8px;color:#bd8aff;font-size:8px;letter-spacing:.10em;text-transform:uppercase
+}
+.contractCard.tier2{box-shadow:inset 0 0 28px rgba(151,86,255,.035)}
+.contractCard.tier2 .ctype{color:rgba(188,126,255,.70)}
+#gateStatus{
+  position:absolute;left:50%;top:86px;transform:translateX(-50%);
+  padding:7px 11px;border:1px solid rgba(179,108,255,.15);background:rgba(11,3,18,.32);
+  color:rgba(216,187,255,.55);font-size:7px;letter-spacing:.17em;text-transform:uppercase;display:none
+}
+@media(max-width:900px){
+  .stationResources.three{grid-template-columns:1fr}
+}
+
+
+/* ============================================================
+   FORGE 0.8 — MULTI-HULL SHIPYARD + PHYSICAL HARDPOINT FITTING
+   ============================================================ */
+.hardpointLayout{min-height:0;flex:1;display:grid;grid-template-columns:minmax(430px,1fr) minmax(390px,.9fr);gap:16px}
+.bankPanel,.weaponPanel{padding:18px;overflow:auto}
+.bankPanel h3,.weaponPanel h3{margin:0;color:#fff0b7;font-size:14px;letter-spacing:.16em;text-transform:uppercase}
+.bankPanel>p,.weaponPanel>p{margin:6px 0 15px;color:rgba(193,225,234,.42);font-size:9px;line-height:1.55}
+.bankGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.bankCard{padding:12px;border:1px solid rgba(255,255,255,.055);background:linear-gradient(145deg,rgba(7,15,21,.68),rgba(2,7,10,.44));transition:.18s ease}
+.bankCard.unavailable{opacity:.33;filter:saturate(.4)}
+.bankCard.selectedBank{border-color:rgba(255,202,92,.36);box-shadow:inset 0 0 28px rgba(255,185,55,.05)}
+.bankTop{display:flex;justify-content:space-between;gap:10px}
+.bankTop b{color:#eefcff;font-size:9px;letter-spacing:.10em;text-transform:uppercase}
+.bankTop span{color:rgba(101,244,255,.45);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+.bankWeapon{margin-top:9px;color:#ffd16e;font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.bankMeta{margin-top:6px;color:rgba(190,223,232,.38);font-size:7px;line-height:1.5}
+.bankPick{margin-top:8px;width:100%}
+.weaponGrid{display:grid;gap:8px}
+.weaponCard{padding:12px;border:1px solid rgba(255,255,255,.055);background:rgba(4,10,15,.58);cursor:pointer;transition:.18s}
+.weaponCard:hover{transform:translateX(3px);border-color:rgba(101,244,255,.20)}
+.weaponCard.activeWeapon{border-color:rgba(255,203,93,.38)}
+.weaponCard.lockedWeapon{opacity:.52}
+.weaponCard .wtop{display:flex;justify-content:space-between;gap:10px}
+.weaponCard h4{margin:0;color:#f2fcff;font-size:11px;letter-spacing:.09em;text-transform:uppercase}
+.weaponCard .wrange{color:rgba(103,242,255,.43);font-size:7px;letter-spacing:.10em;text-transform:uppercase}
+.weaponCard p{margin:6px 0 0;color:rgba(192,222,230,.40);font-size:8px;line-height:1.5}
+.weaponStats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:9px}
+.weaponStats span{padding:6px;background:rgba(0,0,0,.18);color:rgba(203,235,241,.48);font-size:7px;text-align:center;letter-spacing:.07em;text-transform:uppercase}
+.weaponCost{margin-top:8px;color:#ffd06a;font-size:8px;letter-spacing:.10em;text-transform:uppercase}
+.weaponOwned{margin-top:8px;color:#67efff;font-size:8px;letter-spacing:.10em;text-transform:uppercase}
+.frameBadge{display:inline-block;margin-top:8px;padding:5px 7px;border:1px solid rgba(255,201,91,.16);color:rgba(255,217,128,.58);font-size:7px;letter-spacing:.14em;text-transform:uppercase}
+#buildSummary{margin-top:13px;padding-top:12px;border-top:1px solid rgba(255,255,255,.055);color:rgba(192,226,234,.42);font-size:8px;line-height:1.6}
+.shipCard[data-ship]{cursor:pointer}
+.shipCard[data-ship].selected{pointer-events:none}
+.shipCard .frameSlots{margin-top:8px;color:rgba(255,207,101,.52);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+@media(max-width:920px){.hardpointLayout{grid-template-columns:1fr;overflow:auto}.bankGrid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   FORGE 0.9 — FLEET ROSTER + FUNCTION AUDIT
+   ============================================================ */
+.shipCards{grid-template-columns:repeat(3,minmax(0,1fr));max-height:330px;overflow:auto;padding-right:3px}
+.shipCard{min-height:132px}
+.shipCard .hullClass{margin-top:7px;color:rgba(102,239,255,.44);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+.shipCard .mobilityDot{position:absolute;left:12px;bottom:10px;width:34px;height:2px;background:rgba(255,255,255,.05)}
+.shipCard .mobilityDot i{display:block;height:100%;background:linear-gradient(90deg,#6cf5ff,#ffd36b)}
+#fleetCount{margin-left:12px;color:rgba(102,239,255,.42);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+@media(max-width:1050px){.shipCards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* ============================================================
+   FORGE 0.9.1 — CAMERA RESTORATION + OVERLAP-SAFE UI
+   ============================================================ */
+
+/* Every large shell screen now owns its viewport and scrolls INSIDE panels. */
+.panelWrap{
+  left:clamp(16px,3vw,46px)!important;
+  right:clamp(16px,3vw,46px)!important;
+  top:clamp(16px,3vh,34px)!important;
+  bottom:clamp(16px,3vh,34px)!important;
+  min-height:0;
+  overflow:hidden;
+}
+.panelHead{
+  flex:0 0 auto;
+  min-height:52px;
+  margin-bottom:14px!important;
+}
+.hangarGrid,.stationLayout,.moduleLayout,.hardpointLayout{
+  min-height:0!important;
+  overflow:hidden;
+}
+.shipDeck,.statsDeck,.stationSide,.stationMain,.moduleSlots,.moduleCatalog,.bankPanel,.weaponPanel{
+  min-height:0!important;
+  overflow:auto!important;
+  overscroll-behavior:contain;
+}
+.shipDeck{
+  display:block!important;
+}
+.shipCards{
+  max-height:min(39vh,310px)!important;
+  min-height:0;
+}
+.shipBlueprint{
+  min-height:120px!important;
+  height:clamp(120px,19vh,190px);
+  margin-top:12px;
+  flex:none!important;
+}
+.statsDeck{
+  padding-bottom:24px!important;
+}
+.hangarActions{
+  flex-wrap:wrap;
+}
+.hangarActions .uiBtn{
+  flex:1 1 170px;
+}
+
+/* Avoid top HUD collisions on medium desktop widths. */
+#worldHud{z-index:4}
+#systemHud,#contractHud,#resourceHud{z-index:3}
+#cameraModeHud{
+  position:absolute;
+  left:50%;
+  bottom:74px;
+  transform:translateX(-50%);
+  padding:6px 10px;
+  border:1px solid rgba(101,244,255,.15);
+  background:rgba(2,7,11,.46);
+  color:rgba(196,237,245,.58);
+  font-size:7px;
+  letter-spacing:.15em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  pointer-events:none;
+}
+#cameraModeHud b{color:#fff0b8;font-weight:850}
+#cameraModeHud.orbit b{color:#69f3ff}
+
+@media(max-width:1280px){
+  #systemHud{top:112px!important;width:220px!important}
+  #contractHud{top:112px!important;width:235px!important}
+  #resourceHud{top:76px!important}
+  #worldHud{top:18px!important;min-width:360px!important}
+  .shipCards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:1000px){
+  .panelWrap{top:14px!important;bottom:14px!important}
+  .panelHead h2{font-size:26px!important}
+  .panelHead p{max-width:62vw}
+  .hangarGrid,.stationLayout,.moduleLayout,.hardpointLayout{
+    grid-template-columns:1fr!important;
+    overflow:auto!important;
+  }
+  .shipCards{max-height:none!important}
+  .shipBlueprint{height:130px}
+  #systemHud,#contractHud{display:none!important}
+  #worldHud{top:58px!important;width:72vw!important;min-width:0!important}
+}
+@media(max-height:760px){
+  .panelWrap{top:12px!important;bottom:12px!important}
+  .panelHead{min-height:44px;margin-bottom:8px!important}
+  .panelHead h2{font-size:25px!important}
+  .shipCards{max-height:250px!important}
+  .shipCard{min-height:118px!important;padding:11px!important}
+  .shipBlueprint{height:110px;min-height:110px!important}
+  .hangarActions{margin-top:10px!important}
+}
+
+/* Camera dragging should never select menu text. */
+body.cameraDragging, body.cameraDragging *{
+  user-select:none!important;
+}
+
+
+/* ============================================================
+   FORGE 0.10 — PHYSICAL SHIPYARD / POWERGRID / MASS
+   ============================================================ */
+.fitBudget{
+  margin-top:14px;padding:12px;border:1px solid rgba(255,255,255,.055);
+  background:rgba(0,0,0,.20)
+}
+.fitBudgetHead{
+  display:flex;justify-content:space-between;gap:12px;
+  color:rgba(219,242,247,.58);font-size:8px;letter-spacing:.14em;text-transform:uppercase
+}
+.fitBudgetHead b{color:#fff0b7}
+.fitGauge{height:5px;margin-top:7px;background:rgba(255,255,255,.055);overflow:hidden}
+.fitGauge i{
+  display:block;height:100%;width:0;
+  background:linear-gradient(90deg,#65f2ff,#ffd16a);
+  transition:width .2s ease
+}
+.fitGauge.over i{background:linear-gradient(90deg,#ff9855,#ff4e48)}
+.fitBudgetMeta{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px
+}
+.fitBudgetMeta div{
+  padding:7px;background:rgba(255,255,255,.025);
+  color:rgba(195,226,234,.40);font-size:7px;letter-spacing:.09em;text-transform:uppercase
+}
+.fitBudgetMeta b{display:block;color:#edfaff;font-size:10px;margin-top:3px}
+.moduleVisualNote{
+  margin-top:9px;color:rgba(103,243,255,.44);font-size:7px;line-height:1.5;
+  letter-spacing:.10em;text-transform:uppercase
+}
+.moduleCard .fitCost,.weaponCard .fitCost{
+  margin-top:7px;color:rgba(190,225,234,.44);font-size:7px;
+  letter-spacing:.08em;text-transform:uppercase
+}
+.moduleCard.gridBlocked,.weaponCard.gridBlocked{
+  border-color:rgba(255,85,65,.19);box-shadow:inset 0 0 25px rgba(255,55,40,.035)
+}
+.moduleCard.gridBlocked .fitCost,.weaponCard.gridBlocked .fitCost{color:#ff7866}
+#physicalFitReadout{
+  margin-top:11px;padding-top:10px;border-top:1px solid rgba(255,255,255,.055);
+  color:rgba(192,227,235,.42);font-size:8px;line-height:1.65
+}
+#physicalFitReadout b{color:#fff0b8}
+
+
+/* FORGE 0.11 — LIVE REACTOR / CAPACITOR */
+.bar.cap i{background:linear-gradient(90deg,#8b67ff,#62f2ff,#ffe07b)!important;box-shadow:0 0 12px rgba(105,235,255,.18)}
+#capText.low{color:#ff786b}
+#autoFireState.off{color:#ff806b!important}
+#autoFireState.on{color:#6ff3ff!important}
+
+
+/* ============================================================
+   FORGE 0.12 — WEAPON GROUPS / TRACKING / FALLOFF / DAMAGE TYPES
+   ============================================================ */
+.weaponGroup{
+  display:grid;grid-template-columns:22px 1fr auto;gap:7px;align-items:center;
+  padding:5px 0;border-top:1px solid rgba(255,255,255,.035)
+}
+.weaponGroup .gkey{
+  width:20px;height:18px;display:grid;place-items:center;
+  border:1px solid rgba(255,213,116,.16);color:#ffdc86;font-size:7px;font-weight:900
+}
+.weaponGroup .gname{
+  color:rgba(216,240,246,.52);font-size:7px;letter-spacing:.10em;text-transform:uppercase
+}
+.weaponGroup .gstate{
+  color:#69f3ff;font-size:7px;letter-spacing:.08em;text-transform:uppercase
+}
+.weaponGroup.selected .gname{color:#fff1bb}
+.weaponGroup.selected{background:linear-gradient(90deg,rgba(255,198,82,.035),transparent)}
+.weaponGroup.hold .gstate{color:#ff816e}
+#targetTelemetry{
+  margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05);
+  color:rgba(193,226,235,.42);font-size:7px;line-height:1.55;letter-spacing:.09em;text-transform:uppercase
+}
+.damageType{
+  display:inline-block;margin-top:7px;padding:4px 6px;border:1px solid rgba(255,255,255,.06);
+  color:rgba(226,244,249,.54);font-size:7px;letter-spacing:.10em;text-transform:uppercase
+}
+.type-kinetic{color:#ffd270!important}
+.type-thermal{color:#ff8d65!important}
+.type-explosive{color:#ff6c86!important}
+.type-void{color:#c98cff!important}
+.type-balanced{color:#6ef0ff!important}
+
+
+/* FORGE 0.12.1 — CAPITAL FLIGHT ASSIST */
+#flightAssistHud{
+  position:absolute;left:24px;bottom:74px;
+  padding:6px 9px;border-left:1px solid rgba(255,208,105,.18);
+  background:rgba(2,7,11,.28);color:rgba(194,226,234,.43);
+  font-size:7px;letter-spacing:.13em;text-transform:uppercase;pointer-events:none
+}
+#flightAssistHud b{color:#ffd776}
+@media(max-width:1000px){#flightAssistHud{display:none}}
+
+
+/* ============================================================
+   FORGE 0.13 — NINE RACES / 63-HULL ROSTER / EASY FIT
+   ============================================================ */
+.fleetFilters{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:7px;margin-bottom:10px}
+.fleetFilters select,.fleetFilters input{
+  width:100%;min-height:31px;border:1px solid rgba(255,255,255,.07);
+  background:rgba(2,8,12,.76);color:rgba(224,244,249,.72);
+  padding:0 9px;font:700 8px system-ui;letter-spacing:.09em;text-transform:uppercase;outline:none
+}
+.shipCards{grid-template-columns:repeat(3,minmax(0,1fr))!important;max-height:390px!important}
+.shipCard{position:relative;min-height:142px!important}
+.shipCard .raceTag{margin-top:7px;color:rgba(103,242,255,.48);font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+.shipCard .raceDoctrine{margin-top:5px;color:rgba(255,211,112,.42);font-size:7px;line-height:1.35}
+.shipCard .classTag{position:absolute;right:10px;bottom:9px;color:rgba(255,255,255,.26);font-size:7px;letter-spacing:.10em;text-transform:uppercase}
+.rosterCount{margin-top:8px;color:rgba(192,226,234,.34);font-size:7px;letter-spacing:.13em;text-transform:uppercase}
+.easyFit{margin-bottom:12px;padding:11px;border:1px solid rgba(255,255,255,.055);background:rgba(0,0,0,.18)}
+.easyFitHead{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.easyFitHead b{color:#fff0b9;font-size:9px;letter-spacing:.13em;text-transform:uppercase}
+.easyFitHead span{color:rgba(190,225,234,.36);font-size:7px;letter-spacing:.09em;text-transform:uppercase}
+.easyFitButtons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}
+.easyFitButtons button{
+  min-height:29px;border:1px solid rgba(102,242,255,.12);background:rgba(4,15,20,.48);
+  color:rgba(210,242,248,.64);font:800 7px system-ui;letter-spacing:.10em;text-transform:uppercase;cursor:pointer
+}
+.easyFitButtons button:hover{border-color:rgba(255,210,109,.35);color:#ffe09a}
+.doctrineBadge{display:inline-block;margin-top:7px;padding:4px 6px;border:1px solid rgba(255,208,103,.12);color:#ffd473;font-size:7px;letter-spacing:.11em;text-transform:uppercase}
+@media(max-width:1100px){.shipCards{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:720px){.fleetFilters,.easyFitButtons{grid-template-columns:1fr}.shipCards{grid-template-columns:1fr!important}}
+
+
+/* ============================================================
+   FORGE 0.13.1 — PER-HULL LOADOUTS / WEAPON SIZE / DOCTRINES
+   ============================================================ */
+.compatTag{
+  display:inline-block;margin-top:6px;padding:4px 6px;border:1px solid rgba(255,255,255,.06);
+  color:rgba(203,233,240,.42);font-size:7px;letter-spacing:.10em;text-transform:uppercase
+}
+.compatTag.good{color:#6ef1ff;border-color:rgba(102,239,255,.15)}
+.compatTag.bad{color:#ff7869;border-color:rgba(255,95,75,.17)}
+.weaponCard.sizeBlocked,.moduleCard.sizeBlocked{
+  opacity:.38;filter:saturate(.55);cursor:not-allowed!important
+}
+.weaponCard.recommended,.moduleCard.recommended{
+  box-shadow:inset 3px 0 0 rgba(255,209,99,.42)
+}
+.fitDoctrine{
+  margin-top:9px;padding:7px;border-left:1px solid rgba(255,208,98,.20);
+  background:rgba(255,207,94,.025);color:rgba(255,222,145,.52);
+  font-size:7px;line-height:1.55;letter-spacing:.09em;text-transform:uppercase
+}
+#hullFitMemory{
+  margin-top:8px;color:rgba(110,240,255,.43);font-size:7px;
+  letter-spacing:.09em;text-transform:uppercase
+}
+.quickBankActions{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:8px
+}
+.quickBankActions button{
+  min-height:27px;border:1px solid rgba(255,255,255,.06);
+  background:rgba(2,9,13,.45);color:rgba(205,235,242,.50);
+  font:800 7px system-ui;letter-spacing:.09em;text-transform:uppercase;cursor:pointer
+}
+.quickBankActions button:hover{color:#ffe09b;border-color:rgba(255,210,105,.25)}
+
+
+/* ============================================================
+   FORGE 0.14 — ENEMY FLEET PARITY
+   ============================================================ */
+#enemyDoctrine{margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05);color:rgba(255,205,116,.45);font-size:7px;line-height:1.5;letter-spacing:.09em;text-transform:uppercase}
+#fleetThreatHud{position:absolute;right:24px;bottom:74px;min-width:190px;padding:7px 9px;border-right:1px solid rgba(255,90,102,.20);background:rgba(7,2,6,.38);color:rgba(235,206,213,.43);font-size:7px;line-height:1.55;letter-spacing:.10em;text-transform:uppercase;pointer-events:none}
+#fleetThreatHud b{color:#ff8f87}
+@media(max-width:1000px){#fleetThreatHud{display:none}}
+
+
+/* ============================================================
+   FORGE 0.15 — WORLD FOUNDATION
+   ============================================================ */
+#worldAssetHud{
+  position:absolute;left:50%;bottom:78px;transform:translateX(-50%);
+  min-width:270px;max-width:520px;padding:7px 11px;
+  border-top:1px solid rgba(103,241,255,.14);
+  background:linear-gradient(180deg,rgba(3,11,16,.44),rgba(1,5,8,.30));
+  color:rgba(197,230,238,.43);font-size:7px;line-height:1.55;
+  letter-spacing:.11em;text-transform:uppercase;text-align:center;
+  pointer-events:none;display:none
+}
+#worldAssetHud b{color:#7af2ff}
+#worldAssetHud.hot{border-color:rgba(255,94,78,.18)}
+#worldAssetHud.hot b{color:#ff8c78}
+.worldLabel.asset b{color:#9ff5ff}
+.worldLabel.salvage b{color:#ffd174}
+.worldLabel.service b{color:#9afcc7}
+#collisionWarning{
+  position:absolute;left:50%;top:63%;transform:translateX(-50%);
+  color:#ff8b70;font:900 8px system-ui;letter-spacing:.18em;
+  text-transform:uppercase;opacity:0;transition:opacity .15s;pointer-events:none
+}
+
+
+/* ============================================================
+   FORGE 0.15.1 — TACTICAL HUD / UND0CK STABILITY
+   ============================================================ */
+#contractHud{top:112px!important}
+#targetInfo{top:222px!important;width:286px!important}
+#fleetThreatHud{top:445px!important;bottom:auto!important}
+#systemHud{top:78px!important}
+#tacticalPanel{
+  position:absolute;left:24px;top:250px;width:245px;padding:9px 10px;
+  background:linear-gradient(180deg,rgba(3,11,16,.55),rgba(1,5,8,.34));
+  border-left:1px solid rgba(91,231,255,.18);
+  border-top:1px solid rgba(255,255,255,.035);
+  pointer-events:auto;display:none
+}
+.tacticalHead{display:flex;justify-content:space-between;gap:8px;margin-bottom:7px;color:rgba(205,238,246,.44);font-size:7px;letter-spacing:.16em;text-transform:uppercase}
+.tacticalHead b{color:#75efff}
+#tacticalRadar{display:block;width:100%;height:128px;background:radial-gradient(circle at center,rgba(40,115,130,.055),rgba(0,0,0,.20));border:1px solid rgba(102,239,255,.07)}
+#contactList{margin-top:7px;max-height:126px;overflow:hidden}
+.contactRow{
+  width:100%;display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;
+  border:0;border-top:1px solid rgba(255,255,255,.035);background:transparent;
+  padding:5px 2px;color:rgba(207,235,241,.48);font:700 7px system-ui;
+  letter-spacing:.08em;text-align:left;text-transform:uppercase;cursor:pointer
+}
+.contactRow:hover,.contactRow.selected{color:#ffe09a;background:rgba(255,205,96,.025)}
+.contactRow .range{color:rgba(104,235,255,.46)}
+.contactRow.capital{color:rgba(255,125,108,.68)}
+#waveProgress{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.04);color:rgba(211,238,244,.42);font-size:7px;letter-spacing:.09em;text-transform:uppercase}
+#deploymentFault{
+  position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);
+  min-width:340px;padding:14px 18px;background:rgba(15,2,3,.90);
+  border:1px solid rgba(255,89,76,.28);color:#ff9b86;text-align:center;
+  font-size:9px;line-height:1.6;letter-spacing:.12em;text-transform:uppercase;
+  display:none;pointer-events:auto;z-index:40
+}
+#deploymentFault b{color:#fff0c2}
+@media(max-width:1280px){#tacticalPanel{width:210px}#targetInfo{width:245px!important}}
+@media(max-width:1000px){#tacticalPanel{display:none!important}#fleetThreatHud{display:none!important}#targetInfo{top:150px!important}}
+
+
+/* ============================================================
+   FORGE 0.15.2 — RUNTIME REPAIR / BRIGHTER, LIGHTER UI
+   ============================================================ */
+.shellShade{
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.58) 0%,rgba(0,0,0,.24) 38%,rgba(0,0,0,.05) 67%,rgba(0,0,0,.30) 100%),
+    linear-gradient(180deg,rgba(7,12,18,.10),rgba(7,12,18,.05) 60%,rgba(0,0,0,.38))!important;
+  backdrop-filter:blur(1.2px)!important
+}
+.menuRail{left:4.4vw!important;width:min(430px,36vw)!important}
+.eyebrow{color:rgba(132,246,255,.82)!important;font-size:8px!important;letter-spacing:.28em!important;margin-bottom:11px!important}
+.gameLogo{color:#fff2c6!important;font-size:clamp(30px,3.55vw,58px)!important;line-height:.88!important;text-shadow:0 0 40px rgba(255,201,92,.24)!important}
+.gameLogo em{color:rgba(122,245,255,.96)!important;font-size:.24em!important;letter-spacing:.34em!important;margin-top:12px!important}
+.tagline{margin:18px 0 22px!important;max-width:390px!important;color:rgba(230,243,248,.68)!important;font-size:10px!important;line-height:1.55!important}
+.menuButtons{gap:6px!important;width:min(318px,100%)!important}
+.uiBtn{min-height:37px!important;padding:0 12px!important;font:800 9px/1 system-ui!important;letter-spacing:.15em!important;background:linear-gradient(90deg,rgba(18,31,41,.82),rgba(8,16,23,.36))!important;color:rgba(236,248,251,.92)!important}
+.uiBtn:hover{transform:translateX(3px)!important}
+.menuMeta{margin-top:12px!important;color:rgba(148,231,242,.44)!important;font-size:7px!important}
+.panelWrap{left:4.2vw!important;right:4.2vw!important;top:5.6vh!important;bottom:5.6vh!important}
+.panelHead{margin-bottom:14px!important}
+.panelHead h2{margin:0 0 5px!important;font-size:22px!important;color:#fff0bf!important}
+.panelHead p{margin:0!important;color:rgba(219,239,245,.60)!important;font-size:10px!important}
+.glassPanel{background:linear-gradient(135deg,rgba(12,24,33,.78),rgba(4,10,15,.54))!important;border:1px solid rgba(150,233,245,.09)!important;box-shadow:inset 0 0 34px rgba(82,193,218,.04),0 14px 50px rgba(0,0,0,.18)!important;backdrop-filter:blur(8px)!important}
+.hangarGrid{grid-template-columns:minmax(385px,1.15fr) minmax(280px,.85fr)!important;gap:14px!important}
+.settingsGrid{grid-template-columns:repeat(2,minmax(250px,1fr))!important;gap:12px!important;max-width:860px!important}
+.shipCards{grid-template-columns:repeat(4,1fr)!important;gap:8px!important}
+.shipCard{min-height:126px!important;padding:11px!important}
+.shipCard h3{margin:13px 0 4px!important;font-size:13px!important}
+.moduleCard{padding:10px!important;font-size:10px!important}
+#worldHud{background:linear-gradient(180deg,rgba(9,18,26,.56),rgba(3,8,12,.30))!important}
+#leftHud,#rightHud,#targetInfo,#systemHud,#contractHud,#fleetThreatHud,#tacticalPanel{backdrop-filter:blur(6px)!important}
+#leftHud{width:292px!important;padding:11px 13px 12px!important;background:linear-gradient(180deg,rgba(8,18,26,.66),rgba(3,8,12,.42))!important}
+#rightHud{width:282px!important;padding:11px 13px 12px!important;background:linear-gradient(180deg,rgba(8,18,26,.66),rgba(3,8,12,.42))!important}
+#targetInfo{width:270px!important}
+#contractHud{width:270px!important}
+#fleetThreatHud{min-width:175px!important}
+@media(max-width:1380px){.shipCards{grid-template-columns:repeat(3,1fr)!important}}
+@media(max-width:1100px){.menuRail{width:min(420px,44vw)!important}.hangarGrid{grid-template-columns:1fr!important}}
+
+/* ============================================================
+   FORGE 0.17 — LIVING ZONES
+   ============================================================ */
+#zoneActivityHud{
+  position:absolute;left:50%;top:18px;transform:translateX(-50%);
+  min-width:310px;max-width:560px;padding:6px 11px;
+  background:linear-gradient(90deg,transparent,rgba(4,14,19,.58),transparent);
+  color:rgba(195,229,237,.42);text-align:center;
+  font:800 7px system-ui;letter-spacing:.12em;text-transform:uppercase;
+  pointer-events:none
+}
+#zoneActivityHud b{color:#79efff}
+#zoneActivityHud.hot b{color:#ff927a}
+#zoneActivityHud.rare b{color:#ffd377}
+@media(max-width:1000px){#zoneActivityHud{display:none}}
+
+
+/* ============================================================
+   FORGE 0.18 — HULL OWNERSHIP / PROGRESSION
+   ============================================================ */
+.shipCard.locked{opacity:.70}
+.shipCard.locked:hover{opacity:.94}
+.shipCard .ownershipLine{
+  margin-top:7px;padding-top:7px;border-top:1px solid rgba(133,211,226,.10);
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font:800 7px system-ui;letter-spacing:.08em;text-transform:uppercase
+}
+.shipCard .ownershipLine .owned{color:#78ffc5}
+.shipCard .ownershipLine .lockedText{color:#ffcb6e}
+.shipCard .ownershipLine .req{color:rgba(210,226,231,.52)}
+.shipCard .buyHull{
+  border:1px solid rgba(255,205,105,.28);background:rgba(255,194,82,.06);
+  color:#ffd276;padding:5px 7px;font:900 7px system-ui;letter-spacing:.08em;
+  text-transform:uppercase;cursor:pointer
+}
+.shipCard .buyHull:hover{background:rgba(255,194,82,.14)}
+.shipCard .buyHull:disabled{opacity:.34;cursor:not-allowed}
+#hangarOwnership{
+  margin-top:5px;color:rgba(198,225,232,.55);
+  font:800 7px system-ui;letter-spacing:.08em;text-transform:uppercase
+}
+
+

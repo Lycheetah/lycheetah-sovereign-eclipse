@@ -1,0 +1,1121 @@
+/* sovereign-eclipse/styles/forge.css
+   Extracted unchanged from gold master 0.27.5 lines 2743-3858.
+   Module market, release shell, lore, scroll, cinematic
+   Zero-feature-change. Cascade order: base → hud → screens → station → forge.
+*/
+/* === 0.26.4 SOVEREIGN MODULE MARKET / DRONES / INDUSTRY === */
+.moduleForgeTabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:10px}
+.moduleForgeTabs button{min-height:38px;border:1px solid rgba(113,228,246,.12);border-radius:8px;background:rgba(2,9,14,.72);color:rgba(205,236,242,.58);cursor:pointer;font:850 8px/1 system-ui;letter-spacing:.12em;text-transform:uppercase}
+.moduleForgeTabs button.active,.moduleForgeTabs button:hover{color:#ffe6a5;border-color:rgba(255,205,104,.38);background:linear-gradient(110deg,rgba(35,25,8,.70),rgba(4,14,20,.80))}
+.moduleForgeTabs em{display:inline-block;margin-left:5px;color:#a977ff;font-size:6px;font-style:normal}
+.moduleForgeView{display:none;min-height:0;flex:1}.moduleForgeView.active{display:flex;flex-direction:column}
+.tankDoctrineBar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:9px}
+.tankDoctrineBar>div{padding:8px 10px;border:1px solid rgba(112,226,244,.09);border-radius:8px;background:rgba(0,0,0,.14)}
+.tankDoctrineBar b{display:block;color:#7feeff;font-size:8px;letter-spacing:.12em}.tankDoctrineBar span{display:block;margin-top:3px;color:rgba(201,230,236,.48);font-size:7px;line-height:1.35}
+.tankDoctrineBar .ai{border-color:rgba(183,104,255,.18);box-shadow:inset 0 0 20px rgba(140,64,220,.035)}.tankDoctrineBar .ai b{color:#c991ff}
+#tankDoctrineReadout{border-color:rgba(255,204,98,.16)}#tankDoctrineReadout b{color:#ffd273}
+
+.eveMarket{min-height:0;flex:1;display:grid;grid-template-columns:180px minmax(420px,1fr) 300px;padding:0!important;overflow:hidden}
+.marketCategories{padding:12px;border-right:1px solid rgba(255,255,255,.055);background:rgba(0,0,0,.16)}
+.marketTitle{margin-bottom:8px;color:rgba(124,235,248,.45);font-size:7px;font-weight:900;letter-spacing:.15em}
+.marketCategories button{width:100%;display:block;margin:0 0 5px;padding:8px 9px;text-align:left;border:1px solid transparent;border-radius:6px;background:transparent;color:rgba(210,237,242,.58);cursor:pointer;font:750 8px/1 system-ui;letter-spacing:.06em;text-transform:uppercase}
+.marketCategories button:hover,.marketCategories button.active{color:#ffe4a2;background:rgba(255,196,55,.035);border-color:rgba(255,207,105,.15)}
+.marketList{min-height:0;display:flex;flex-direction:column}.marketSearchRow{flex:0 0 auto;display:flex;gap:8px;align-items:center;padding:10px;border-bottom:1px solid rgba(255,255,255,.05)}
+.marketSearchRow input{flex:1;min-height:34px;border-radius:6px;border:1px solid rgba(108,224,245,.12);background:rgba(0,0,0,.24);color:#e3f5f8;padding:7px 9px;font:700 8px system-ui}.marketSearchRow span{font-size:7px;color:rgba(192,226,234,.44);letter-spacing:.08em}
+.marketTableHead,.moduleMarketRow{display:grid;grid-template-columns:minmax(190px,1.5fr) .7fr 52px 52px 72px;gap:7px;align-items:center}
+.marketTableHead{flex:0 0 auto;padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.05);color:rgba(155,211,221,.35);font-size:6px;font-weight:900;letter-spacing:.10em}
+.moduleMarketRows{min-height:0;overflow:auto}.moduleMarketRow{width:100%;padding:8px 10px;border:0;border-bottom:1px solid rgba(255,255,255,.035);background:transparent;color:rgba(210,236,241,.60);cursor:pointer;text-align:left;font:700 7px/1.2 system-ui}
+.moduleMarketRow:hover,.moduleMarketRow.selected{background:rgba(105,225,245,.035)}.moduleMarketRow.selected{box-shadow:inset 2px 0 #7eeeff}.moduleMarketRow.fitted{background:rgba(255,195,52,.025)}
+.moduleMarketRow b{display:block;color:#e7f5f7;font-size:8px}.moduleMarketRow small{display:block;margin-top:2px;color:rgba(173,217,225,.34);font-size:6px}
+.marketDetail{padding:14px;border-left:1px solid rgba(255,255,255,.055);background:rgba(0,0,0,.14);overflow:auto}.marketDetailGroup{color:#7eeeff;font-size:7px;font-weight:900;letter-spacing:.14em}
+.marketDetail h3{margin:5px 0 8px;color:#fff0b6;font-size:15px}.marketDetail p{color:rgba(202,230,236,.58);font-size:8px;line-height:1.55}
+.marketEffect,.aiObserved{margin:9px 0;padding:9px;border:1px solid rgba(111,227,246,.08);border-radius:7px;background:rgba(0,0,0,.16);color:rgba(216,238,242,.66);font-size:8px;line-height:1.45}
+.aiObserved{border-color:rgba(181,104,255,.18)}.aiObserved b,.aiObserved span,.aiObserved em{display:block}.aiObserved b{color:#c98cff;font-size:7px;letter-spacing:.12em}.aiObserved span{margin-top:4px;color:#8df2ff}.aiObserved .cost{color:#ffb06e}.aiObserved em{margin-top:5px;color:rgba(207,175,255,.62);font-style:normal;font-size:7px}
+.marketDetailStats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.marketDetailStats span{padding:7px 5px;border-radius:6px;background:rgba(255,255,255,.025);font-size:6px;color:rgba(190,225,233,.40)}.marketDetailStats b{display:block;margin-top:3px;color:#e4f5f8;font-size:8px}
+#moduleMarketFitBtn{width:100%;min-height:36px;margin-top:10px;border:1px solid rgba(255,204,100,.25);border-radius:7px;background:rgba(61,42,8,.30);color:#ffd477;cursor:pointer;font:900 8px system-ui;letter-spacing:.10em}
+
+.prototypeBanner{flex:0 0 auto;display:flex;justify-content:space-between;gap:14px;padding:10px 12px;margin-bottom:9px;border:1px solid rgba(108,229,247,.12);border-radius:9px;background:rgba(62,217,240,.025)}
+.prototypeBanner.warning{border-color:rgba(255,195,72,.16);background:rgba(255,188,45,.025)}.prototypeBanner b{color:#7feeff;font-size:8px;letter-spacing:.12em}.prototypeBanner.warning b{color:#ffd16e}.prototypeBanner span{color:rgba(202,230,236,.50);font-size:7px}
+.droneBaySummary{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 15px!important;margin-bottom:9px}.droneBaySummary h3{margin:4px 0;color:#fff0b7}.droneBaySummary p{margin:0;color:rgba(202,230,236,.52);font-size:8px}.droneRole{color:#7eeeff;font-size:10px;font-weight:900;letter-spacing:.12em;text-align:right}.droneRole span{display:block;margin-top:4px;color:rgba(196,226,233,.40);font-size:7px}
+.droneCatalogGrid{min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.droneCard{padding:12px;border:1px solid rgba(112,227,245,.09);border-radius:10px;background:linear-gradient(145deg,rgba(8,18,25,.76),rgba(1,7,11,.58))}.droneCard.active{border-color:rgba(255,205,101,.34);box-shadow:inset 0 0 24px rgba(255,192,50,.035)}
+.droneCardTop{display:flex;justify-content:space-between;color:#7eeeff;font-size:7px;letter-spacing:.10em}.droneCard h4{margin:7px 0 5px;color:#fff0b7;font-size:11px}.droneCard p{min-height:42px;margin:0;color:rgba(202,230,236,.50);font-size:8px;line-height:1.45}.droneEffect{margin:8px 0;color:rgba(135,238,250,.54);font-size:7px}.droneCard button{width:100%;min-height:31px;border:1px solid rgba(113,226,245,.14);border-radius:6px;background:rgba(0,0,0,.20);color:#d9f4f8;cursor:pointer;font:850 7px system-ui}
+
+.industryLayout{min-height:0;flex:1;display:grid;grid-template-columns:.85fr .9fr 1.25fr;gap:9px}.industryLayout>.glassPanel{padding:13px;overflow:auto}.materialGrid,.industryQueue,.industryRecipeGrid{display:grid;gap:6px}
+.materialRow{display:flex;justify-content:space-between;gap:10px;padding:8px;border:1px solid rgba(255,255,255,.04);border-radius:7px;background:rgba(0,0,0,.14)}.materialRow b{display:block;color:#e5f4f7;font-size:8px}.materialRow small{display:block;margin-top:3px;color:rgba(188,222,229,.34);font-size:6px;line-height:1.35}.materialRow strong{color:#ffd272;font-size:14px}
+.industryEmpty{padding:18px;text-align:center;color:rgba(183,218,226,.34);font-size:7px;letter-spacing:.10em}.industryJob{padding:9px;border:1px solid rgba(110,226,244,.08);border-radius:7px;background:rgba(0,0,0,.15)}.industryJob>div:first-child{display:flex;justify-content:space-between;gap:8px}.industryJob b{font-size:8px;color:#e5f4f7}.industryJob span{font-size:7px;color:#7eeeff}
+.industryJobBar{height:3px;margin-top:7px;background:rgba(255,255,255,.05);border-radius:99px;overflow:hidden}.industryJobBar i{display:block;height:100%;background:linear-gradient(90deg,#70efff,#ffd06c)}
+.industryRecipe{padding:10px;border:1px solid rgba(111,226,245,.08);border-radius:8px;background:rgba(0,0,0,.13)}.industryRecipe.blocked{opacity:.58}.industryRecipeTop{display:flex;justify-content:space-between;gap:8px}.industryRecipeTop b{color:#fff0b7;font-size:9px}.industryRecipeTop span{color:#7eeeff;font-size:7px}.industryRecipe p{margin:5px 0;color:rgba(196,226,233,.46);font-size:7px;line-height:1.4}.industryIO{display:grid;gap:3px;color:rgba(189,224,232,.40);font-size:6px}.industryRecipe button{width:100%;min-height:28px;margin-top:7px;border:1px solid rgba(255,204,95,.15);border-radius:6px;background:rgba(54,38,8,.22);color:#ffd273;cursor:pointer;font:850 7px system-ui}.industryRecipe button:disabled{opacity:.35;cursor:not-allowed}
+@media(max-width:1180px){.eveMarket{grid-template-columns:150px 1fr}.marketDetail{grid-column:1/-1;border-left:0;border-top:1px solid rgba(255,255,255,.05);max-height:260px}.droneCatalogGrid{grid-template-columns:repeat(2,1fr)}.industryLayout{grid-template-columns:1fr}}
+@media(max-width:760px){.moduleForgeTabs,.tankDoctrineBar{grid-template-columns:1fr 1fr}.eveMarket{grid-template-columns:1fr}.marketCategories{display:grid;grid-template-columns:1fr 1fr;border-right:0}.marketTableHead,.moduleMarketRow{grid-template-columns:minmax(150px,1.5fr) .7fr 42px 42px 60px}.droneCatalogGrid{grid-template-columns:1fr}}
+
+
+/* ============================================================
+   FORGE 0.26.5 — RELEASE SHELL HARDENING
+   One state owner. No menu screen may render over combat.
+   ============================================================ */
+#shell:not(.open) .screen{
+  display:none!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+#shell.open .screen.active{
+  display:block!important;
+  opacity:1!important;
+  pointer-events:auto;
+}
+body.combatMode #shell{
+  pointer-events:none!important;
+}
+body.combatMode #shell .shellShade,
+body.combatMode #shell .screen{
+  display:none!important;
+  opacity:0!important;
+}
+body.menuMode #gameUI{
+  pointer-events:none;
+}
+
+/* Release shell — remove prototype floating-window chrome. */
+.forgeWindowBar{display:none!important}
+.forgeWindow.collapsed>*:not(.forgeWindowBar){display:initial!important}
+.forgeWindow.maximized{
+  position:relative!important;
+  inset:auto!important;
+  width:auto!important;
+  height:auto!important;
+  max-width:none!important;
+  z-index:auto!important;
+}
+body.forgeWindowFocus{overflow:auto!important}
+
+/* Stronger, quieter station/workbench presentation. */
+#screen-station .panelWrap,
+#screen-hangar .panelWrap,
+#screen-hardpoints .panelWrap,
+#screen-modules .panelWrap,
+#screen-hullforge .panelWrap,
+#screen-codex .panelWrap,
+#screen-lineage .panelWrap{
+  padding-top:32px;
+  padding-bottom:24px;
+}
+#screen-station .panelHead,
+#screen-hangar .panelHead,
+#screen-hardpoints .panelHead,
+#screen-modules .panelHead,
+#screen-hullforge .panelHead,
+#screen-codex .panelHead,
+#screen-lineage .panelHead{
+  margin-bottom:10px;
+}
+.panelHead h2{
+  letter-spacing:.09em!important;
+  text-shadow:0 0 24px rgba(255,199,86,.10);
+}
+.panelHead p{
+  max-width:640px;
+  color:rgba(196,226,233,.50)!important;
+}
+.forgeDockNav{
+  position:relative;
+  z-index:4;
+  min-height:48px;
+  padding:6px 8px!important;
+  border:1px solid rgba(103,224,243,.12)!important;
+  border-radius:12px!important;
+  background:
+    linear-gradient(180deg,rgba(5,14,20,.88),rgba(2,8,13,.78))!important;
+  box-shadow:
+    0 12px 34px rgba(0,0,0,.20),
+    inset 0 1px rgba(255,255,255,.025)!important;
+  backdrop-filter:blur(18px) saturate(1.12)!important;
+}
+.forgeDockNav button{
+  min-height:34px;
+  padding:0 13px!important;
+  border-radius:8px!important;
+  border:1px solid transparent!important;
+  background:transparent!important;
+  color:rgba(189,224,231,.58)!important;
+  transition:border-color .14s ease,color .14s ease,background .14s ease!important;
+}
+.forgeDockNav button:hover{
+  color:#e9fbff!important;
+  border-color:rgba(103,230,248,.14)!important;
+  background:rgba(97,225,244,.028)!important;
+}
+.forgeDockNav button.active{
+  color:#ffe4a0!important;
+  border-color:rgba(255,203,92,.34)!important;
+  background:linear-gradient(180deg,rgba(68,46,9,.40),rgba(26,20,7,.22))!important;
+  box-shadow:inset 0 0 18px rgba(255,190,48,.035)!important;
+}
+.forgeDockNav .worldTag{
+  margin-left:auto;
+  padding-right:8px;
+  color:rgba(102,223,242,.36)!important;
+  white-space:nowrap;
+}
+
+.glassPanel{
+  border-color:rgba(95,214,234,.09)!important;
+  background:
+    linear-gradient(155deg,rgba(7,17,24,.90),rgba(2,8,13,.82))!important;
+  box-shadow:
+    0 18px 55px rgba(0,0,0,.20),
+    inset 0 1px rgba(255,255,255,.018)!important;
+  backdrop-filter:blur(16px) saturate(1.06)!important;
+}
+.stationToolTabs,
+.moduleForgeTabs{
+  gap:7px!important;
+}
+.stationToolTabs button,
+.moduleForgeTabs button{
+  min-height:38px!important;
+  border-radius:8px!important;
+  border:1px solid rgba(101,219,238,.08)!important;
+  background:rgba(1,7,11,.42)!important;
+  color:rgba(194,224,230,.48)!important;
+}
+.stationToolTabs button:hover,
+.moduleForgeTabs button:hover{
+  color:#e4f9fc!important;
+  border-color:rgba(98,224,244,.18)!important;
+}
+.stationToolTabs button.active,
+.moduleForgeTabs button.active{
+  color:#ffe3a0!important;
+  border-color:rgba(255,199,78,.34)!important;
+  background:linear-gradient(180deg,rgba(66,43,7,.32),rgba(20,16,6,.24))!important;
+}
+
+.uiBtn,.miniBtn,.backBtn{
+  transition:
+    border-color .14s ease,
+    background .14s ease,
+    color .14s ease,
+    transform .14s ease,
+    opacity .14s ease!important;
+}
+.uiBtn:hover:not(:disabled),
+.miniBtn:hover:not(:disabled),
+.backBtn:hover:not(:disabled){
+  transform:translateY(-1px);
+}
+button:disabled{
+  cursor:not-allowed!important;
+  opacity:.34!important;
+}
+
+/* Station command hierarchy. */
+.stationLayout{
+  gap:10px!important;
+}
+.stationSide{
+  min-width:0;
+}
+.stationIdentity h3{
+  font-size:23px!important;
+  letter-spacing:.10em!important;
+}
+.stationNav{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:6px!important;
+}
+#btnStationUndock{
+  grid-column:1/-1;
+  min-height:42px!important;
+  border-color:rgba(255,201,79,.26)!important;
+  background:
+    linear-gradient(90deg,rgba(62,42,7,.46),rgba(7,24,30,.46))!important;
+  color:#ffe2a0!important;
+}
+#btnStationUndock[data-ready="1"]{
+  box-shadow:
+    inset 0 0 22px rgba(255,190,47,.035),
+    0 0 0 1px rgba(255,193,57,.025)!important;
+}
+#btnStationMain2{
+  grid-column:1/-1;
+  opacity:.70;
+}
+.stationResources{
+  gap:6px!important;
+}
+.stationRes{
+  border-radius:7px!important;
+  background:rgba(0,0,0,.14)!important;
+}
+
+/* Hangar / hardpoint / module data density. */
+.shipCard,.weaponCard,.moduleCard,.bankCard,.contractCard{
+  border-radius:9px!important;
+}
+.shipCard:hover,.weaponCard:hover,.moduleCard:hover,.bankCard:hover{
+  border-color:rgba(104,227,245,.20)!important;
+}
+.shipCard.active,.weaponCard.active,.moduleCard.active,.bankCard.active,
+.shipCard.selected,.weaponCard.selected,.moduleCard.selected,.bankCard.selected{
+  border-color:rgba(255,199,74,.35)!important;
+  box-shadow:inset 0 0 22px rgba(255,191,45,.028)!important;
+}
+.toolFilterBar input,
+.toolFilterBar select,
+.fleetFilters input,
+.fleetFilters select,
+.marketSearchRow input{
+  border-color:rgba(91,210,229,.12)!important;
+  background:rgba(0,0,0,.26)!important;
+}
+
+/* Release control readiness — small visual proof every shell control is wired. */
+button[data-control-ready="1"]{
+  outline:none;
+}
+button[data-control-ready="0"]{
+  border-color:rgba(255,80,92,.45)!important;
+  box-shadow:inset 0 0 18px rgba(255,50,70,.05)!important;
+}
+
+
+/* === 0.26.5.1 LORE ARCHIVE === */
+#screen-lore .panelWrap{
+  padding-top:32px;
+  padding-bottom:24px;
+}
+#screen-lore .panelHead{
+  margin-bottom:10px;
+}
+.loreHero{
+  flex:0 0 auto;
+  margin-bottom:10px;
+  padding:15px 17px!important;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  background:
+    radial-gradient(circle at 0% 0%,rgba(107,229,247,.05),transparent 36%),
+    radial-gradient(circle at 100% 0%,rgba(255,196,71,.05),transparent 36%),
+    linear-gradient(155deg,rgba(7,17,24,.90),rgba(2,8,13,.82))!important;
+}
+.loreHero h3{
+  margin:4px 0 6px;
+  color:#fff0b7;
+  font-size:17px;
+  letter-spacing:.08em;
+}
+.loreHero p{
+  max-width:760px;
+  margin:0;
+  color:rgba(198,227,233,.56);
+  font:400 9px/1.65 Georgia,serif;
+}
+.loreHeroActions{
+  flex:0 0 220px;
+  display:grid;
+  gap:6px;
+}
+.loreGrid{
+  min-height:0;
+  flex:1;
+  overflow:auto;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:9px;
+  padding-right:3px;
+}
+.loreCard{
+  position:relative;
+  min-height:185px;
+  padding:13px 14px!important;
+  overflow:hidden;
+}
+.loreCard.wide{
+  grid-column:span 3;
+  min-height:135px;
+}
+.loreNum{
+  position:absolute;
+  right:12px;
+  top:10px;
+  color:rgba(105,228,247,.18);
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:.05em;
+}
+.loreCard h3{
+  margin:5px 0 7px;
+  max-width:86%;
+  color:#fff0b7;
+  font-size:13px;
+  letter-spacing:.08em;
+}
+.loreCard p{
+  margin:0;
+  color:rgba(195,224,231,.52);
+  font:400 8.5px/1.58 Georgia,serif;
+}
+.loreCard>span{
+  position:absolute;
+  left:14px;
+  bottom:11px;
+  color:rgba(112,228,247,.40);
+  font-size:6px;
+  font-weight:900;
+  letter-spacing:.11em;
+}
+.loreInlineAction{
+  margin-top:10px;
+}
+@media(max-width:1100px){
+  .loreGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .loreCard.wide{grid-column:span 2}
+}
+@media(max-width:760px){
+  .loreHero{flex-direction:column;align-items:stretch}
+  .loreHeroActions{flex:0 0 auto}
+  .loreGrid{grid-template-columns:1fr}
+  .loreCard.wide{grid-column:span 1}
+}
+
+
+/* ============================================================
+   FORGE 0.26.5.2 — ARCHIVE / WORKBENCH SEPARATION
+   ============================================================ */
+
+/* Main menu archive entry is deliberately a different class of destination. */
+.archiveMainBtn{
+  min-height:54px!important;
+  margin-top:8px!important;
+  border-color:rgba(181,110,255,.24)!important;
+  background:
+    radial-gradient(circle at 12% 50%,rgba(159,83,255,.08),transparent 34%),
+    linear-gradient(90deg,rgba(24,10,35,.62),rgba(4,14,20,.62))!important;
+}
+.archiveMainBtn span{
+  color:#e0b9ff!important;
+  letter-spacing:.14em!important;
+}
+.archiveMainBtn small{
+  display:block;
+  margin-top:5px;
+  color:rgba(130,226,242,.42);
+  font:800 6px/1 system-ui;
+  letter-spacing:.12em;
+}
+
+/* Engineering nav: five tabs only. Strong horizontal hierarchy. */
+.forgeDockNav{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(92px,1fr)) minmax(180px,auto)!important;
+  align-items:center!important;
+  gap:4px!important;
+  min-height:52px!important;
+  padding:5px!important;
+  margin-bottom:11px!important;
+  border-radius:10px!important;
+  background:
+    linear-gradient(180deg,rgba(4,12,18,.95),rgba(1,7,11,.90))!important;
+}
+.forgeDockNav button{
+  position:relative;
+  min-height:38px!important;
+  padding:0 10px!important;
+  text-align:center!important;
+  font-size:7px!important;
+  letter-spacing:.10em!important;
+}
+.forgeDockNav button.active::after{
+  content:'';
+  position:absolute;
+  left:18%;
+  right:18%;
+  bottom:3px;
+  height:1px;
+  background:#ffd372;
+  box-shadow:0 0 8px rgba(255,205,95,.55);
+}
+.forgeDockNav .worldTag{
+  justify-self:end;
+  margin-left:0!important;
+  padding:0 8px!important;
+  font-size:6px!important;
+  letter-spacing:.09em!important;
+}
+
+/* Archive gets its own language so it no longer looks like another fitting screen. */
+.archiveNav{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex:0 0 auto;
+  margin-bottom:11px;
+  padding:5px;
+  border:1px solid rgba(179,105,255,.13);
+  border-radius:10px;
+  background:
+    radial-gradient(circle at 0% 50%,rgba(147,72,234,.055),transparent 32%),
+    linear-gradient(180deg,rgba(10,7,18,.92),rgba(3,8,13,.88));
+  box-shadow:0 12px 32px rgba(0,0,0,.18);
+}
+.archiveNav button{
+  min-height:36px;
+  padding:0 15px;
+  border:1px solid transparent;
+  border-radius:7px;
+  background:transparent;
+  color:rgba(206,190,225,.52);
+  cursor:pointer;
+  font:850 7px/1 system-ui;
+  letter-spacing:.11em;
+  text-transform:uppercase;
+}
+.archiveNav button:hover{
+  color:#f0d9ff;
+  border-color:rgba(183,111,255,.16);
+  background:rgba(145,73,218,.035);
+}
+.archiveNav button.active{
+  color:#e5baff;
+  border-color:rgba(192,121,255,.34);
+  background:linear-gradient(180deg,rgba(62,25,92,.35),rgba(23,10,36,.25));
+  box-shadow:inset 0 0 18px rgba(154,72,226,.04);
+}
+.archiveNav span{
+  margin-left:auto;
+  padding-right:8px;
+  color:rgba(118,227,242,.32);
+  font-size:6px;
+  font-weight:900;
+  letter-spacing:.14em;
+}
+
+/* Larger typography change: screens read like proper applications, not debug panels. */
+#screen-station .panelHead h2,
+#screen-hangar .panelHead h2,
+#screen-hardpoints .panelHead h2,
+#screen-modules .panelHead h2,
+#screen-hullforge .panelHead h2{
+  font-size:23px!important;
+  letter-spacing:.075em!important;
+}
+#screen-lore .panelHead h2,
+#screen-codex .panelHead h2,
+#screen-lineage .panelHead h2{
+  font-size:25px!important;
+  color:#f3d8ff!important;
+  text-shadow:0 0 28px rgba(174,92,255,.12)!important;
+}
+
+/* Make the archive feel calmer and more spacious than engineering. */
+#screen-lore .panelWrap,
+#screen-codex .panelWrap,
+#screen-lineage .panelWrap{
+  max-width:1480px;
+  margin:0 auto;
+}
+#screen-lore .glassPanel,
+#screen-codex .glassPanel,
+#screen-lineage .glassPanel{
+  border-color:rgba(171,103,235,.10)!important;
+  background:
+    radial-gradient(circle at 0% 0%,rgba(126,62,202,.032),transparent 28%),
+    linear-gradient(155deg,rgba(8,12,20,.92),rgba(2,7,12,.86))!important;
+}
+
+/* Harder visual separation between station command and workbench content. */
+.stationToolTabs{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  max-width:420px;
+  margin:0 0 10px!important;
+}
+.stationToolTabs button{
+  min-height:40px!important;
+  font-size:7px!important;
+  letter-spacing:.11em!important;
+}
+.stationToolView.active{
+  animation:forgePaneIn .16s ease-out;
+}
+@keyframes forgePaneIn{
+  from{opacity:.45;transform:translateY(3px)}
+  to{opacity:1;transform:none}
+}
+
+@media(max-width:1050px){
+  .forgeDockNav{
+    grid-template-columns:repeat(3,minmax(90px,1fr))!important;
+  }
+  .forgeDockNav .worldTag{
+    grid-column:1/-1;
+    justify-self:start;
+    padding:4px 8px!important;
+  }
+}
+@media(max-width:700px){
+  .forgeDockNav{
+    grid-template-columns:repeat(2,minmax(90px,1fr))!important;
+  }
+  .archiveNav{
+    flex-wrap:wrap;
+  }
+  .archiveNav span{
+    width:100%;
+    margin-left:0;
+    padding:4px 9px;
+  }
+}
+
+
+/* ============================================================
+   FORGE 0.26.6 — RELEASE CANDIDATE
+   SCROLL-SAFE SHELL + DIRECT PANTHEON ACCESS
+   ============================================================ */
+
+/* Every non-combat shell screen can always scroll to its final control. */
+#shell.open .screen.active{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+
+/* Absolute workbench windows were the cause of hidden lower content.
+   Release shell uses normal document height while retaining 90vw framing. */
+#shell.open .screen.active:not(#screen-main) > .panelWrap{
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  width:90vw!important;
+  max-width:1680px!important;
+  min-height:86vh!important;
+  height:auto!important;
+  max-height:none!important;
+  margin:7vh auto!important;
+  padding-right:12px!important;
+  overflow:visible!important;
+}
+
+/* Never let a major workspace clip its own final rows. */
+.stationLayout,
+.hangarGrid,
+.hardpointLayout,
+.moduleLayout,
+.hullForgeLayout,
+.codexLayout,
+.fleetLineageGrid,
+.loreGrid,
+.industryLayout,
+.eveMarket{
+  max-height:none!important;
+}
+
+/* Explicit inner scrollers remain usable, but no longer hide their scrollbar. */
+#shell *,
+#microZJOverlay *{
+  scrollbar-width:thin;
+  scrollbar-color:rgba(103,225,244,.48) rgba(4,11,16,.58);
+}
+#shell *::-webkit-scrollbar,
+#microZJOverlay *::-webkit-scrollbar{
+  width:8px;
+  height:8px;
+}
+#shell *::-webkit-scrollbar-track,
+#microZJOverlay *::-webkit-scrollbar-track{
+  background:rgba(3,9,14,.70);
+  border-radius:9px;
+}
+#shell *::-webkit-scrollbar-thumb,
+#microZJOverlay *::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,rgba(100,230,247,.62),rgba(255,199,82,.48));
+  border:2px solid rgba(3,9,14,.72);
+  border-radius:9px;
+}
+#shell *::-webkit-scrollbar-thumb:hover,
+#microZJOverlay *::-webkit-scrollbar-thumb:hover{
+  background:linear-gradient(180deg,rgba(123,241,255,.82),rgba(255,210,108,.68));
+}
+
+/* Main menu can grow on short laptop screens too. */
+#screen-main{
+  overflow-y:auto!important;
+}
+#screen-main .menuRail{
+  max-height:92vh!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:8px 14px 12px 3px!important;
+  scrollbar-gutter:stable;
+}
+
+/* Actual menu redesign: two-column utility grid, primary flow full width. */
+.releaseMainMenu{
+  width:min(430px,100%)!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:7px!important;
+}
+.releaseMainMenu .mainWide{
+  grid-column:1/-1;
+}
+.releaseMainMenu .uiBtn{
+  min-width:0;
+  min-height:45px;
+  padding:0 13px!important;
+  letter-spacing:.12em!important;
+  font-size:8px!important;
+}
+.releaseMainMenu .archiveMainBtn,
+.releaseMainMenu .pantheonMainBtn{
+  min-height:58px!important;
+}
+.releaseMainMenu .archiveMainBtn{
+  border-left-color:#b16cff!important;
+  border-color:rgba(177,108,255,.20)!important;
+  background:
+    radial-gradient(circle at 0% 50%,rgba(159,83,255,.10),transparent 48%),
+    linear-gradient(90deg,rgba(26,11,39,.68),rgba(4,14,20,.54))!important;
+}
+.releaseMainMenu .pantheonMainBtn{
+  border-left-color:#ffd06a!important;
+  border-color:rgba(255,205,104,.22)!important;
+  background:
+    radial-gradient(circle at 0% 50%,rgba(255,190,58,.08),transparent 48%),
+    linear-gradient(90deg,rgba(42,29,7,.62),rgba(7,12,17,.54))!important;
+}
+.releaseMainMenu .archiveMainBtn small,
+.releaseMainMenu .pantheonMainBtn small{
+  position:relative;
+  z-index:1;
+  display:block;
+  margin-top:5px;
+  color:rgba(145,222,235,.44);
+  font:800 6px/1 system-ui;
+  letter-spacing:.08em;
+}
+
+/* Panels with long generated content get a usable minimum instead of a tiny flex cell. */
+#screen-hangar .shipDeck,
+#screen-hardpoints .bankDeck,
+#screen-hardpoints .weaponDeck,
+#screen-modules .moduleSlots,
+#screen-modules .moduleCatalog,
+#screen-codex .codexRaceRail,
+#screen-codex .codexLorePanel{
+  min-height:420px!important;
+}
+
+/* Micro ZJ is a travel panel, not a hidden combat submenu. */
+#microZJOverlay{
+  max-height:min(78vh,720px)!important;
+  overflow-y:auto!important;
+  scrollbar-gutter:stable;
+}
+.microZJRoute{
+  min-height:68px!important;
+}
+.microZJRoute .microRouteState{
+  min-width:102px;
+  text-align:right;
+}
+.microZJRoute.notReady{
+  opacity:.34!important;
+  cursor:not-allowed!important;
+}
+.microZJRoute:not(.notReady):hover{
+  border-color:rgba(255,204,91,.36)!important;
+  background:
+    linear-gradient(90deg,rgba(53,35,8,.28),rgba(7,19,25,.40))!important;
+}
+
+@media(max-height:760px){
+  #shell.open .screen.active:not(#screen-main) > .panelWrap{
+    margin:3.5vh auto!important;
+    min-height:93vh!important;
+  }
+  #screen-main .menuRail{
+    top:3vh!important;
+    transform:none!important;
+  }
+  .tagline{margin:14px 0 16px!important}
+  .menuMeta{margin-top:10px!important}
+}
+@media(max-width:760px){
+  .releaseMainMenu{grid-template-columns:1fr!important}
+  .releaseMainMenu .mainWide{grid-column:auto}
+  #shell.open .screen.active:not(#screen-main) > .panelWrap{
+    width:94vw!important;
+  }
+}
+
+
+/* === 0.26.6.1 CINEMATIC SCREENSHOT CONTROL === */
+.cinematicShotBar{
+  width:min(430px,100%);
+  margin-top:9px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+#btnCinematicZoom{
+  appearance:none;
+  min-height:31px;
+  padding:0 10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid rgba(100,228,247,.14);
+  border-radius:7px;
+  background:rgba(2,9,14,.48);
+  color:rgba(201,231,237,.58);
+  cursor:pointer;
+  font:850 6.5px/1 system-ui;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+}
+#btnCinematicZoom b{
+  display:grid;
+  place-items:center;
+  width:20px;height:20px;
+  border:1px solid rgba(255,204,95,.18);
+  border-radius:5px;
+  color:#ffd270;
+  background:rgba(255,194,47,.035);
+  font-size:8px;
+}
+#btnCinematicZoom:hover{
+  border-color:rgba(255,205,100,.30);
+  color:#fff0be;
+}
+#btnCinematicZoom.wide{
+  border-color:rgba(103,231,249,.30);
+  color:#8ef2ff;
+}
+#btnCinematicZoom.ultra{
+  border-color:rgba(255,205,98,.38);
+  color:#ffe09b;
+  box-shadow:inset 0 0 18px rgba(255,189,43,.035);
+}
+.cinematicShotBar small{
+  color:rgba(177,214,223,.30);
+  font:700 6px/1.3 system-ui;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+/* ULTRA intentionally lets the background carry the screenshot. */
+#screen-main:has(#btnCinematicZoom.ultra) .shellShade{
+  opacity:.66!important;
+}
+
+@media(max-width:700px){
+  .cinematicShotBar{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}
+
+
+/* ============================================================
+   FORGE 0.26.6.2 — GOLDEN ARCHIVE SCROLL FIX
+   ============================================================ */
+
+/* UI owns all pointer/wheel input while the cursor is over the shell. */
+#shell.open .screen.active{
+  pointer-events:auto!important;
+}
+
+/* LORE — one explicit scroll viewport with a permanently usable bar. */
+#screen-lore{
+  overflow:hidden!important;
+}
+#screen-lore > .panelWrap{
+  height:86vh!important;
+  min-height:0!important;
+  max-height:86vh!important;
+  overflow-y:scroll!important;
+  overflow-x:hidden!important;
+  scrollbar-gutter:stable!important;
+  overscroll-behavior:contain!important;
+  padding-right:16px!important;
+}
+#screen-lore .loreGrid{
+  overflow:visible!important;
+  min-height:auto!important;
+  flex:0 0 auto!important;
+  padding-bottom:28px!important;
+}
+
+/* PANTHEON — index and lore each own a visible vertical scrollbar. */
+#screen-codex{
+  overflow:hidden!important;
+}
+#screen-codex > .panelWrap{
+  height:86vh!important;
+  min-height:0!important;
+  max-height:86vh!important;
+  overflow:hidden!important;
+}
+#screen-codex .codexLayout{
+  min-height:0!important;
+  height:calc(86vh - 132px)!important;
+  max-height:calc(86vh - 132px)!important;
+  flex:1 1 auto!important;
+  overflow:hidden!important;
+}
+#screen-codex .codexIndexPanel,
+#screen-codex .codexLorePanel{
+  min-height:0!important;
+  height:100%!important;
+  max-height:100%!important;
+  overflow-y:scroll!important;
+  overflow-x:hidden!important;
+  scrollbar-gutter:stable!important;
+  overscroll-behavior:contain!important;
+  padding-right:14px!important;
+}
+
+/* Fleet archive should follow the same native wheel ownership. */
+#screen-lineage > .panelWrap{
+  overflow-y:auto!important;
+  scrollbar-gutter:stable!important;
+}
+
+/* Make archive scrollbars unmistakable rather than browser-invisible. */
+#screen-lore > .panelWrap,
+#screen-codex .codexIndexPanel,
+#screen-codex .codexLorePanel,
+#screen-lineage > .panelWrap{
+  scrollbar-width:auto!important;
+  scrollbar-color:rgba(121,234,250,.72) rgba(3,9,14,.88)!important;
+}
+#screen-lore > .panelWrap::-webkit-scrollbar,
+#screen-codex .codexIndexPanel::-webkit-scrollbar,
+#screen-codex .codexLorePanel::-webkit-scrollbar,
+#screen-lineage > .panelWrap::-webkit-scrollbar{
+  width:11px!important;
+}
+#screen-lore > .panelWrap::-webkit-scrollbar-track,
+#screen-codex .codexIndexPanel::-webkit-scrollbar-track,
+#screen-codex .codexLorePanel::-webkit-scrollbar-track,
+#screen-lineage > .panelWrap::-webkit-scrollbar-track{
+  background:rgba(3,9,14,.90)!important;
+  border-left:1px solid rgba(255,255,255,.025)!important;
+}
+#screen-lore > .panelWrap::-webkit-scrollbar-thumb,
+#screen-codex .codexIndexPanel::-webkit-scrollbar-thumb,
+#screen-codex .codexLorePanel::-webkit-scrollbar-thumb,
+#screen-lineage > .panelWrap::-webkit-scrollbar-thumb{
+  min-height:44px!important;
+  border:3px solid rgba(3,9,14,.90)!important;
+  border-radius:99px!important;
+  background:
+    linear-gradient(180deg,rgba(119,238,252,.90),rgba(175,105,255,.62))!important;
+}
+#screen-lore > .panelWrap::-webkit-scrollbar-thumb:hover,
+#screen-codex .codexIndexPanel::-webkit-scrollbar-thumb:hover,
+#screen-codex .codexLorePanel::-webkit-scrollbar-thumb:hover,
+#screen-lineage > .panelWrap::-webkit-scrollbar-thumb:hover{
+  background:
+    linear-gradient(180deg,rgba(147,246,255,1),rgba(255,205,103,.78))!important;
+}
+
+/* Short screens: keep one scroll owner instead of clipping nested windows. */
+@media(max-height:760px){
+  #screen-lore > .panelWrap,
+  #screen-codex > .panelWrap{
+    height:93vh!important;
+    max-height:93vh!important;
+  }
+  #screen-codex .codexLayout{
+    height:calc(93vh - 126px)!important;
+    max-height:calc(93vh - 126px)!important;
+  }
+}
+
+/* Narrow layout: whole Pantheon page scrolls naturally; lore panel stops nesting. */
+@media(max-width:1100px){
+  #screen-codex{
+    overflow-y:auto!important;
+  }
+  #screen-codex > .panelWrap{
+    height:auto!important;
+    min-height:86vh!important;
+    max-height:none!important;
+    overflow-y:visible!important;
+  }
+  #screen-codex .codexLayout{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+  #screen-codex .codexIndexPanel{
+    height:auto!important;
+    max-height:260px!important;
+    overflow-y:scroll!important;
+  }
+  #screen-codex .codexLorePanel{
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+}
+
+
+#h20ArmorZones{margin-top:4px;color:rgba(185,216,223,.42);font:800 6px/1.35 system-ui;letter-spacing:.075em;white-space:nowrap}
+#h20ArmorZones .weak{color:#ff9a76}
+#h20ArmorZones .breach{color:#ff5f54;text-shadow:0 0 12px rgba(255,75,56,.28)}
+#h20TargetAnatomy{margin-top:6px;color:rgba(200,229,235,.47);font:800 6px/1.45 system-ui;letter-spacing:.075em;text-transform:uppercase;white-space:normal}
+#h20TargetAnatomy .breach{color:#ff765f}
+#h20TargetAnatomy .system{color:#ffd477}
+
+/* ============================================================
+   FORGE 0.26.9 — COMBAT READABILITY
+   ============================================================ */
+#h20TargetWeakness{
+  margin-top:7px;
+  padding-top:5px;
+  border-top:1px solid rgba(117,226,243,.08);
+  color:#ffd781;
+  font:900 6px/1.4 system-ui;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+#h20TargetWeakness.danger{color:#ff765f}
+#h20TargetWeakness.good{color:#82efff}
+#h20TargetAnatomy{margin-top:3px!important}
+
+/* ============================================================
+   FORGE 0.27.0 — WEAPON DOCTRINE
+   ============================================================ */
+#h20WeaponDoctrine{
+  margin:5px 0 1px;
+  color:rgba(255,215,129,.58);
+  font:850 6px/1.4 system-ui;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.weaponDoctrineBand{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  margin-top:7px;
+}
+.weaponDoctrineBand span{
+  padding:3px 5px;
+  border:1px solid rgba(111,222,239,.10);
+  border-radius:4px;
+  background:rgba(2,8,12,.32);
+  color:rgba(202,232,238,.56);
+  font-size:6px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.weaponDoctrineBand span.role{
+  color:#ffe09a;
+  border-color:rgba(255,207,104,.20);
+}
+.weaponDoctrineBand span.high{color:#85efff}
+.weaponDoctrineBand span.critical{color:#ff8f72}
+
+/* ============================================================
+   FORGE 0.27.1 — DAMAGE CONTROL
+   ============================================================ */
+#h20DamageControl{
+  margin-top:6px;
+  padding-top:5px;
+  border-top:1px solid rgba(114,224,241,.08);
+  color:rgba(194,224,231,.48);
+  font:850 6px/1.4 system-ui;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+#h20DamageControl.warn{color:#ffbe72}
+#h20DamageControl.critical{color:#ff715f;text-shadow:0 0 10px rgba(255,80,60,.18)}
+
+#h20CapStatus{margin-top:3px;color:rgba(174,225,235,.48);font:850 6px/1.3 system-ui;letter-spacing:.075em;text-transform:uppercase}
+#h20CapStatus.stable{color:#78efca}#h20CapStatus.warn{color:#ffd06f}#h20CapStatus.critical{color:#ff7764}
+.capFitPanel{margin-top:10px;padding:10px;border:1px solid rgba(108,224,241,.10);border-radius:9px;background:rgba(2,8,12,.30)}
+.capFitTitle{display:flex;justify-content:space-between;gap:10px;align-items:center;color:rgba(188,225,233,.56);font-size:7px;font-weight:900;letter-spacing:.09em}
+.capFitTitle b{color:#82efff}.capFitTitle b.warn{color:#ffd06f}.capFitTitle b.bad{color:#ff7661}
+.capFitGauge{height:5px;margin:7px 0 8px;overflow:hidden;border-radius:10px;background:rgba(114,220,237,.07)}
+.capFitGauge i{display:block;width:0%;height:100%;background:linear-gradient(90deg,rgba(89,232,255,.55),rgba(255,212,112,.72))}
+.capFitGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.capFitGrid div{padding:6px;border:1px solid rgba(114,220,237,.07);border-radius:6px;background:rgba(1,7,10,.28)}
+.capFitGrid span{display:block;color:rgba(185,219,227,.38);font-size:6px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+.capFitGrid b{display:block;margin-top:2px;color:rgba(223,242,246,.74);font-size:8px}
+.capFitSummary{margin-top:7px;color:rgba(197,227,233,.48);font-size:6px;font-weight:800;letter-spacing:.065em;line-height:1.45;text-transform:uppercase}
+.moduleRuntimeTag{display:inline-block;margin-top:5px;padding:3px 5px;border:1px solid rgba(255,208,105,.14);border-radius:4px;color:#ffd887;font-size:6px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.moduleRuntimeTag.passive{color:rgba(139,232,246,.60);border-color:rgba(107,222,240,.10)}
+.moduleAutoBtn{margin-top:6px;width:100%;border:1px solid rgba(110,224,241,.13);border-radius:5px;padding:5px 6px;background:rgba(4,12,16,.56);color:rgba(188,228,236,.65);font:850 6px/1 system-ui;letter-spacing:.08em;cursor:pointer}
+.moduleAutoBtn.on{color:#83efcc;border-color:rgba(94,235,190,.20)}
+
+.researchHero{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:9px;padding:14px!important;background:radial-gradient(circle at 85% 50%,rgba(129,86,255,.08),transparent 30%),linear-gradient(135deg,rgba(5,17,23,.92),rgba(4,8,15,.84))!important}
+.researchHero h3{margin:4px 0 6px;color:#fff0b7;font-size:15px;letter-spacing:.06em}.researchHero p{max-width:720px;margin:0;color:rgba(193,224,231,.52);font:400 8px/1.55 Georgia,serif}
+.researchDataCore{flex:0 0 145px;text-align:center;padding:12px;border:1px solid rgba(155,112,255,.18);border-radius:10px;background:rgba(36,16,65,.18)}
+.researchDataCore span,.researchDataCore small{display:block;color:rgba(196,165,255,.58);font-size:6px;font-weight:900;letter-spacing:.10em}.researchDataCore b{display:block;margin:3px 0;color:#d9bdff;font-size:26px;line-height:1}
+.researchLayout{display:grid;grid-template-columns:minmax(220px,.28fr) minmax(0,1fr);gap:9px}.researchSummary,.researchMain{padding:12px!important}.researchSummary h3{margin:5px 0;color:#fff0b7;font-size:12px}.researchSummary p{color:rgba(190,220,228,.48);font-size:7px;line-height:1.55}
+.researchBlueprintSummary{display:grid;gap:5px;margin-top:10px}.researchBlueprintSummary div{display:flex;justify-content:space-between;gap:8px;padding:6px 7px;border:1px solid rgba(108,222,239,.07);border-radius:5px;background:rgba(2,8,12,.28);color:rgba(190,224,231,.48);font-size:6px;font-weight:850;letter-spacing:.06em}.researchBlueprintSummary b{color:#81eaff}
+.researchFilterBar{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}.researchFilterBar button{border:1px solid rgba(112,224,241,.10);border-radius:5px;padding:5px 8px;background:rgba(2,9,13,.45);color:rgba(190,224,231,.50);font:850 6px/1 system-ui;letter-spacing:.08em;cursor:pointer}.researchFilterBar button.active{color:#ffe09a;border-color:rgba(255,208,106,.22);background:rgba(78,50,9,.16)}
+.researchProjectGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.researchProject{padding:10px;border:1px solid rgba(108,222,239,.08);border-radius:8px;background:rgba(2,8,12,.31)}.researchProject.unlocked{border-color:rgba(83,235,187,.16);background:rgba(4,27,22,.20)}.researchProject.locked{opacity:.62}
+.researchProjectTop{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.researchProjectTop span{color:rgba(122,231,247,.48);font-size:6px;font-weight:900;letter-spacing:.10em}.researchProjectTop b{color:#d7b9ff;font-size:7px}.researchProject h4{margin:5px 0 4px;color:#fff0b7;font-size:10px;letter-spacing:.05em}.researchProject p{min-height:34px;margin:0;color:rgba(190,220,228,.46);font-size:7px;line-height:1.48}
+.researchUnlocks{margin-top:7px;color:rgba(255,210,117,.58);font-size:6px;font-weight:800;line-height:1.4;letter-spacing:.05em}.researchPrereq{margin-top:5px;color:rgba(173,205,212,.36);font-size:6px;font-weight:800}.researchProject button{width:100%;margin-top:8px;border:1px solid rgba(150,107,255,.18);border-radius:5px;padding:6px;background:rgba(62,32,101,.20);color:#d9bdff;font:900 6px/1 system-ui;letter-spacing:.08em;cursor:pointer}.researchProject button:disabled{opacity:.35;cursor:not-allowed}.researchProject.unlocked button{color:#79eec8;border-color:rgba(83,235,187,.14);background:rgba(2,37,28,.16)}
+.shipBuildCost{display:block;margin-top:4px;color:rgba(202,226,232,.40);font-size:6px;font-weight:800;letter-spacing:.05em}
+@media(max-width:900px){.researchLayout{grid-template-columns:1fr}.researchProjectGrid{grid-template-columns:1fr}}
+
+/* ============================================================
+   FORGE 0.27.5 — GREAT FLEET / DERIVED FIT ANALYTICS
+   ============================================================ */
+.marketTableHead,.moduleMarketRow{
+  grid-template-columns:minmax(150px,1.55fr) .72fr 48px 44px 48px 42px 58px!important;
+  gap:6px!important;
+}
+.marketMetricUp{color:#7df0c5!important}
+.marketMetricDown{color:#ff8a73!important}
+.marketMetricNeutral{color:rgba(207,233,238,.58)!important}
+.marketDerivedPanel{
+  margin-top:9px;padding:9px;border:1px solid rgba(103,222,240,.09);
+  border-radius:7px;background:rgba(1,8,12,.30)
+}
+.marketDerivedTitle{
+  display:flex;justify-content:space-between;gap:10px;
+  color:rgba(128,234,248,.52);font-size:6px;font-weight:900;letter-spacing:.09em
+}
+.marketDerivedGrid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:7px
+}
+.marketDerivedGrid div{
+  padding:6px;border:1px solid rgba(104,221,239,.065);
+  border-radius:5px;background:rgba(2,9,13,.30)
+}
+.marketDerivedGrid span{
+  display:block;color:rgba(183,218,226,.35);font-size:5px;
+  font-weight:850;letter-spacing:.08em;text-transform:uppercase
+}
+.marketDerivedGrid b{
+  display:block;margin-top:2px;color:#e0f2f5;font-size:8px
+}
+.marketDerivedSummary{
+  margin-top:7px;color:rgba(196,224,231,.48);
+  font-size:6px;font-weight:800;line-height:1.45;letter-spacing:.055em
+}
+.shipCard .fleetRoleTag{
+  display:inline-block;margin:4px 0;padding:3px 5px;border:1px solid rgba(124,224,241,.10);
+  border-radius:4px;color:rgba(140,228,242,.52);font-size:5px;font-weight:900;letter-spacing:.08em
+}
+.shipCard .signatureTag{
+  display:inline-block;margin-left:4px;padding:3px 5px;border:1px solid rgba(255,204,94,.16);
+  border-radius:4px;color:#ffd57c;font-size:5px;font-weight:900;letter-spacing:.08em
+}
+@media(max-width:980px){
+  .marketTableHead,.moduleMarketRow{
+    grid-template-columns:minmax(130px,1.5fr) .65fr 42px 40px 44px 38px 52px!important
+  }
+  .marketDerivedGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
